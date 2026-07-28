@@ -64,6 +64,31 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    adminGetStudents: async (req, res) => {
+      try {
+        const snap = await db.collection("students").get();
+        const students = [];
+        snap.forEach(doc => {
+          let data = doc.data();
+          data.id = doc.id;
+          students.push(data);
+        });
+        return res.json({ success: true, data: students });
+      } catch (err) {
+        return res.json({ success: false, message: "Error fetching students: " + err.message });
+      }
+    },
+
+    adminGetSettings: async (req, res) => {
+      try {
+        const snap = await db.collection("settings").doc("global").get();
+        const settings = snap.exists ? snap.data() : {};
+        return res.json({ success: true, data: settings });
+      } catch (err) {
+        return res.json({ success: false, message: "Error fetching settings: " + err.message });
+      }
+    },
+
     adminUpdateUser: async (req, res) => {
       const { userId, updates } = req.body;
       if (!userId || !updates) return res.json({ success: false, message: "User ID and updates required." });

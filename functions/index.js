@@ -114,6 +114,10 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetStats(req, res));
       case "adminGetUsers":
         return requireRole(req, res, () => adminActions.adminGetUsers(req, res));
+      case "adminGetStudents":
+        return requireRole(req, res, () => adminActions.adminGetStudents(req, res));
+      case "adminGetSettings":
+        return requireRole(req, res, () => adminActions.adminGetSettings(req, res));
       case "adminUpdateUser":
         return requireRole(req, res, () => adminActions.adminUpdateUser(req, res));
       case "adminGetClasses":

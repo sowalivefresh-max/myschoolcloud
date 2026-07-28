@@ -29,6 +29,13 @@ async function runBackendAction(action, args = []) {
     }
 
     const data = await response.json();
+    
+    // Legacy support: if the backend returned { success: true, data: ... }, unwrap it
+    // so the frontend receives the raw array/object as it did with google.script.run
+    if (data && typeof data === 'object' && data.success === true && data.data !== undefined) {
+      return data.data;
+    }
+    
     return data;
   } catch (error) {
     console.error("API Error:", error);
