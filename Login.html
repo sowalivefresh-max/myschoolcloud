@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Portal - Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0d1b2a 0%,#1e3a5f 50%,#0d1b2a 100%);overflow-x:hidden;padding:16px 0;}
+
+/* Animated background orbs */
+.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);animation:floatOrb 8s ease-in-out infinite;}
+.orb-1{width:400px;height:400px;background:rgba(240,165,0,.12);top:-100px;right:-100px;animation-delay:0s;}
+.orb-2{width:300px;height:300px;background:rgba(30,58,95,.4);bottom:-80px;left:-80px;animation-delay:3s;}
+.orb-3{width:200px;height:200px;background:rgba(240,165,0,.08);top:50%;left:10%;animation-delay:5s;}
+@keyframes floatOrb{0%,100%{transform:translate(0,0);}50%{transform:translate(20px,-20px);}}
+
+.login-wrap{position:relative;z-index:10;width:100%;max-width:420px;padding:16px;}
+
+/* Card */
+.login-card{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:40px;box-shadow:0 24px 64px rgba(0,0,0,.4);}
+
+/* Logo / Brand */
+.login-brand{text-align:center;margin-bottom:32px;}
+.login-logo-wrap{width:80px;height:80px;margin:0 auto 14px;
+  background:linear-gradient(135deg,#f0a500,#c88600);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 16px rgba(240,165,0,.3);overflow:hidden;
+  transition:all .3s ease;}
+.login-logo-wrap.has-logo{width:100px;height:100px;border-radius:16px;
+  background:rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.login-logo-wrap img{width:100%;height:100%;object-fit:contain;padding:4px;}
+.login-logo-text{font-size:28px;font-weight:800;color:#0d1b2a;letter-spacing:-1px;}
+.login-school-name{font-size:20px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:4px;}
+.login-motto{font-size:12px;color:rgba(255,255,255,.5);font-style:italic;}
+.login-subtitle{font-size:13px;color:rgba(255,255,255,.4);margin-top:6px;}
+
+/* Form */
+.form-group{margin-bottom:18px;}
+.form-label{display:block;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px;letter-spacing:.3px;}
+.input-wrap{position:relative;}
+.input-wrap i.prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.4);font-size:14px;}
+.form-input{width:100%;padding:11px 13px 11px 38px;background:rgba(255,255,255,.08);
+  border:1.5px solid rgba(255,255,255,.15);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;
+  color:#fff;outline:none;transition:all .25s;}
+.form-input::placeholder{color:rgba(255,255,255,.3);}
+.form-input:focus{background:rgba(255,255,255,.12);border-color:#f0a500;box-shadow:0 0 0 3px rgba(240,165,0,.15);}
+.eye-toggle{position:absolute;right:13px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:14px;padding:0;transition:color .2s;}
+.eye-toggle:hover{color:rgba(255,255,255,.8);}
+
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,#f0a500,#c88600);
+  border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;
+  color:#0d1b2a;cursor:pointer;transition:all .25s;margin-top:8px;
+  box-shadow:0 4px 16px rgba(240,165,0,.3);letter-spacing:.3px;}
+.login-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(240,165,0,.4);}
+.login-btn:active:not(:disabled){transform:translateY(0);}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;}
+.btn-inner{display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-spinner{width:18px;height:18px;border:2px solid rgba(13,27,42,.3);border-top-color:#0d1b2a;
+  border-radius:50%;animation:spin .7s linear infinite;display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.login-error{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.35);color:#fca5a5;
+  border-radius:8px;padding:10px 14px;font-size:13px;margin-top:14px;display:none;
+  animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+/* Footer */
+.login-footer{text-align:center;margin-top:24px;font-size:11px;color:rgba(255,255,255,.25);}
+
+/* Mobile */
+@media(max-width:480px){.login-card{padding:28px 20px;}}
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="login-wrap">
+  <div class="login-card">
+
+    <div class="login-brand" id="loginBrand">
+      <div class="login-logo-wrap" id="logoWrap">
+        <i class="fa fa-school" id="logoPlaceholder" style="font-size:32px;color:#0d1b2a;"></i>
+        <span class="login-logo-text" id="logoText" style="display:none;">AA</span>
+      </div>
+      <div class="login-school-name" id="schoolName">Loading...</div>
+      <div class="login-motto" id="schoolMotto">Excellence in Education</div>
+      <div class="login-subtitle">School Management Portal</div>
+    </div>
+
+    <form id="loginForm" onsubmit="return false;">
+      <div class="form-group">
+        <label class="form-label" for="loginEmail">Email Address</label>
+        <div class="input-wrap">
+          <i class="fa fa-envelope prefix"></i>
+          <input class="form-input" type="email" id="loginEmail" name="email"
+            placeholder="Enter your email address" autocomplete="email" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="loginPassword">Password</label>
+        <div class="input-wrap">
+          <i class="fa fa-lock prefix"></i>
+          <input class="form-input" type="password" id="loginPassword" name="password"
+            placeholder="Enter your password" autocomplete="current-password" required>
+          <button type="button" class="eye-toggle" id="eyeToggle" onclick="togglePwd()">
+            <i class="fa fa-eye" id="eyeIcon"></i>
+          </button>
+        </div>
+        <div style="text-align:right;margin-top:6px;">
+          <button type="button" onclick="openResetModal()" style="background:none;border:none;color:#f0a500;font-size:12px;cursor:pointer;font-weight:600;">Forgot Password?</button>
+        </div>
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn" onclick="doLogin()">
+        <div class="btn-inner">
+          <div class="btn-spinner" id="btnSpinner"></div>
+          <span id="btnText"><i class="fa fa-sign-in-alt"></i>&nbsp; Sign In</span>
+        </div>
+      </button>
+
+      <div class="login-error" id="loginError"></div>
+    </form>
+
+    <div class="login-footer">
+      &copy; <span id="copyYear"></span> <span id="footerSchoolName">School Portal</span> &bull; Secure Portal
+    </div>
+  </div>
+</div>
+
+<!-- Password Reset Request Modal -->
+<div id="resetModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#1e3a5f;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;width:100%;max-width:400px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+    <h3 style="color:#fff;margin-bottom:8px;">Reset Password</h3>
+    <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:24px;">Enter your email address and we'll notify the admin to reset your password.</p>
+    
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" id="resetEmail" class="form-input" placeholder="yourname@example.com" style="padding-left:14px;">
+    </div>
+    
+    <button type="button" class="login-btn" id="resetBtn" onclick="doRequestReset()">Submit Request</button>
+    <button type="button" onclick="closeResetModal()" style="width:100%;background:none;border:none;color:rgba(255,255,255,0.4);margin-top:12px;cursor:pointer;font-size:13px;">Cancel</button>
+    
+    <div id="resetMsg" style="margin-top:16px;font-size:13px;display:none;"></div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+// Load branding on page load
+document.getElementById('copyYear').textContent = new Date().getFullYear();
+
+runBackendAction('getPublicBranding', [])
+  .then(function(b) {
+    if (b.school_name) {
+      document.getElementById('schoolName').textContent = b.school_name;
+      document.title = b.school_name + ' - School Portal';
+      var footerEl = document.getElementById('footerSchoolName');
+      if (footerEl) footerEl.textContent = b.school_name;
+      var initials = b.school_name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().substring(0,2);
+      var textEl = document.getElementById('logoText');
+      var iconEl = document.getElementById('logoPlaceholder');
+      if (textEl) { textEl.textContent = initials; textEl.style.display = 'block'; }
+      if (iconEl) iconEl.style.display = 'none';
+    }
+    if (b.school_motto) document.getElementById('schoolMotto').textContent = '"' + b.school_motto + '"';
+    if (b.school_logo_url && (b.school_logo_url.indexOf('data:image') === 0 || b.school_logo_url.indexOf('http') === 0)) {
+      var wrap = document.getElementById('logoWrap');
+      wrap.innerHTML = '<img src="' + b.school_logo_url + '" alt="logo">';
+      wrap.classList.add('has-logo');
+    }
+  })
+  .catch(function(e) { console.warn('Could not load branding:', e); });
+
+// Dashboard file mapping per role
+var DASHBOARD_MAP = {
+  developer: 'AdminDashboard.html', admin: 'AdminDashboard.html', admin_assistant: 'AdminDashboard.html',
+  principal: 'PrincipalDashboard.html', vp: 'VPDashboard.html',
+  headteacher: 'HeadTeacherDashboard.html', teacher: 'TeacherDashboard.html',
+  primary_teacher: 'PrimaryTeacherDashboard.html', accounts: 'AccountsDashboard.html',
+  parent: 'ParentDashboard.html'
+};
+
+function togglePwd() {
+  var inp = document.getElementById('loginPassword');
+  var icon = document.getElementById('eyeIcon');
+  if (inp.type === 'password') { inp.type = 'text'; icon.className = 'fa fa-eye-slash'; }
+  else { inp.type = 'password'; icon.className = 'fa fa-eye'; }
+}
+
+function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass  = document.getElementById('loginPassword').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  if (!email || !pass) {
+    errEl.textContent = 'Please enter both email and password.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Show loading spinner
+  document.getElementById('loginBtn').disabled = true;
+  document.getElementById('btnSpinner').style.display = 'block';
+  document.getElementById('btnText').style.display = 'none';
+
+  runBackendAction('loginUser', [email, pass])
+    .then(function(res) {
+      if (res.success) {
+        document.getElementById('btnText').textContent = 'Redirecting...';
+        document.getElementById('btnText').style.display = 'block';
+
+        // Determine the correct dashboard HTML file based on role
+        var dashboard = DASHBOARD_MAP[res.role] || 'Login.html';
+        var redirectUrl = dashboard + '?token=' + encodeURIComponent(res.token);
+        window.location.href = redirectUrl;
+      } else {
+        errEl.textContent = res.message || 'Login failed. Please try again.';
+        errEl.style.display = 'block';
+        document.getElementById('loginPassword').value = '';
+        resetLoginBtn();
+      }
+    })
+    .catch(function(err) {
+      errEl.textContent = 'Connection error. Please check your internet connection.';
+      errEl.style.display = 'block';
+      resetLoginBtn();
+    });
+}
+
+function resetLoginBtn() {
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('btnSpinner').style.display = 'none';
+  document.getElementById('btnText').style.display = 'flex';
+  document.getElementById('btnText').innerHTML = '<i class="fa fa-sign-in-alt"></i>&nbsp; Sign In';
+}
+
+// Allow Enter key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (document.getElementById('resetModal').style.display === 'flex') doRequestReset();
+    else doLogin();
+  }
+});
+
+function openResetModal() {
+  document.getElementById('resetModal').style.display = 'flex';
+  document.getElementById('resetEmail').value = '';
+  document.getElementById('resetMsg').style.display = 'none';
+}
+function closeResetModal() {
+  document.getElementById('resetModal').style.display = 'none';
+}
+
+function doRequestReset() {
+  var email = document.getElementById('resetEmail').value.trim();
+  if (!email) return;
+  var btn = document.getElementById('resetBtn');
+  var msg = document.getElementById('resetMsg');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+
+  runBackendAction('requestPasswordReset', [email])
+    .then(function(res) {
+      btn.disabled = false;
+      btn.textContent = 'Submit Request';
+      msg.textContent = res.message;
+      msg.style.color = res.success ? '#4ade80' : '#fca5a5';
+      msg.style.display = 'block';
+      if (res.success) setTimeout(closeResetModal, 3000);
+    })
+    .catch(function() {
+      btn.disabled = false;
+      btn.textContent = 'Submit Request';
+      msg.textContent = 'Connection error. Please try again.';
+      msg.style.color = '#fca5a5';
+      msg.style.display = 'block';
+    });
+}
+</script>
+</body>
+</html>

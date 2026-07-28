@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="aa-layout">
+    <div class="aa-sidebar-overlay" id="aa-sidebar-overlay"></div>
+    <aside class="aa-sidebar" id="aa-sidebar">
+      <div class="aa-sidebar-brand">
+        <div class="aa-brand-icon">AA</div>
+        <div class="aa-brand-text">
+          <div class="aa-brand-name" id="sb-school-name">Loading\u2026</div>
+          <div class="aa-brand-role">Class Teacher (Primary)</div>
+        </div>
+      </div>
+      <nav class="aa-nav">
+        <div class="aa-nav-section">Main</div>
+        <button class="aa-nav-item active" id="nav-dashboard" onclick="switchTab('pt-tabs', 'tab-dashboard'); setActiveNav('nav-dashboard')">
+          <i class="fa fa-home"></i> Dashboard
+        </button>
+        <div class="aa-nav-section">Class Management</div>
+        <button class="aa-nav-item" id="nav-attendance" onclick="switchTab('pt-tabs', 'tab-attendance'); setActiveNav('nav-attendance')">
+          <i class="fa fa-calendar-check"></i> Attendance
+        </button>
+        <button class="aa-nav-item" id="nav-scores" onclick="switchTab('pt-tabs', 'tab-scores'); setActiveNav('nav-scores')">
+          <i class="fa fa-pen-alt"></i> Gradebook
+        </button>
+        <button class="aa-nav-item" id="nav-traits" onclick="switchTab('pt-tabs', 'tab-traits'); setActiveNav('nav-traits')">
+          <i class="fa fa-star"></i> Behavioral Traits
+        </button>
+        <div class="aa-nav-section">Teaching</div>
+        <button class="aa-nav-item" id="nav-lessonplans" onclick="switchTab('pt-tabs', 'tab-lessonplans'); setActiveNav('nav-lessonplans')">
+          <i class="fa fa-book-open"></i> Lesson Plans
+        </button>
+        <button class="aa-nav-item text-danger" onclick="AA.logout()">
+          <i class="fa fa-sign-out-alt"></i> Logout
+        </button>
+      </nav>
+      <div class="aa-sidebar-footer">
+        <div class="aa-user-card" onclick="AA.populateProfileModal()">
+          <div class="aa-user-avatar">PT</div>
+          <div>
+            <div class="aa-user-name">Loading...</div>
+            <div class="aa-user-role">Class Teacher</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="aa-main">
+      <header class="aa-topbar">
+        <button class="aa-menu-toggle" id="aa-menu-toggle"><i class="fa fa-bars"></i></button>
+        <div class="aa-topbar-left">
+          <div class="aa-topbar-title">Class Teacher Portal</div>
+          <div class="aa-topbar-subtitle" id="currentTermText">Academic Session</div>
+        </div>
+      </header>
+
+      <div class="aa-content">
+        <div id="pt-tabs" style="display:none;">
+          <div class="aa-tab active" data-tab="tab-dashboard" data-onload="loadDashboard"></div>
+          <div class="aa-tab" data-tab="tab-attendance" data-onload="loadAttendanceTab"></div>
+          <div class="aa-tab" data-tab="tab-scores" data-onload="loadMySubjectsForScores"></div>
+          <div class="aa-tab" data-tab="tab-traits" data-onload="loadTraitsTab"></div>
+          <div class="aa-tab" data-tab="tab-lessonplans" data-onload="loadMyLessonPlans"></div>
+        </div>
+
+        <!-- TAB: Dashboard -->
+        <div class="aa-tab-content active" data-group="pt-tabs" data-id="tab-dashboard">
+          <div class="aa-grid-3 mb-4">
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-info"><i class="fa fa-users"></i></div>
+              <div class="aa-stat-value" id="stat-students">-</div>
+              <div class="aa-stat-label">Students in Class</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-success"><i class="fa fa-book"></i></div>
+              <div class="aa-stat-value" id="stat-subjects">-</div>
+              <div class="aa-stat-label">Subjects Taught</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-warning"><i class="fa fa-book-open"></i></div>
+              <div class="aa-stat-value" id="stat-plans">-</div>
+              <div class="aa-stat-label">Pending Plans</div>
+            </div>
+          </div>
+          
+          <div class="aa-card">
+            <div class="aa-card-header"><h3 class="aa-card-title">My Class Roster</h3></div>
+            <div class="aa-card-body" style="padding:0;">
+              <table class="aa-table" id="rosterTable">
+                <thead><tr><th>Adm No</th><th>Name</th><th>Gender</th><th>Status</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Attendance -->
+        <div class="aa-tab-content" data-group="pt-tabs" data-id="tab-attendance">
+          <div class="aa-card mb-4">
+            <div class="aa-card-body">
+              <div class="d-flex gap-3 align-items-center">
+                <input type="date" id="attDate" class="aa-input" style="max-width:200px;" onchange="loadAttendanceForDate()">
+                <button class="aa-btn aa-btn-primary" onclick="loadAttendanceForDate()"><i class="fa fa-sync-alt"></i> Load Roll Call</button>
+                <div class="flex-1 text-end">
+                  <button class="aa-btn aa-btn-success" id="btnSaveAttendance" style="display:none;" onclick="saveAttendance()">Save Attendance</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="aa-card" id="attCard" style="display:none;">
+            <div class="aa-card-body" style="padding:0;">
+              <table class="aa-table" id="attTable">
+                <thead><tr><th>Name</th><th>Status</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Gradebook -->
+        <div class="aa-tab-content" data-group="pt-tabs" data-id="tab-scores">
+          <div class="aa-card mb-4">
+            <div class="aa-card-body">
+              <div class="d-flex gap-3 align-items-center">
+                <select id="scoreSubjectSelect" class="aa-select" style="max-width:250px;" onchange="loadStudentsForScoring(this.value)">
+                  <option value="">-- Select Subject --</option>
+                </select>
+                <button class="aa-btn aa-btn-primary" onclick="loadStudentsForScoring()"><i class="fa fa-sync-alt"></i> Load</button>
+                <div class="flex-1 text-end">
+                  <button class="aa-btn aa-btn-primary" id="btnSaveAllScores" style="display:none;" onclick="saveAllScores()">Save All Scores</button>
+                  <button class="aa-btn aa-btn-outline" id="btnDownloadTemplate" style="display:none;" onclick="downloadScoreTemplate()"><i class="fa fa-download"></i> Template</button>
+                  <button class="aa-btn aa-btn-outline" id="btnBulkUpload" style="display:none;" onclick="openBulkScoreModal()"><i class="fa fa-upload"></i> Bulk Upload</button>
+                  <button class="aa-btn aa-btn-success" id="btnSubmitScores" style="display:none;" onclick="submitScores()">Submit All to Admin</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="aa-card" id="scoresCard" style="display:none;">
+            <div class="aa-card-body" style="padding:0;overflow-x:auto;">
+              <table class="aa-table" id="scoresTable">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th style="width:70px;">CA1 (10)</th><th style="width:70px;">CA2 (10)</th>
+                    <th style="width:70px;">CA3 (10)</th><th style="width:80px;">Exam (70)</th>
+                    <th>Total</th><th>Grade</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Behavioral Traits -->
+        <div class="aa-tab-content" data-group="pt-tabs" data-id="tab-traits">
+          <div class="aa-card mb-4">
+            <div class="aa-card-body">
+              <div class="d-flex gap-3 align-items-center">
+                <select id="traitStudentSelect" class="aa-select" style="max-width:300px;" onchange="loadStudentTraits()">
+                  <option value="">-- Select Student --</option>
+                </select>
+                <button class="aa-btn aa-btn-primary" onclick="loadStudentTraits()"><i class="fa fa-sync-alt"></i> Load Traits</button>
+              </div>
+            </div>
+          </div>
+          
+          <div id="traitsFormContainer" style="display:none;">
+            <div class="aa-grid-2">
+              <div class="aa-card">
+                <div class="aa-card-header"><h3 class="aa-card-title">Psychomotor Skills</h3></div>
+                <div class="aa-card-body">
+                  <form id="psyForm">
+                    <input type="hidden" name="studentId" id="psyStudentId">
+                    <div class="aa-form-group"><label class="aa-label">Handwriting</label>
+                      <select name="handwriting" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Sport Skills</label>
+                      <select name="sportSkills" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Drawing</label>
+                      <select name="drawing" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Creativity</label>
+                      <select name="creativity" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Speaking</label>
+                      <select name="speaking" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Attentiveness</label>
+                      <select name="attentiveness" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              
+              <div class="aa-card">
+                <div class="aa-card-header"><h3 class="aa-card-title">Affective Domain</h3></div>
+                <div class="aa-card-body">
+                  <form id="affForm">
+                    <input type="hidden" name="studentId" id="affStudentId">
+                    <div class="aa-form-group"><label class="aa-label">Punctuality</label>
+                      <select name="punctuality" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Neatness</label>
+                      <select name="neatness" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Politeness</label>
+                      <select name="politeness" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Honesty</label>
+                      <select name="honesty" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Leadership</label>
+                      <select name="leadership" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                    <div class="aa-form-group"><label class="aa-label">Cooperation</label>
+                      <select name="cooperation" class="aa-select"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option></select>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="text-center mt-3">
+              <button type="button" class="aa-btn aa-btn-primary aa-btn-lg" id="btnSaveTraits" onclick="saveAllTraits()"><i class="fa fa-save"></i> Save Behavioral Traits</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Lesson Plans -->
+        <div class="aa-tab-content" data-group="pt-tabs" data-id="tab-lessonplans">
+          <div class="aa-card">
+            <div class="aa-card-header">
+              <h3 class="aa-card-title">My Lesson Plans</h3>
+              <button class="aa-btn aa-btn-primary" onclick="openModal('planModal');resetForm('planForm');document.getElementById('planId').value='';"><i class="fa fa-plus"></i> Create Plan</button>
+            </div>
+            <div class="aa-card-body" style="padding:0;">
+              <table class="aa-table" id="myPlansTable">
+                <thead><tr><th>Topic</th><th>Subject</th><th>Week</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="aa-modal-backdrop" id="profileModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header"><h5 class="aa-modal-title">My Profile</h5><button class="aa-modal-close" onclick="closeModal('profileModal')">×</button></div>
+      <div class="aa-modal-body">
+        <div class="text-center mb-4">
+          <div class="position-relative d-inline-block">
+            <div class="aa-user-avatar" style="width:100px;height:100px;font-size:40px;margin:0 auto 10px;border:3px solid #f0f4f8;"></div>
+            <label for="profPhotoInput" class="position-absolute" style="bottom:5px;right:5px;background:#f0a500;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;">
+              <i class="fa fa-camera"></i>
+            </label>
+            <input type="file" id="profPhotoInput" style="display:none;" accept="image/*" onchange="previewProfilePhoto(this)">
+            <input type="hidden" id="profPhotoBase64">
+          </div>
+          <div class="aa-user-name fs-20 fw-700 mt-2"></div>
+          <div class="aa-user-role text-muted fs-14"></div>
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Full Name</label>
+          <input type="text" id="profName" class="aa-input" placeholder="Your full name">
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Email Address</label>
+          <input type="email" id="profEmail" class="aa-input" placeholder="Your email address">
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Phone Number</label>
+          <input type="text" id="profPhone" class="aa-input" placeholder="e.g. +234...">
+        </div>
+        <hr class="my-4" style="border:0;border-top:1px solid #eee;">
+        <h6 class="mb-3">Change Password</h6>
+        <div class="aa-form-group">
+          <input type="password" id="oldPwd" class="aa-input mb-2" placeholder="Current Password">
+          <input type="password" id="newPwd" class="aa-input" placeholder="New Password">
+        </div>
+        <div class="d-flex gap-2">
+          <button class="aa-btn aa-btn-outline w-100" onclick="AA.changePwd()">Update Password</button>
+          <button class="aa-btn aa-btn-primary w-100" onclick="AA.updateProfile()">Save Details</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lesson Plan Modal -->
+  </div>
+
+  <!-- BULK SCORE MODAL -->
+  <div class="aa-modal-backdrop" id="bulkScoreModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title">Bulk Upload Scores</h5>
+        <button class="aa-modal-close" onclick="closeModal('bulkScoreModal')">×</button>
+      </div>
+      <div class="aa-modal-body">
+        <p class="text-muted fs-14 mb-3">Upload a CSV file containing the scores. You can download the template first to get the correct StudentIDs.</p>
+        <div class="aa-form-group">
+          <label class="aa-label">Select CSV File</label>
+          <input type="file" id="bulkScoreFile" accept=".csv" class="aa-input">
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('bulkScoreModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" onclick="processBulkScores()" id="btnProcessScores">Upload Scores</button>
+      </div>
+    </div>
+  </div>
+  <div class="aa-modal-backdrop" id="planModal">
+    <div class="aa-modal aa-modal-lg">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title"><i class="fa fa-book-open" style="margin-right:8px;opacity:.8;"></i>Lesson Plan Editor</h5>
+        <button class="aa-modal-close" onclick="closeModal('planModal')">×</button>
+      </div>
+      <div class="aa-modal-body" style="padding:0;">
+        <form id="planForm">
+          <input type="hidden" id="planId" name="id">
+
+          <!-- SECTION 1: Plan Info -->
+          <div style="padding:16px 20px 12px;background:var(--aa-primary,#0d2137);border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65);">&#9312; Plan Information</span>
+          </div>
+          <div style="padding:16px 20px 4px;">
+            <div class="aa-grid-2 mb-3">
+              <div class="aa-form-group mb-0">
+                <label class="aa-label">Subject <span style="color:#e74c3c;">*</span></label>
+                <select id="planSubject" name="subjectId" class="aa-select" required></select>
+              </div>
+              <div class="aa-form-group mb-0">
+                <label class="aa-label">Class</label>
+                <input type="text" id="planClass" name="className" class="aa-input" readonly>
+              </div>
+            </div>
+            <div class="aa-grid-2 mb-3">
+              <div class="aa-form-group mb-0">
+                <label class="aa-label">Week <span style="color:#e74c3c;">*</span></label>
+                <input type="text" name="week" class="aa-input" placeholder="e.g. Week 3" required>
+              </div>
+              <div class="aa-form-group mb-0">
+                <label class="aa-label">Topic / Sub-topic <span style="color:#e74c3c;">*</span></label>
+                <input type="text" name="topic" class="aa-input" placeholder="Lesson topic" required>
+              </div>
+            </div>
+            <div class="aa-form-group mb-2">
+              <label class="aa-label">Reference Book(s)</label>
+              <input type="text" name="referenceBook" class="aa-input" placeholder="e.g. Primary Mathematics Book 4 (Pg. 22), Scheme of Work">
+            </div>
+          </div>
+
+          <!-- SECTION 2: Content & Methodology -->
+          <div style="padding:10px 20px 10px;background:var(--aa-primary,#0d2137);border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65);">&#9313; Content &amp; Methodology</span>
+          </div>
+          <div style="padding:16px 20px 4px;">
+            <div class="aa-form-group">
+              <label class="aa-label">Behavioural Objectives</label>
+              <textarea name="objectives" class="aa-textarea" placeholder="By the end of the lesson, pupils should be able to..."></textarea>
+            </div>
+            <div class="aa-form-group">
+              <label class="aa-label">Entry Behaviour / Prior Knowledge</label>
+              <textarea name="entryBehaviour" class="aa-textarea" style="min-height:80px;" placeholder="What prior knowledge do students already have? e.g. Pupils can count from 1 to 100."></textarea>
+            </div>
+            <div class="aa-form-group mb-2">
+              <label class="aa-label">Teaching Aids / Instructional Materials</label>
+              <input type="text" name="teachingAids" class="aa-input" placeholder="e.g. Charts, abacus, number cards, whiteboard">
+            </div>
+          </div>
+
+          <!-- SECTION 3: Presentation -->
+          <div style="padding:10px 20px 10px;background:var(--aa-primary,#0d2137);border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65);">&#9314; Lesson Presentation</span>
+          </div>
+          <div style="padding:16px 20px 4px;">
+            <div class="aa-form-group mb-2">
+              <label class="aa-label">Step-by-Step Presentation</label>
+              <textarea name="presentationSteps" class="aa-textarea" style="min-height:130px;" placeholder="Step 1 — Introduction&#10;Step 2 — Development&#10;Step 3 — Application&#10;Step 4 — Summary"></textarea>
+            </div>
+          </div>
+
+          <!-- SECTION 4: Assessment -->
+          <div style="padding:10px 20px 10px;background:var(--aa-primary,#0d2137);border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.65);">&#9315; Assessment</span>
+          </div>
+          <div style="padding:16px 20px 16px;">
+            <div class="aa-form-group">
+              <label class="aa-label">Evaluation</label>
+              <textarea name="evaluation" class="aa-textarea" placeholder="Questions or activities used to assess understanding during/after the lesson."></textarea>
+            </div>
+            <div class="aa-form-group mb-0">
+              <label class="aa-label">Assignment / Homework</label>
+              <textarea name="assignment" class="aa-textarea" placeholder="Take-home tasks or exercises for students to complete."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="aa-modal-footer" style="gap:8px;">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('planModal')">Cancel</button>
+        <button class="aa-btn aa-btn-secondary" onclick="saveLessonPlan()" id="btnSaveDraft"><i class="fa fa-save" style="margin-right:6px;"></i>Save Draft</button>
+        <button class="aa-btn aa-btn-primary" onclick="saveThenSubmitPlan()" id="btnSaveSubmit"><i class="fa fa-paper-plane" style="margin-right:6px;"></i>Save &amp; Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="scripts.js"></script>
+  <script>
+    var currentTerm = ''; var currentSession = '';
+    var myClass = ''; var myStudents = []; var mySubjects = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+      initTabs('pt-tabs'); AA.init();
+      document.getElementById('attDate').valueAsDate = new Date();
+      function initDashboard() {
+        if (!AA.user || !AA.settings || !AA.settings.current_term) return setTimeout(initDashboard, 100);
+        currentTerm = AA.settings.current_term; currentSession = AA.settings.current_session;
+        document.getElementById('currentTermText').textContent = currentTerm + ' - ' + currentSession;
+        myClass = AA.user.classAssigned || '';
+        document.getElementById('planClass').value = myClass;
+        loadDashboard();
+      }
+      initDashboard();
+    });
+
+    function changePwd() {
+      var o=document.getElementById('oldPwd').value, n=document.getElementById('newPwd').value;
+      if(!o||!n) return showToast('Enter both passwords', 'error');
+      callServer('userChangePassword', [AA.token, o, n], function(r){ showToast(r.message, r.success?'success':'error'); if(r.success)closeModal('profileModal'); });
+    }
+
+    function loadDashboard() {
+      if(!myClass) return showToast('You are not assigned to a class.', 'error');
+      callServer('teacherGetClassStudents', [AA.token, myClass], function(data) {
+        myStudents = data;
+        document.getElementById('stat-students').textContent = data.length;
+        buildTable('rosterTable', [
+          {key:'admissionNumber'},{key:'fullName'},{key:'gender'},{key:'status', render:function(r){return formatStatus(r.status);}}
+        ], data);
+      }, null, true);
+
+      callServer('teacherGetMySubjects', [AA.token], function(data) {
+        // For primary, teacher gets all primary subjects. Let's filter to just 'primary' subjects from their assignment.
+        mySubjects = data;
+        document.getElementById('stat-subjects').textContent = data.length;
+        var sSel = document.getElementById('scoreSubjectSelect'); sSel.innerHTML='<option value="">-- Select Subject --</option>';
+        var pSel = document.getElementById('planSubject'); pSel.innerHTML='';
+        data.forEach(function(s) {
+          var id = s.id||s.iD;
+          var opt = '<option value="'+id+'">'+AA.escapeHTML(s.subjectName)+'</option>';
+          sSel.innerHTML += opt; pSel.innerHTML += opt;
+        });
+      });
+      callServer('teacherGetMyLessonPlans', [AA.token, currentTerm, currentSession], function(data) {
+        document.getElementById('stat-plans').textContent = data.filter(function(d){return d.status==='draft'||d.status==='rejected'}).length;
+      });
+    }
+
+    // -- Attendance --
+    function loadAttendanceTab() { loadAttendanceForDate(); }
+    function loadAttendanceForDate() {
+      var dt = document.getElementById('attDate').value;
+      if(!dt) return;
+      if(!myClass) return;
+      document.getElementById('attCard').style.display='block';
+      callServer('teacherGetAttendanceByDate', [AA.token, myClass, dt], function(attRecords) {
+        var tbody = document.querySelector('#attTable tbody'); tbody.innerHTML='';
+        myStudents.forEach(function(st) {
+          var sid = st.id||st.iD;
+          var rec = attRecords.find(function(r){ return String(r.studentID||r.studentId) === String(sid); });
+          var status = rec ? rec.status : 'Present';
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>'+AA.escapeHTML(st.fullName)+'</td>'+
+            '<td><select id="att_'+sid+'" class="aa-select" style="padding:4px;width:120px;">'+
+            '<option value="Present" '+(status==='Present'?'selected':'')+'>Present</option>'+
+            '<option value="Absent" '+(status==='Absent'?'selected':'')+'>Absent</option>'+
+            '<option value="Late" '+(status==='Late'?'selected':'')+'>Late</option></select></td>';
+          tbody.appendChild(tr);
+        });
+        document.getElementById('btnSaveAttendance').style.display = myStudents.length>0 ? 'inline-block' : 'none';
+      }, null, true);
+    }
+    function saveAttendance() {
+      var dt = document.getElementById('attDate').value;
+      var records = myStudents.map(function(st) {
+        var sid = st.id||st.iD;
+        return { studentId: sid, status: document.getElementById('att_'+sid).value };
+      });
+      callServer('teacherMarkAttendance', [AA.token, myClass, dt, records, currentTerm, currentSession], function(res) {
+        showToast(res.message, res.success?'success':'error');
+      }, null, true);
+    }
+
+    // -- Gradebook --
+    function loadMySubjectsForScores() {}
+    function loadStudentsForScoring() {
+      var subId = document.getElementById('scoreSubjectSelect').value;
+      if(!subId) { document.getElementById('scoresCard').style.display='none'; return; }
+      callServer('teacherGetScores', [AA.token, {subjectId: subId, className: myClass, term: currentTerm, session: currentSession}], function(scores) {
+        document.getElementById('scoresCard').style.display='block';
+        var tbody = document.querySelector('#scoresTable tbody'); tbody.innerHTML = '';
+        var allLocked = myStudents.length>0; var anyScores=false;
+
+        myStudents.forEach(function(st) {
+          var sc = scores.find(function(x){ return String(x.studentID||x.studentId) === String(st.id||st.iD); }) || {};
+          var sid = st.id||st.iD;
+          var locked = String(sc.locked) === 'true' || String(sc.submitted) === 'true';
+          if(!locked) allLocked = false;
+          if(sc.id||sc.iD) anyScores = true;
+
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>'+AA.escapeHTML(st.fullName)+'</td>'+
+            '<td><input type="number" id="ca1_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca1||sc.cA1||0)+'" '+(locked?'disabled':'')+'></td>'+
+            '<td><input type="number" id="ca2_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca2||sc.cA2||0)+'" '+(locked?'disabled':'')+'></td>'+
+            '<td><input type="number" id="ca3_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca3||sc.cA3||0)+'" '+(locked?'disabled':'')+'></td>'+
+            '<td><input type="number" id="exam_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.exam||sc.Exam||0)+'" '+(locked?'disabled':'')+'></td>'+
+            '<td><strong>'+(sc.total||0)+'</strong></td>'+
+            '<td>'+formatGrade(sc.grade||'')+'</td>';
+          tbody.appendChild(tr);
+        });
+
+        if(myStudents.length===0) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No students in your class.</td></tr>';
+        var canSubmit = myStudents.length > 0 && !allLocked && anyScores;
+        var canSave = myStudents.length > 0 && !allLocked;
+        document.getElementById('btnSaveAllScores').style.display = canSave ? 'inline-block' : 'none';
+        document.getElementById('btnSubmitScores').style.display = canSubmit ? 'inline-block' : 'none';
+        document.getElementById('btnDownloadTemplate').style.display = 'inline-block';
+        document.getElementById('btnBulkUpload').style.display = 'inline-block';
+      }, null, true);
+    }
+
+    function saveAllScores() {
+      var subId = document.getElementById('scoreSubjectSelect').value;
+      if(!subId) return;
+      var payload = [];
+      myStudents.forEach(function(st) {
+        var sid = st.id || st.iD;
+        var ca1 = document.getElementById('ca1_'+sid);
+        if(ca1 && !ca1.disabled) {
+          payload.push({
+            studentId: sid, subjectId: subId, className: myClass, term: currentTerm, session: currentSession,
+            ca1: ca1.value||0, ca2: document.getElementById('ca2_'+sid).value||0,
+            ca3: document.getElementById('ca3_'+sid).value||0, exam: document.getElementById('exam_'+sid).value||0
+          });
+        }
+      });
+      if(payload.length === 0) return showToast('No editable scores found', 'info');
+      
+      var btn = document.getElementById('btnSaveAllScores');
+      btn.innerText = 'Saving...'; btn.disabled = true;
+      callServer('teacherBulkSaveScores', [AA.token, payload], function(res) {
+        btn.innerText = 'Save All Scores'; btn.disabled = false;
+        showToast(res.message, res.success?'success':'error');
+        if(res.success) loadStudentsForScoring();
+      }, function() {
+        btn.innerText = 'Save All Scores'; btn.disabled = false;
+      });
+    }
+    function submitScores() {
+      var subId = document.getElementById('scoreSubjectSelect').value; if(!subId) return;
+      aaConfirm('Submit all scores for this subject? Cannot edit after submission.', function() {
+        callServer('teacherSubmitScores', [AA.token, {subjectId: subId, term: currentTerm, session: currentSession}], function(res){
+          showToast(res.message, res.success?'success':'error'); if(res.success) loadStudentsForScoring();
+        }, null, true);
+      });
+    }
+
+    // -- Behavioral Traits --
+    function loadTraitsTab() {
+      var sel = document.getElementById('traitStudentSelect');
+      sel.innerHTML = '<option value="">-- Select Student --</option>';
+      myStudents.forEach(function(s) {
+        sel.innerHTML += '<option value="'+(s.id||s.iD)+'">'+AA.escapeHTML(s.fullName)+' ('+AA.escapeHTML(s.admissionNumber||'') + ')</option>';
+      });
+    }
+
+    function loadStudentTraits() {
+      var sid = document.getElementById('traitStudentSelect').value;
+      if(!sid) { document.getElementById('traitsFormContainer').style.display='none'; return; }
+      
+      document.getElementById('psyStudentId').value = sid;
+      document.getElementById('affStudentId').value = sid;
+      
+      callServer('teacherGetPsychomotor', [AA.token, sid, currentTerm, currentSession], function(res) {
+        if(res && Object.keys(res).length > 0) setFormData('psyForm', res);
+        else document.getElementById('psyForm').reset();
+        document.getElementById('psyStudentId').value = sid;
+      }, null, true);
+      
+      callServer('teacherGetAffective', [AA.token, sid, currentTerm, currentSession], function(res) {
+        if(res && Object.keys(res).length > 0) setFormData('affForm', res);
+        else document.getElementById('affForm').reset();
+        document.getElementById('affStudentId').value = sid;
+      }, null, true);
+      
+      document.getElementById('traitsFormContainer').style.display='block';
+    }
+
+    function saveAllTraits() {
+      var sid = document.getElementById('traitStudentSelect').value;
+      if(!sid) return showToast('Select a student first', 'error');
+      
+      var btn = document.getElementById('btnSaveTraits');
+      btn.innerText = 'Saving...'; btn.disabled = true;
+      
+      var psyData = getFormData('psyForm');
+      psyData.studentId = sid; psyData.className = myClass; psyData.term = currentTerm; psyData.session = currentSession;
+      
+      var affData = getFormData('affForm');
+      affData.studentId = sid; affData.className = myClass; affData.term = currentTerm; affData.session = currentSession;
+      
+      callServer('teacherSavePsychomotor', [AA.token, psyData], function(res1) {
+        if(!res1.success) {
+          btn.innerText = 'Save Behavioral Traits'; btn.disabled = false;
+          return showToast(res1.message, 'error');
+        }
+        callServer('teacherSaveAffective', [AA.token, affData], function(res2) {
+          btn.innerText = 'Save Behavioral Traits'; btn.disabled = false;
+          showToast('Behavioral traits saved successfully.', res2.success ? 'success' : 'error');
+        }, function() { btn.innerText = 'Save Behavioral Traits'; btn.disabled = false; }, true);
+      }, function() { btn.innerText = 'Save Behavioral Traits'; btn.disabled = false; }, true);
+    }
+
+    // --- BULK SCORES ---
+    function downloadScoreTemplate() {
+      var tbody = document.querySelector('#scoresTable tbody');
+      var rows = tbody.querySelectorAll('tr');
+      var csv = 'StudentID,StudentName,CA1,CA2,CA3,Exam,TeacherComment\n';
+      rows.forEach(function(tr) {
+        if(tr.cells.length < 5) return;
+        var name = tr.cells[0].innerText.replace(/"/g, '""');
+        var input = tr.querySelector('input[id^="ca1_"]');
+        if(input) {
+          var sid = input.id.split('_')[1];
+          csv += '"' + sid + '","' + name + '",,,,,\n';
+        }
+      });
+      var subName = document.getElementById('scoreSubjectSelect').options[document.getElementById('scoreSubjectSelect').selectedIndex].text;
+      var blob = new Blob([csv], {type: 'text/csv'});
+      var url = window.URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', subName.replace(/[^a-zA-Z0-9]/g, '_') + '_Scores.csv');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function openBulkScoreModal() {
+      document.getElementById('bulkScoreFile').value = '';
+      openModal('bulkScoreModal');
+    }
+
+    function processBulkScores() {
+      var file = document.getElementById('bulkScoreFile').files[0];
+      if(!file) return showToast('Please select a file', 'error');
+      var subjectId = document.getElementById('scoreSubjectSelect').value;
+      if(!subjectId) return showToast('Please select a subject first', 'error');
+      
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var parsed = parseCSV(e.target.result);
+        var payload = [];
+        parsed.forEach(function(row) {
+          if(row.StudentID) {
+            payload.push({
+              studentId: row.StudentID,
+              subjectId: subjectId,
+              className: myClass,
+              term: currentTerm,
+              session: currentSession,
+              ca1: row.CA1 || 0,
+              ca2: row.CA2 || 0,
+              ca3: row.CA3 || 0,
+              exam: row.Exam || 0,
+              teacherComment: row.TeacherComment || ''
+            });
+          }
+        });
+        if(payload.length === 0) return showToast('No valid rows found. Please use the template.', 'error');
+        
+        document.getElementById('btnProcessScores').innerText = 'Uploading...';
+        document.getElementById('btnProcessScores').disabled = true;
+        callServer('teacherBulkSaveScores', [AA.token, payload], function(res) {
+          document.getElementById('btnProcessScores').innerText = 'Upload Scores';
+          document.getElementById('btnProcessScores').disabled = false;
+          showToast(res.message, res.success ? 'success' : 'error');
+          if(res.success) {
+            closeModal('bulkScoreModal');
+            loadStudentsForScoring();
+          }
+        }, function() {
+          document.getElementById('btnProcessScores').innerText = 'Upload Scores';
+          document.getElementById('btnProcessScores').disabled = false;
+        });
+      };
+      reader.readAsText(file);
+    }
+
+    // -- Lesson Plans --
+    function loadMyLessonPlans() {
+      callServer('teacherGetMyLessonPlans', [AA.token, currentTerm, currentSession], function(data) {
+        buildTable('myPlansTable', [
+          { key:'topic' }, { key:'subjectName' }, { key:'week' },
+          { key:'status', render: function(r){ return formatStatus(r.status); } }
+        ], data, function(r) {
+          var id = r.id||r.iD;
+          var html = '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="viewPlanPDF(\''+id+'\')"><i class="fa fa-file-pdf"></i></button> ';
+          if(r.status === 'draft' || r.status === 'rejected') {
+            html += '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="editLessonPlan(\''+id+'\')"><i class="fa fa-edit"></i></button> ';
+            html += '<button class="aa-btn aa-btn-success aa-btn-xs" onclick="submitLessonPlan(\''+id+'\')"><i class="fa fa-paper-plane"></i></button>';
+          }
+          return html;
+        });
+      }, null, true);
+    }
+
+    function saveLessonPlan() {
+      var data = getFormData('planForm'); data.term = currentTerm; data.session = currentSession;
+      var id = data.id; var fn = id ? 'teacherUpdateLessonPlan' : 'teacherCreateLessonPlan';
+      callServer(fn, [AA.token, id||data, data], function(res) {
+        showToast(res.message, res.success?'success':'error'); if(res.success) { closeModal('planModal'); loadMyLessonPlans(); }
+      }, null, true);
+    }
+    function saveThenSubmitPlan() {
+      var data = getFormData('planForm'); data.term = currentTerm; data.session = currentSession;
+      var id = data.id; var fn = id ? 'teacherUpdateLessonPlan' : 'teacherCreateLessonPlan';
+      var btn = document.getElementById('btnSaveSubmit');
+      btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin" style="margin-right:6px;"></i>Saving...';
+      callServer(fn, [AA.token, id||data, data], function(res) {
+        if (!res.success) {
+          btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane" style="margin-right:6px;"></i>Save &amp; Submit';
+          return showToast(res.message, 'error');
+        }
+        var planId = res.id || id;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin" style="margin-right:6px;"></i>Submitting...';
+        callServer('teacherSubmitLessonPlan', [AA.token, planId], function(res2) {
+          btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane" style="margin-right:6px;"></i>Save &amp; Submit';
+          showToast(res2.message, res2.success?'success':'error');
+          if(res2.success) { closeModal('planModal'); loadMyLessonPlans(); }
+        }, function() { btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane" style="margin-right:6px;"></i>Save &amp; Submit'; }, true);
+      }, function() {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane" style="margin-right:6px;"></i>Save &amp; Submit';
+      }, true);
+    }
+    function editLessonPlan(id) {
+      callServer('teacherGetMyLessonPlans', [AA.token, currentTerm, currentSession], function(data) {
+        var p = data.find(function(x){return String(x.id||x.iD)===String(id);});
+        if(p) { document.getElementById('planId').value=id; setFormData('planForm', p); openModal('planModal'); }
+      }, null, true);
+    }
+    function submitLessonPlan(id) {
+      aaConfirm('Submit this plan for approval?', function() { callServer('teacherSubmitLessonPlan', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success)loadMyLessonPlans(); }, null, true); });
+    }
+    function viewPlanPDF(id) {
+      callServer('teacherGenerateLessonPlanPDF', [AA.token, id], function(res){
+        if(res.success) openPDFViewer(res.previewUrl, res.downloadUrl, 'Lesson Plan'); else showToast(res.message, 'error');
+      }, null, true);
+    }
+  </script>
+</body>
+</html>

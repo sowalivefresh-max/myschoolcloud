@@ -1,0 +1,14 @@
+# Google Apps Script server-side files – tracked for full backup & version history
+# (Remove *.gs exclusion so Code.gs, Finance.gs, etc. are committed to the repository)
+
+# IDE artefacts
+.idea/
+.vscode/
+*.iml
+
+# Node modules (if you ever add a bundler later)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db

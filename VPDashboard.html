@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="aa-layout">
+    <div class="aa-sidebar-overlay" id="aa-sidebar-overlay"></div>
+    <aside class="aa-sidebar" id="aa-sidebar">
+      <div class="aa-sidebar-brand">
+        <div class="aa-brand-icon">AA</div>
+        <div class="aa-brand-text">
+          <div class="aa-brand-name" id="sb-school-name">Loading\u2026</div>
+          <div class="aa-brand-role">Vice Principal</div>
+        </div>
+      </div>
+      <nav class="aa-nav">
+        <div class="aa-nav-section">Main</div>
+        <button class="aa-nav-item active" id="nav-dashboard" onclick="switchTab('vp-tabs', 'tab-dashboard'); setActiveNav('nav-dashboard')">
+          <i class="fa fa-chart-pie"></i> Overview
+        </button>
+        <div class="aa-nav-section">Academic</div>
+        <button class="aa-nav-item" id="nav-reports" onclick="switchTab('vp-tabs', 'tab-reports'); setActiveNav('nav-reports')">
+          <i class="fa fa-file-signature"></i> Student Reports
+        </button>
+        <div class="aa-nav-section">Staff</div>
+        <button class="aa-nav-item" id="nav-lessonplans" onclick="switchTab('vp-tabs', 'tab-lessonplans'); setActiveNav('nav-lessonplans')">
+          <i class="fa fa-book-open"></i> Lesson Plans
+        </button>
+        <button class="aa-nav-item text-danger" onclick="AA.logout()">
+          <i class="fa fa-sign-out-alt"></i> Logout
+        </button>
+      </nav>
+      <div class="aa-sidebar-footer">
+        <div class="aa-user-card" onclick="AA.populateProfileModal()">
+          <div class="aa-user-avatar">VP</div>
+          <div>
+            <div class="aa-user-name">Loading...</div>
+            <div class="aa-user-role">Vice Principal</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="aa-main">
+      <header class="aa-topbar">
+        <button class="aa-menu-toggle" id="aa-menu-toggle"><i class="fa fa-bars"></i></button>
+        <div class="aa-topbar-left">
+          <div class="aa-topbar-title">Vice Principal's Office</div>
+          <div class="aa-topbar-subtitle" id="currentTermText">Academic Session</div>
+        </div>
+      </header>
+
+      <div class="aa-content">
+        <div id="vp-tabs" style="display:none;">
+          <div class="aa-tab active" data-tab="tab-dashboard" data-onload="loadDashboard"></div>
+          <div class="aa-tab" data-tab="tab-reports" data-onload="loadClassesForReports"></div>
+          <div class="aa-tab" data-tab="tab-lessonplans" data-onload="loadLessonPlans"></div>
+        </div>
+
+        <!-- TAB: Dashboard -->
+        <div class="aa-tab-content active" data-group="vp-tabs" data-id="tab-dashboard">
+          <div class="aa-grid-3 mb-4">
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-info"><i class="fa fa-user-graduate"></i></div>
+              <div class="aa-stat-value" id="stat-students">-</div>
+              <div class="aa-stat-label">Total Enrolled</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-success"><i class="fa fa-chalkboard-teacher"></i></div>
+              <div class="aa-stat-value" id="stat-teachers">-</div>
+              <div class="aa-stat-label">Teaching Staff</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-warning"><i class="fa fa-book-open"></i></div>
+              <div class="aa-stat-value" id="stat-plans">-</div>
+              <div class="aa-stat-label">Pending Lesson Plans</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Reports -->
+        <div class="aa-tab-content" data-group="vp-tabs" data-id="tab-reports">
+          <div class="aa-card mb-4">
+            <div class="aa-card-body">
+              <div class="d-flex gap-3 align-items-center">
+                <select id="rptClassSelect" class="aa-select" style="max-width:200px;" onchange="loadStudentsForClass(this.value)">
+                  <option value="">-- Select Class --</option>
+                </select>
+                <div class="aa-search-box flex-1">
+                  <i class="fa fa-search"></i>
+                  <input type="text" id="searchRpt" class="aa-input" placeholder="Search students..." onkeyup="filterTable('searchRpt','rptTable')">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="aa-card" id="rptCard" style="display:none;">
+            <div class="aa-card-body" style="padding:0;">
+              <table class="aa-table" id="rptTable">
+                <thead><tr><th>Adm No</th><th>Student Name</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Lesson Plans -->
+        <div class="aa-tab-content" data-group="vp-tabs" data-id="tab-lessonplans">
+          <div class="aa-card">
+            <div class="aa-card-header"><h3 class="aa-card-title">Lesson Plans Pending Approval</h3></div>
+            <div class="aa-card-body" style="padding:0;">
+              <table class="aa-table" id="plansTable">
+                <thead><tr><th>Teacher</th><th>Subject</th><th>Class</th><th>Topic</th><th>Submitted</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="aa-modal-backdrop" id="reviewModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header"><h5 class="aa-modal-title">Review Lesson Plan</h5><button class="aa-modal-close" onclick="closeModal('reviewModal')">×</button></div>
+      <div class="aa-modal-body">
+        <input type="hidden" id="reviewPlanId">
+        <div class="aa-form-group">
+          <label class="aa-label">Approval/Rejection Note</label>
+          <textarea id="reviewNote" class="aa-textarea" placeholder="Enter comments for the teacher..."></textarea>
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-danger" onclick="processPlan('reject')">Reject</button>
+        <button class="aa-btn aa-btn-success" onclick="processPlan('approve')">Approve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="aa-modal-backdrop" id="profileModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header"><h5 class="aa-modal-title">My Profile</h5><button class="aa-modal-close" onclick="closeModal('profileModal')">×</button></div>
+      <div class="aa-modal-body">
+        <div class="text-center mb-4">
+          <div class="position-relative d-inline-block">
+            <div class="aa-user-avatar" style="width:100px;height:100px;font-size:40px;margin:0 auto 10px;border:3px solid #f0f4f8;"></div>
+            <label for="profPhotoInput" class="position-absolute" style="bottom:5px;right:5px;background:#f0a500;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;">
+              <i class="fa fa-camera"></i>
+            </label>
+            <input type="file" id="profPhotoInput" style="display:none;" accept="image/*" onchange="previewProfilePhoto(this)">
+            <input type="hidden" id="profPhotoBase64">
+          </div>
+          <div class="aa-user-name fs-20 fw-700 mt-2"></div>
+          <div class="aa-user-role text-muted fs-14"></div>
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Full Name</label>
+          <input type="text" id="profName" class="aa-input" placeholder="Your full name">
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Email Address</label>
+          <input type="email" id="profEmail" class="aa-input" placeholder="Your email address">
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Phone Number</label>
+          <input type="text" id="profPhone" class="aa-input" placeholder="e.g. +234...">
+        </div>
+        <hr class="my-4" style="border:0;border-top:1px solid #eee;">
+        <h6 class="mb-3">Change Password</h6>
+        <div class="aa-form-group">
+          <input type="password" id="oldPwd" class="aa-input mb-2" placeholder="Current Password">
+          <input type="password" id="newPwd" class="aa-input" placeholder="New Password">
+        </div>
+        <div class="d-flex gap-2">
+          <button class="aa-btn aa-btn-outline w-100" onclick="AA.changePwd()">Update Password</button>
+          <button class="aa-btn aa-btn-primary w-100" onclick="AA.updateProfile()">Save Details</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="scripts.js"></script>
+  <script>
+    var currentTerm = ''; var currentSession = '';
+    document.addEventListener('DOMContentLoaded', function() {
+      initTabs('vp-tabs'); AA.init();
+      function initDashboard() {
+        if (!AA.user || !AA.settings || !AA.settings.current_term) return setTimeout(initDashboard, 100);
+        currentTerm = AA.settings.current_term; currentSession = AA.settings.current_session;
+        document.getElementById('currentTermText').textContent = currentTerm + ' - ' + currentSession;
+        loadDashboard();
+      }
+      initDashboard();
+    });
+
+    function loadDashboard() {
+      callServer('principalGetStats', [AA.token], function(s) {
+        document.getElementById('stat-students').textContent = s.students;
+        document.getElementById('stat-teachers').textContent = s.users;
+      }, null, true);
+      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession], function(p) {
+        document.getElementById('stat-plans').textContent = p.length;
+      });
+    }
+
+    function loadClassesForReports() {
+      callServer('principalGetClasses', [AA.token], function(data) {
+        var sel = document.getElementById('rptClassSelect');
+        sel.innerHTML = '<option value="">-- Select Class --</option>';
+        data.forEach(function(c) { sel.innerHTML += '<option value="'+c.className+'">'+c.className+' ('+c.section+')</option>'; });
+      }, null, true);
+    }
+    
+    function loadStudentsForClass(cls) {
+      if(!cls) { document.getElementById('rptCard').style.display='none'; return; }
+      callServer('principalGetAllStudents', [AA.token], function(data) {
+        var filtered = data.filter(function(s){ return String(s.class || s.className) === String(cls); });
+        document.getElementById('rptCard').style.display='block';
+        buildTable('rptTable', [
+          { key:'admissionNumber' }, { key:'fullName' }, { key:'status', render: function(r){ return formatStatus(r.status); } }
+        ], filtered, function(r) { return '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewReport(\''+(r.id||r.iD)+'\')"><i class="fa fa-eye"></i> View Report</button>'; });
+      }, null, true);
+    }
+
+    function viewReport(sid) {
+      var rptType = confirm('Generate a Half-Term report instead of Full-Term?\n\nOK = Half-Term\nCancel = Full-Term') ? 'Half Term' : 'Full Term';
+      callServer('principalGetStudentResultPDF', [AA.token, sid, currentTerm, currentSession, rptType], function(res) {
+        if(res.success) openPDFViewer(res.previewUrl, res.downloadUrl, 'Report Card');
+        else showToast(res.message, 'error');
+      }, null, true);
+    }
+
+    function loadLessonPlans() {
+      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession], function(data) {
+        buildTable('plansTable', [
+          { key:'teacherName' }, { key:'subjectName' }, { key:'class' }, { key:'topic' },
+          { key:'createdAt', render: function(r){ return formatDate(r.createdAt); } }
+        ], data, function(r) { return '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="reviewPlan(\''+(r.id||r.iD)+'\')">Review</button>'; });
+      }, null, true);
+    }
+
+    function reviewPlan(id) { document.getElementById('reviewPlanId').value = id; document.getElementById('reviewNote').value = ''; openModal('reviewModal'); }
+    function processPlan(action) {
+      callServer(action==='approve'?'principalApprovePlan':'principalRejectPlan', [AA.token, document.getElementById('reviewPlanId').value, document.getElementById('reviewNote').value], function(res) {
+        showToast(res.message, res.success?'success':'error'); if(res.success) { closeModal('reviewModal'); loadLessonPlans(); loadDashboard(); }
+      }, null, true);
+    }
+  </script>
+</body>
+</html>
