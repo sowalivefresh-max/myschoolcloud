@@ -68,13 +68,26 @@ app.post("/api", async (req, res) => {
       if (typeof args[0] === 'object' && !Array.isArray(args[0])) {
         Object.assign(req.body, args[0]);
         req.body.data = args[0]; // For admin/teacher save routes
-      } else {
-        // Positional mappings for auth
+      } else if (typeof args[0] === 'string') {
+        // First positional argument is almost always the token
+        req.body.token = args[0];
+        
+        // Positional mappings for specific auth routes
         if (action === "loginUser") { req.body.email = args[0]; req.body.password = args[1]; }
         if (action === "requestPasswordReset") { req.body.email = args[0]; }
         if (action === "userChangePassword") { req.body.oldPassword = args[0]; req.body.newPassword = args[1]; }
-        // For markNotificationRead
-        if (action === "markNotificationRead") { req.body.notificationId = args[0]?.notificationId || args[0]; }
+        if (action === "markNotificationRead") { req.body.notificationId = args[0]; }
+        
+        // Positional mappings for other routes that pass more than just token
+        if (action === "adminGetStats") { req.body.section = args[1]; }
+        if (action === "adminUpdateUser") { req.body.userId = args[1]; req.body.updates = args[2]; }
+        if (action === "adminSaveFeeStructure") { req.body.data = args[1]; }
+        if (action === "adminGenerateBills") { req.body.term = args[1]; req.body.session = args[2]; req.body.classFilters = args[3]; }
+        if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
+        if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
+        if (action === "teacherGetScores") { req.body.className = args[1]; req.body.subject = args[2]; req.body.term = args[3]; req.body.session = args[4]; }
+        if (action === "teacherSaveScore") { req.body.scoreId = args[1]; req.body.studentId = args[2]; req.body.className = args[3]; req.body.subject = args[4]; req.body.term = args[5]; req.body.session = args[6]; req.body.ca1 = args[7]; req.body.ca2 = args[8]; req.body.exam = args[9]; }
+        if (action === "teacherBulkSaveScores") { req.body.payloads = args[1]; }
       }
     }
   }
@@ -101,6 +114,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetStats(req, res));
       case "adminGetUsers":
         return requireRole(req, res, () => adminActions.adminGetUsers(req, res));
+      case "adminUpdateUser":
+        return requireRole(req, res, () => adminActions.adminUpdateUser(req, res));
       case "adminGetClasses":
         return requireRole(req, res, () => adminActions.adminGetClasses(req, res));
       case "adminGetSubjects":

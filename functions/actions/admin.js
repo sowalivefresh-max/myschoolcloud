@@ -64,6 +64,32 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    adminUpdateUser: async (req, res) => {
+      const { userId, updates } = req.body;
+      if (!userId || !updates) return res.json({ success: false, message: "User ID and updates required." });
+      
+      try {
+        // If password is being updated, we need to hash it
+        if (updates.password) {
+          const crypto = require("crypto");
+          function hashPassword(password, salt) {
+             return crypto.createHmac("sha256", "super-secret-key").update(password + salt).digest("hex");
+          }
+          const userDoc = await db.collection("users").doc(userId).get();
+          if (userDoc.exists) {
+            const user = userDoc.data();
+            updates.passwordHash = hashPassword(updates.password, user.salt || "");
+            delete updates.password;
+          }
+        }
+        
+        await db.collection("users").doc(userId).update(updates);
+        return res.json({ success: true, message: "User updated successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: "Error updating user: " + err.message });
+      }
+    },
+
     adminGetClasses: async (req, res) => {
       try {
         const classesSnap = await db.collection("classes").get();
