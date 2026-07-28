@@ -1,4 +1,4 @@
-module.exports = function(db) {
+module.exports = function(db, notificationsActions) {
   return {
     teacherGetMySubjects: async (req, res) => {
       // Session attached by middleware
@@ -189,7 +189,33 @@ module.exports = function(db) {
           count++;
         }
         
-        if (count > 0) await batch.commit();
+        if (count > 0) {
+          await batch.commit();
+          
+          // Trigger notifications to parents in the background (fire and forget)
+          if (notificationsActions) {
+            // Deduplicate by studentId to prevent spam
+            const uniqueStudentIds = [...new Set(scores.map(s => s.studentId).filter(Boolean))];
+            uniqueStudentIds.forEach(async (sid) => {
+              try {
+                const studentDoc = await db.collection("students").doc(sid).get();
+                if (studentDoc.exists && studentDoc.data().parentId) {
+                  const student = studentDoc.data();
+                  // We pick the first score data for term info
+                  const meta = scores.find(s => s.studentId === sid);
+                  notificationsActions.createNotification(
+                    student.parentId,
+                    "Exam Results Updated",
+                    `New results have been uploaded/updated for ${student.fullName || 'your child'} (${meta.term || ''}, ${meta.session || ''}).`,
+                    "RESULT"
+                  );
+                }
+              } catch (e) {
+                console.error("Failed to trigger result notification for", sid, e);
+              }
+            });
+          }
+        }
         return res.json({ success: true, message: `${count} scores saved successfully.` });
       } catch (err) {
         return res.json({ success: false, message: "Error saving bulk scores: " + err.message });

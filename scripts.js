@@ -623,4 +623,102 @@ document.addEventListener('DOMContentLoaded', function() {
     tc.id = 'aa-toast-container';
     document.body.appendChild(tc);
   }
+  
+  if (document.getElementById('notification-bell')) {
+    initNotifications();
+  }
 });
+
+// --- Notifications UI Logic ---
+function initNotifications() {
+  const bell = document.getElementById('notification-bell');
+  const dropdown = document.getElementById('notification-dropdown');
+  
+  if (bell && dropdown) {
+    bell.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dropdown.classList.toggle('show');
+    });
+    
+    document.addEventListener('click', function(e) {
+      if (!dropdown.contains(e.target) && !bell.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
+  }
+
+  fetchNotifications();
+  // Poll every 60 seconds
+  setInterval(fetchNotifications, 60000);
+}
+
+async function fetchNotifications() {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  try {
+    const res = await runBackendAction("getNotifications", []);
+    if (res.success && res.notifications) {
+      renderNotifications(res.notifications);
+    }
+  } catch (err) {
+    console.error("Failed to fetch notifications", err);
+  }
+}
+
+function renderNotifications(notifications) {
+  const dropdown = document.getElementById('notification-dropdown');
+  const badge = document.getElementById('notification-badge');
+  if (!dropdown || !badge) return;
+
+  // Clear existing items but keep header
+  const header = dropdown.querySelector('.notification-header');
+  dropdown.innerHTML = '';
+  if (header) dropdown.appendChild(header);
+
+  let unreadCount = 0;
+
+  if (notifications.length === 0) {
+    dropdown.innerHTML += '<div class="notif-empty">No notifications yet.</div>';
+  } else {
+    notifications.forEach(n => {
+      if (!n.isRead) unreadCount++;
+      const item = document.createElement('div');
+      item.className = 'notification-item' + (n.isRead ? '' : ' unread');
+      
+      const dateStr = new Date(n.createdAt).toLocaleString();
+      
+      item.innerHTML = `
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-msg">${n.message}</div>
+        <div class="notif-time">${dateStr}</div>
+      `;
+
+      item.onclick = async () => {
+        if (!n.isRead) {
+          item.classList.remove('unread');
+          unreadCount = Math.max(0, unreadCount - 1);
+          updateBadge(badge, unreadCount);
+          await runBackendAction("markNotificationRead", []); // Note: the backend expects { notificationId: n.id } in args? No, in Express body. 
+          // Wait, our runBackendAction wraps args in an array. 
+          // Express backend receives: { action, args: [...] }
+          // Let's modify the runBackendAction call to pass the notificationId in args.
+          await runBackendAction("markNotificationRead", [{ notificationId: n.id }]);
+        }
+      };
+
+      dropdown.appendChild(item);
+    });
+  }
+
+  updateBadge(badge, unreadCount);
+}
+
+function updateBadge(badge, count) {
+  if (count > 0) {
+    badge.textContent = count > 9 ? '9+' : count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}

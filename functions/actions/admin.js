@@ -1,4 +1,4 @@
-module.exports = function(db) {
+module.exports = function(db, notificationsActions) {
   return {
     adminGetStats: async (req, res) => {
       // Middleware ensures req.session exists and role is admin/admin_assistant
@@ -221,6 +221,16 @@ module.exports = function(db) {
             term: term, session: session, totalBilled: total, totalPaid: appliedCredit,
             balance: finalBalance, status: billStatus, createdAt: new Date().toISOString()
           });
+
+          // Trigger notification to the parent
+          if (student.parentId && notificationsActions) {
+            notificationsActions.createNotification(
+              student.parentId,
+              "New Bill Assigned",
+              `A new fee bill of ₦${total.toLocaleString()} for ${student.fullName || 'your child'} (${term}, ${session}) has been generated.`,
+              "BILL"
+            );
+          }
 
           generated++;
         }

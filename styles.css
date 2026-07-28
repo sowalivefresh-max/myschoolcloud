@@ -312,3 +312,84 @@ img { max-width: 100%; }
   .aa-tabs { overflow-x: auto; flex-wrap: nowrap; }
   .aa-tab { white-space: nowrap; }
 }
+
+/* --- Notifications UI --- */
+.notification-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+  cursor: pointer;
+}
+.notification-icon {
+  font-size: 24px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.notification-icon:hover {
+  color: var(--primary);
+}
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  display: none;
+}
+.notification-dropdown {
+  position: absolute;
+  top: 40px;
+  right: -10px;
+  width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.notification-dropdown.show {
+  display: flex;
+}
+.notification-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--text-dark);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notification-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.2s;
+}
+.notification-item:hover {
+  background: var(--bg-light);
+}
+.notification-item.unread {
+  background: rgba(var(--primary-rgb), 0.05);
+  border-left: 3px solid var(--primary);
+}
+.notif-title { font-weight: 600; font-size: 13px; color: var(--text-dark); }
+.notif-msg { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+.notif-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.notif-empty { padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
+ 
+ 

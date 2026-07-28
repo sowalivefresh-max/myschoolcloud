@@ -15,9 +15,10 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 // Import action handlers
+const notificationsActions = require("./actions/notifications")(db);
 const authActions = require("./actions/auth")(db);
-const adminActions = require("./actions/admin")(db);
-const teacherActions = require("./actions/teacher")(db);
+const adminActions = require("./actions/admin")(db, notificationsActions);
+const teacherActions = require("./actions/teacher")(db, notificationsActions);
 const parentActions = require("./actions/parent")(db);
 
 // --- UTILITY: Role Middleware ---
@@ -57,6 +58,26 @@ async function requireRole(req, res, next) {
 app.post("/api", async (req, res) => {
   const action = req.body.action;
   if (!action) return res.status(400).json({ success: false, message: "No action specified." });
+
+  // --- GAS Compatibility Shim ---
+  // The frontend sends { action: "...", args: [...] }
+  // We unpack args so our Express routes can read from req.body directly
+  if (req.body.args && Array.isArray(req.body.args)) {
+    const args = req.body.args;
+    if (args.length > 0) {
+      if (typeof args[0] === 'object' && !Array.isArray(args[0])) {
+        Object.assign(req.body, args[0]);
+        req.body.data = args[0]; // For admin/teacher save routes
+      } else {
+        // Positional mappings for auth
+        if (action === "loginUser") { req.body.email = args[0]; req.body.password = args[1]; }
+        if (action === "requestPasswordReset") { req.body.email = args[0]; }
+        if (action === "userChangePassword") { req.body.oldPassword = args[0]; req.body.newPassword = args[1]; }
+        // For markNotificationRead
+        if (action === "markNotificationRead") { req.body.notificationId = args[0]?.notificationId || args[0]; }
+      }
+    }
+  }
 
   try {
     switch (action) {
@@ -128,6 +149,12 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => parentActions.parentGetBills(req, res));
       case "parentGetPayments":
         return requireRole(req, res, () => parentActions.parentGetPayments(req, res));
+
+      // --- NOTIFICATIONS ACTIONS ---
+      case "getNotifications":
+        return requireRole(req, res, () => notificationsActions.getNotifications(req, res));
+      case "markNotificationRead":
+        return requireRole(req, res, () => notificationsActions.markNotificationRead(req, res));
 
       // Add more routes here as we build chunks...
 
