@@ -6,7 +6,7 @@
 // --- DEPLOYMENT CONFIGURATION ------------------------------------------------
 // Replace the URL below with your own Google Apps Script Web App deployment URL or Firebase Cloud Function URL.
 // -----------------------------------------------------------------------------
-const SCRIPT_URL = "https://api-2jtv46nvba-uc.a.run.app";
+const SCRIPT_URL = "https://api-2jtv46nvba-uc.a.run.app/api";
 
 /**
  * Calls a backend function.

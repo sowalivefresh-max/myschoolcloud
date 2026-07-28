@@ -82,6 +82,8 @@ app.post("/api", async (req, res) => {
   try {
     switch (action) {
       // --- AUTHENTICATION ACTIONS (No strict session required for all) ---
+      case "getPublicBranding": return authActions.getPublicBranding(req, res);
+      case "requestPasswordReset": return authActions.requestPasswordReset(req, res);
       case "loginUser": return authActions.loginUser(req, res);
       case "getCurrentUser": return authActions.getCurrentUser(req, res);
       case "logoutUser": return authActions.logoutUser(req, res);

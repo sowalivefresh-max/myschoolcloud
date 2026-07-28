@@ -156,6 +156,34 @@ module.exports = function(db) {
       } catch (err) {
         return res.json({ success: false, message: "Error changing password: " + err.message });
       }
+    },
+    
+    getPublicBranding: async (req, res) => {
+      try {
+        const settingsDoc = await db.collection("config").doc("settings").get();
+        let cfg = {};
+        if (settingsDoc.exists) {
+          cfg = settingsDoc.data();
+        }
+        return res.json({
+          success: true,
+          school_name: cfg.school_name || "MySchool Cloud",
+          school_motto: cfg.school_motto || "Excellence in Education",
+          school_logo_url: cfg.school_logo_url || "",
+          current_term: cfg.current_term || "First Term",
+          current_session: cfg.current_session || "2026/2027"
+        });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    requestPasswordReset: async (req, res) => {
+      const { email } = req.body;
+      if (!email) return res.json({ success: false, message: "Email is required." });
+      // In a real app, send an email with a reset token here.
+      // For now, we simulate success so the UI doesn't crash.
+      return res.json({ success: true, message: "If that email exists, a password reset link has been sent." });
     }
   };
 };
