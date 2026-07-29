@@ -97,8 +97,30 @@ app.post("/api", async (req, res) => {
         if (action === "adminDeleteSubject") { req.body.subjectId = args[1]; }
 
         if (action === "adminUpdateSettings") { req.body.data = args[1]; }
+        if (action === "adminApprovePayment") { req.body.paymentId = args[1]; }
+        if (action === "adminRejectPayment") { req.body.paymentId = args[1]; }
         if (action === "adminSaveFeeStructure") { req.body.data = args[1]; }
         if (action === "adminGenerateBills") { req.body.term = args[1]; req.body.session = args[2]; req.body.classFilters = args[3]; }
+        
+        // Phase 2 Mappings
+        if (action === "adminGetStudentSubjects") { req.body.studentId = args[1]; }
+        if (action === "adminEnrollStudent") { req.body.studentId = args[1]; req.body.subjectId = args[2]; req.body.session = args[3]; req.body.term = args[4]; }
+        if (action === "adminUnenrollStudent") { req.body.studentId = args[1]; req.body.subjectId = args[2]; req.body.session = args[3]; }
+        if (action === "adminSaveGradeRule") { req.body.data = args[1]; }
+        if (action === "adminGenerateBulkResult") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.rptType = args[4]; }
+
+        // Phase 3 Mappings
+        if (action === "adminResetUserPassword") { req.body.userId = args[1]; }
+        if (action === "adminImpersonateUser") { req.body.userId = args[1]; }
+        if (action === "adminGenerateIDCard") { req.body.studentId = args[1]; }
+        if (action === "adminBulkCreateStudents") { req.body.students = args[1]; }
+        if (action === "adminBulkCreateClasses") { req.body.classes = args[1]; }
+        if (action === "adminBulkCreateSubjects") { req.body.subjects = args[1]; }
+        if (action === "adminApproveTask") { req.body.taskId = args[1]; }
+        if (action === "adminRejectTask") { req.body.taskId = args[1]; req.body.note = args[2]; }
+        if (action === "adminProcessPasswordReset") { req.body.requestId = args[1]; req.body.newPassword = args[2]; }
+
+
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
         if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
         if (action === "teacherGetScores") { req.body.className = args[1]; req.body.subject = args[2]; req.body.term = args[3]; req.body.session = args[4]; }
