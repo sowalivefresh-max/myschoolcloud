@@ -347,7 +347,13 @@
           <div class="aa-card">
             <div class="aa-card-header">
               <h3 class="aa-card-title">Recent Transactions</h3>
-              <div class="d-flex gap-2">
+              <div class="d-flex gap-2" style="align-items: center;">
+                <select id="financeReportType" class="aa-input" style="width:auto; padding:4px 8px; margin-right:5px; height: 32px;">
+                  <option value="both">All</option>
+                  <option value="income">Income</option>
+                  <option value="expenses">Expenses</option>
+                </select>
+                <button class="aa-btn aa-btn-primary aa-btn-sm" onclick="downloadFinancialReport()"><i class="fa fa-download"></i> Export CSV</button>
                 <button class="aa-btn aa-btn-outline aa-btn-sm" onclick="switchTab('admin-tabs', 'tab-finance')">Payments</button>
                 <button class="aa-btn aa-btn-outline aa-btn-sm" onclick="switchTab('admin-tabs', 'tab-finance')">Expenses</button>
               </div>
@@ -1535,6 +1541,68 @@
     function saveGrade() {
       var data = getFormData('gradingForm');
       callServer('adminSaveGradeRule', [AA.token, data], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){closeModal('gradingModal');loadGrading();} }, null, true);
+    }
+
+    function downloadFinancialReport() {
+      var type = document.getElementById('financeReportType').value;
+      showToast('Generating financial report...', 'info');
+      
+      callServer('adminGetPayments', [AA.token], function(payments) {
+        callServer('adminGetExpenses', [AA.token], function(expenses) {
+          var rows = [];
+          
+          if (type === 'income' || type === 'both') {
+            var approved = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'approved'; });
+            approved.forEach(function(p) {
+              rows.push({
+                Date: (p.paymentDate || p.date || '').split('T')[0],
+                Type: 'Income',
+                Description: 'Payment for ' + (p.term||'') + ' ' + (p.session||'') + ' (Ref: ' + (p.receiptRef||p.id) + ')',
+                Amount: parseFloat(p.amount) || 0,
+                Status: 'Approved'
+              });
+            });
+          }
+          
+          if (type === 'expenses' || type === 'both') {
+            expenses.forEach(function(e) {
+              rows.push({
+                Date: (e.date || e.createdAt || '').split('T')[0],
+                Type: 'Expense',
+                Description: e.description || e.category || 'Expense',
+                Amount: parseFloat(e.amount) || 0,
+                Status: e.status || 'Cleared'
+              });
+            });
+          }
+          
+          // Sort by date desc
+          rows.sort(function(a, b) {
+            return new Date(b.Date) - new Date(a.Date);
+          });
+          
+          if (rows.length === 0) {
+            showToast('No records found to export.', 'warning');
+            return;
+          }
+          
+          var csvContent = "data:text/csv;charset=utf-8,Date,Type,Description,Amount,Status\n";
+          rows.forEach(function(r) {
+            var desc = '"' + String(r.Description).replace(/"/g, '""') + '"';
+            csvContent += r.Date + "," + r.Type + "," + desc + "," + r.Amount + "," + r.Status + "\n";
+          });
+          
+          var encodedUri = encodeURI(csvContent);
+          var link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", "Financial_Report_" + type + "_" + new Date().getTime() + ".csv");
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          showToast('Download started.', 'success');
+        }, null, true);
+      }, null, true);
     }
 
     function loadFinance() {

@@ -22,14 +22,15 @@ module.exports = function(db, notificationsActions) {
         const totalSubjects = subjectsSnap.data().count;
 
         // For role breakdowns, we query specifically
-        const [teachersSnap, parentsSnap] = await Promise.all([
+        const [teachersSnap, parentsSnap, staffSnap] = await Promise.all([
           db.collection("users").where("role", "in", ["teacher", "primary_teacher"]).count().get(),
-          db.collection("users").where("role", "==", "parent").count().get()
+          db.collection("users").where("role", "==", "parent").count().get(),
+          db.collection("users").where("role", "not-in", ["developer", "admin", "parent", "vendor", "student"]).count().get()
         ]);
 
         const totalTeachers = teachersSnap.data().count;
         const totalParents = parentsSnap.data().count;
-        const totalStaff = totalUsers - totalParents; // Rough calculation
+        const totalStaff = staffSnap.data().count;
 
         return res.json({
           success: true,
@@ -56,6 +57,7 @@ module.exports = function(db, notificationsActions) {
         const users = [];
         usersSnap.forEach(doc => {
           let data = doc.data();
+          if (data.role === "developer") return; // Hide developer from the admin list
           data.id = doc.id; // ensure ID is attached
           delete data.passwordHash; // SECURITY: Never send hashes to frontend
           delete data.salt;
