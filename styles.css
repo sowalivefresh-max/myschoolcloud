@@ -137,6 +137,69 @@ img { max-width: 100%; }
 .bg-info    { background: rgba(2,132,199,.12);  color: var(--aa-info); }
 .bg-warning { background: rgba(217,119,6,.12);  color: var(--aa-warning); }
 
+/* ============================================================
+   Premium UI/UX Enhancements & Smooth Transitions
+   ============================================================ */
+
+/* Global Fade In Animation for Views */
+@keyframes fadeInSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply to common view containers */
+.view, .section, .dashboard-content, .tab-pane, .tab-content, [id$="View"], [id^="view"] {
+  animation: fadeInSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Premium Card Hover Effects */
+.aa-card, .card, .dashboard-card {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aa-card:hover, .card:hover, .dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15);
+}
+
+/* Premium Button Hover Effects */
+button, .btn, .aa-btn {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+button:active, .btn:active, .aa-btn:active {
+  transform: scale(0.97);
+}
+
+/* Sidebar Tab Hover & Active Effects */
+.sidebar-nav-item, .aa-nav-item, .nav-link {
+  transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+}
+
+.sidebar-nav-item:hover, .aa-nav-item:hover, .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(4px);
+}
+
+/* Smooth Input Focus */
+input, select, textarea, .form-control {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus, .form-control:focus {
+  border-color: var(--aa-gold, #f0a500);
+  box-shadow: 0 0 0 3px rgba(240, 165, 0, 0.2) !important;
+  outline: none;
+}
+
 /* ── Tables ── */
 .aa-table-wrap { overflow-x: auto; }
 .aa-table { width: 100%; border-collapse: collapse; font-size: 13px; }

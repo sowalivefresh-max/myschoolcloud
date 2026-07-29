@@ -4,9 +4,18 @@
  */
 
 // --- DEPLOYMENT CONFIGURATION ------------------------------------------------
-// Replace the URL below with your own Google Apps Script Web App deployment URL or Firebase Cloud Function URL.
+// Dynamically select the backend URL based on the environment
 // -----------------------------------------------------------------------------
-const SCRIPT_URL = "https://api-2jtv46nvba-uc.a.run.app/api";
+const PROJECT_ID = "cloudschool-3c1d4";
+const REGION = "us-central1";
+
+// The live Firebase Cloud Run URL (as returned by the deployment)
+let SCRIPT_URL = "https://api-2jtv46nvba-uc.a.run.app/api";
+
+// If running locally, use the Firebase Emulator
+if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+  SCRIPT_URL = `http://127.0.0.1:5001/${PROJECT_ID}/${REGION}/api/api`;
+}
 
 /**
  * Calls a backend function.

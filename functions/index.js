@@ -80,7 +80,23 @@ app.post("/api", async (req, res) => {
         
         // Positional mappings for other routes that pass more than just token
         if (action === "adminGetStats") { req.body.section = args[1]; }
+        if (action === "adminCreateUser") { req.body.data = args[1]; }
         if (action === "adminUpdateUser") { req.body.userId = args[1]; req.body.updates = args[2]; }
+        if (action === "adminDeleteUser") { req.body.userId = args[1]; }
+        
+        if (action === "adminCreateStudent") { req.body.data = args[1]; }
+        if (action === "adminUpdateStudent") { req.body.studentId = args[1]; req.body.updates = args[2]; }
+        if (action === "adminDeleteStudent") { req.body.studentId = args[1]; }
+        
+        if (action === "adminCreateClass") { req.body.data = args[1]; }
+        if (action === "adminUpdateClass") { req.body.classId = args[1]; req.body.updates = args[2]; }
+        if (action === "adminDeleteClass") { req.body.classId = args[1]; }
+        
+        if (action === "adminCreateSubject") { req.body.data = args[1]; }
+        if (action === "adminUpdateSubject") { req.body.subjectId = args[1]; req.body.updates = args[2]; }
+        if (action === "adminDeleteSubject") { req.body.subjectId = args[1]; }
+
+        if (action === "adminUpdateSettings") { req.body.data = args[1]; }
         if (action === "adminSaveFeeStructure") { req.body.data = args[1]; }
         if (action === "adminGenerateBills") { req.body.term = args[1]; req.body.session = args[2]; req.body.classFilters = args[3]; }
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
@@ -114,16 +130,70 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetStats(req, res));
       case "adminGetUsers":
         return requireRole(req, res, () => adminActions.adminGetUsers(req, res));
-      case "adminGetStudents":
-        return requireRole(req, res, () => adminActions.adminGetStudents(req, res));
-      case "adminGetSettings":
-        return requireRole(req, res, () => adminActions.adminGetSettings(req, res));
+      case "adminCreateUser":
+        return requireRole(req, res, () => adminActions.adminCreateUser(req, res));
       case "adminUpdateUser":
         return requireRole(req, res, () => adminActions.adminUpdateUser(req, res));
+      case "adminDeleteUser":
+        return requireRole(req, res, () => adminActions.adminDeleteUser(req, res));
+      
+      case "adminGetStudents":
+        return requireRole(req, res, () => adminActions.adminGetStudents(req, res));
+      case "adminCreateStudent":
+        return requireRole(req, res, () => adminActions.adminCreateStudent(req, res));
+      case "adminUpdateStudent":
+        return requireRole(req, res, () => adminActions.adminUpdateStudent(req, res));
+      case "adminDeleteStudent":
+        return requireRole(req, res, () => adminActions.adminDeleteStudent(req, res));
+        
+      case "adminGetSettings":
+        return requireRole(req, res, () => adminActions.adminGetSettings(req, res));
+      case "adminUpdateSettings":
+        return requireRole(req, res, () => adminActions.adminUpdateSettings(req, res));
+
       case "adminGetClasses":
         return requireRole(req, res, () => adminActions.adminGetClasses(req, res));
+      case "adminCreateClass":
+        return requireRole(req, res, () => adminActions.adminCreateClass(req, res));
+      case "adminUpdateClass":
+        return requireRole(req, res, () => adminActions.adminUpdateClass(req, res));
+      case "adminDeleteClass":
+        return requireRole(req, res, () => adminActions.adminDeleteClass(req, res));
+
       case "adminGetSubjects":
         return requireRole(req, res, () => adminActions.adminGetSubjects(req, res));
+      case "adminCreateSubject":
+        return requireRole(req, res, () => adminActions.adminCreateSubject(req, res));
+      case "adminUpdateSubject":
+        return requireRole(req, res, () => adminActions.adminUpdateSubject(req, res));
+      case "adminDeleteSubject":
+        return requireRole(req, res, () => adminActions.adminDeleteSubject(req, res));
+
+      // --- SECONDARY ADMIN ACTIONS ---
+      case "adminGetAuditLogs": return requireRole(req, res, () => adminActions.adminGetAuditLogs(req, res));
+      case "adminGetPasswordRequests": return requireRole(req, res, () => adminActions.adminGetPasswordRequests(req, res));
+      case "adminGetPayments": return requireRole(req, res, () => adminActions.adminGetPayments(req, res));
+      case "adminGetExpenses": return requireRole(req, res, () => adminActions.adminGetExpenses(req, res));
+      case "adminGetPendingTasks": return requireRole(req, res, () => adminActions.adminGetPendingTasks(req, res));
+      case "adminGetGrading": return requireRole(req, res, () => adminActions.adminGetGrading(req, res));
+      case "adminGetStudentSubjects": return requireRole(req, res, () => adminActions.adminGetStudentSubjects(req, res));
+      
+      case "adminProcessPasswordReset": return requireRole(req, res, () => adminActions.adminProcessPasswordReset(req, res));
+      case "adminResetUserPassword": return requireRole(req, res, () => adminActions.adminResetUserPassword(req, res));
+      case "adminApprovePayment": return requireRole(req, res, () => adminActions.adminApprovePayment(req, res));
+      case "adminRejectPayment": return requireRole(req, res, () => adminActions.adminRejectPayment(req, res));
+      case "adminApproveTask": return requireRole(req, res, () => adminActions.adminApproveTask(req, res));
+      case "adminRejectTask": return requireRole(req, res, () => adminActions.adminRejectTask(req, res));
+      case "adminImpersonateUser": return requireRole(req, res, () => adminActions.adminImpersonateUser(req, res));
+      case "adminGenerateIDCard": return requireRole(req, res, () => adminActions.adminGenerateIDCard(req, res));
+      case "adminBulkCreateStudents": return requireRole(req, res, () => adminActions.adminBulkCreateStudents(req, res));
+      case "adminBulkCreateClasses": return requireRole(req, res, () => adminActions.adminBulkCreateClasses(req, res));
+      case "adminBulkCreateSubjects": return requireRole(req, res, () => adminActions.adminBulkCreateSubjects(req, res));
+      case "adminEnrollStudent": return requireRole(req, res, () => adminActions.adminEnrollStudent(req, res));
+      case "adminUnenrollStudent": return requireRole(req, res, () => adminActions.adminUnenrollStudent(req, res));
+      case "adminSaveGradeRule": return requireRole(req, res, () => adminActions.adminSaveGradeRule(req, res));
+      case "adminGenerateBulkResult": return requireRole(req, res, () => adminActions.adminGenerateBulkResult(req, res));
+
       case "adminGetFeeStructures":
         return requireRole(req, res, () => adminActions.adminGetFeeStructures(req, res));
       case "adminSaveFeeStructure":
