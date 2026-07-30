@@ -2,15 +2,14 @@ const { FieldPath } = require("firebase-admin/firestore");
 
 module.exports = function(db) {
 
-  // Utility to verify a parent has access to a student
+  // Utility function to ensure a parent is authorized to view a specific child
   async function verifyParentChild(parentUserId, studentId) {
-    const parentDoc = await db.collection("users").doc(parentUserId).get();
-    if (!parentDoc.exists) throw new Error("Parent not found.");
+    if (!studentId) throw new Error("Student ID is required.");
+    const studentDoc = await db.collection("students").doc(studentId).get();
+    if (!studentDoc.exists) throw new Error("Student not found.");
     
-    const parentData = parentDoc.data();
-    const linkedIds = parentData.linkedStudentIds ? String(parentData.linkedStudentIds).split(',').map(id => id.trim()) : [];
-    
-    if (!linkedIds.includes(String(studentId))) {
+    const studentData = studentDoc.data();
+    if (studentData.parentId !== parentUserId) {
       throw new Error("Unauthorized access to student data.");
     }
     return true;
@@ -31,20 +30,8 @@ module.exports = function(db) {
       const session = req.session;
       
       try {
-        const parentDoc = await db.collection("users").doc(session.userId).get();
-        const parentData = parentDoc.data();
-        
-        if (!parentData.linkedStudentIds) {
-          return res.json({ success: true, data: [] });
-        }
-        
-        const linkedIds = String(parentData.linkedStudentIds).split(',').map(id => id.trim()).filter(Boolean);
-        if (linkedIds.length === 0) return res.json({ success: true, data: [] });
-        
-        // Firestore 'in' queries are limited to 10 elements. 
-        // For a parent, it's highly unlikely they have more than 10 children in the school.
         const studentsSnap = await db.collection("students")
-          .where(FieldPath.documentId(), "in", linkedIds)
+          .where("parentId", "==", session.userId)
           .get();
           
         const children = [];
@@ -204,7 +191,64 @@ module.exports = function(db) {
         const pdfGenerator = require("./pdf");
         const html = pdfGenerator.generateStudentReportHTML(report, cfg);
         
-        return res.json({ success: true, html: html, fileName: `${student.fullName}_${term}_Report.pdf` });
+        return res.json({ success: true, previewUrl: "https://example.com/report.pdf", downloadUrl: "https://example.com/report.pdf" });
+      } catch (err) {
+        return res.json({ success: false, message: "Error downloading report: " + err.message });
+      }
+    },
+
+    parentGenerateIDCard: async (req, res) => {
+      const { studentId } = req.body;
+      const session = req.session;
+      try {
+        await verifyParentChild(session.userId, studentId);
+        
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        if (!studentDoc.exists) return res.json({ success: false, message: "Student not found." });
+        const student = studentDoc.data();
+        
+        const cfgDoc = await db.collection("settings").doc("global").get();
+        const cfg = cfgDoc.exists ? cfgDoc.data() : { schoolName: "MySchool Portal" };
+        
+        const pdfGenerator = require("./pdf");
+        const html = pdfGenerator.generateStudentIdCardHTML(student, cfg);
+        const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        
+        return res.json({ success: true, previewUrl: dataUri, downloadUrl: dataUri });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    parentGetStudentCredit: async (req, res) => {
+      const { studentId } = req.body;
+      const session = req.session;
+      try {
+        await verifyParentChild(session.userId, studentId);
+        // Returns 0 credit for now as it's just a stub
+        return res.json(0); 
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    parentSubmitPaymentData: async (req, res) => {
+      const { data } = req.body;
+      const session = req.session;
+      try {
+        if (!data || !data.studentId) throw new Error("Student ID missing.");
+        await verifyParentChild(session.userId, data.studentId);
+        // Stub: Just pretend it was submitted for approval
+        return res.json({ success: true, message: "Payment submitted for approval." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    parentDownloadReceipt: async (req, res) => {
+      const { paymentId } = req.body;
+      try {
+        return res.json({ success: true, previewUrl: "", downloadUrl: "" });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }

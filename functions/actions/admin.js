@@ -638,7 +638,25 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, token, role: user.role });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
-    adminGenerateIDCard: async (req, res) => { return res.json({ success: true, message: "ID Card generation triggered." }); },
+    adminGenerateIDCard: async (req, res) => {
+      const { studentId } = req.body;
+      try {
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        if (!studentDoc.exists) return res.json({ success: false, message: "Student not found." });
+        const student = studentDoc.data();
+        
+        const cfgDoc = await db.collection("settings").doc("global").get();
+        const cfg = cfgDoc.exists ? cfgDoc.data() : { schoolName: "MySchool Portal" };
+        
+        const pdfGenerator = require("./pdf");
+        const html = pdfGenerator.generateStudentIdCardHTML(student, cfg);
+        const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        
+        return res.json({ success: true, previewUrl: dataUri, downloadUrl: dataUri });
+      } catch (err) {
+        return res.json({ success: false, message: "Error generating ID card: " + err.message });
+      }
+    },
     
     adminBulkCreateStudents: async (req, res) => { 
       try {

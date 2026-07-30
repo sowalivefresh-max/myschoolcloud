@@ -128,6 +128,15 @@ app.post("/api", async (req, res) => {
         if (action === "teacherGetScores") { req.body.className = args[1]; req.body.subject = args[2]; req.body.term = args[3]; req.body.session = args[4]; }
         if (action === "teacherSaveScore") { req.body.scoreId = args[1]; req.body.studentId = args[2]; req.body.className = args[3]; req.body.subject = args[4]; req.body.term = args[5]; req.body.session = args[6]; req.body.ca1 = args[7]; req.body.ca2 = args[8]; req.body.exam = args[9]; }
         if (action === "teacherBulkSaveScores") { req.body.payloads = args[1]; }
+
+        // Parent Mappings
+        if (action === "parentGenerateIDCard") { req.body.studentId = args[1]; }
+        if (action === "parentDownloadReport") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.reportType = args[4]; }
+        if (action === "parentGetStudentCredit") { req.body.studentId = args[1]; }
+        if (action === "parentGetBills") { req.body.studentId = args[1]; }
+        if (action === "parentGetPayments") { req.body.studentId = args[1]; }
+        if (action === "parentSubmitPaymentData") { req.body.data = args[1]; }
+        if (action === "parentDownloadReceipt") { req.body.paymentId = args[1]; }
       }
     }
   }
@@ -267,6 +276,14 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => parentActions.parentGetBills(req, res));
       case "parentGetPayments":
         return requireRole(req, res, () => parentActions.parentGetPayments(req, res));
+      case "parentGenerateIDCard":
+        return requireRole(req, res, () => parentActions.parentGenerateIDCard(req, res));
+      case "parentGetStudentCredit":
+        return requireRole(req, res, () => parentActions.parentGetStudentCredit(req, res));
+      case "parentSubmitPaymentData":
+        return requireRole(req, res, () => parentActions.parentSubmitPaymentData(req, res));
+      case "parentDownloadReceipt":
+        return requireRole(req, res, () => parentActions.parentDownloadReceipt(req, res));
 
       // --- NOTIFICATIONS ACTIONS ---
       case "getNotifications":
