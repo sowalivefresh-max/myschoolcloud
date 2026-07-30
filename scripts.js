@@ -726,11 +726,11 @@ function updateBadge(badge, count) {
 // --- Broadsheet Logic ---
 function openBroadsheetModal() {
   var html = `
-    <div class="aa-modal" id="broadsheetModal" style="display:block;">
-      <div class="aa-modal-content" style="max-width: 450px;">
+    <div class="aa-modal-backdrop open" id="broadsheetModal" style="z-index: 99999 !important;">
+      <div class="aa-modal" style="max-width: 450px;">
         <div class="aa-modal-header">
           <h3 class="aa-modal-title">Download Broadsheet</h3>
-          <button class="aa-modal-close" onclick="document.body.removeChild(this.closest('.aa-modal'))"><i class="fa fa-times"></i></button>
+          <button class="aa-modal-close" onclick="document.body.removeChild(this.closest('.aa-modal-backdrop'))"><i class="fa fa-times"></i></button>
         </div>
         <div class="aa-modal-body">
           <div class="aa-form-group">
