@@ -489,7 +489,7 @@ function openPDFViewer(previewUrl, downloadUrl, title) {
     '<iframe src="' + previewUrl + '" style="width:100%;height:70vh;border:none;"></iframe></div>' +
     '<div class="aa-modal-footer">' +
     '<button class="aa-btn aa-btn-outline" onclick="document.getElementById(\'aa-pdf-modal\').remove()">Close</button>' +
-    '<a href="' + downloadUrl + '" target="_blank" class="aa-btn aa-btn-gold">⬇ Download</a>' +
+    '<button class="aa-btn aa-btn-gold" onclick="var frame = document.querySelector(\'#aa-pdf-modal iframe\'); frame.contentWindow.focus(); frame.contentWindow.print();"><i class="fa fa-print"></i> Print / Save as PDF</button>' +
     '</div></div>';
   document.body.appendChild(modal);
 }

@@ -125,44 +125,130 @@ module.exports = {
   },
 
   generateStudentIdCardHTML: function(student, cfg) {
+    let schoolName = cfg.school_name || 'MY SCHOOL CLOUD';
+    let motto = cfg.school_motto || 'In Love, Serve One Another';
+    let termSess = (student.session || '2025/2026');
+    let sectionName = (student.section === 'primary') ? 'Primary School' : 'High School';
+    
+    let photoUrl = student.photoUrl || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(student.fullName || 'S') + '&background=f0a500&color=fff&size=300');
+    let logoUrl = cfg.school_logo_url || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(schoolName) + '&background=0d1b2a&color=fff');
+
+    // Build repeating watermark text for the front
+    let wmText = '';
+    for(let i = 0; i < 30; i++) { wmText += '<div class="watermark-text">' + schoolName + '</div>'; }
+
     let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ID Card</title><style>';
-    html += 'body { font-family: "Inter", "Segoe UI", sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f4f6f8; }';
-    html += '.id-card { width: 320px; height: 480px; background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); overflow: hidden; position: relative; display: flex; flex-direction: column; border: 1px solid #e2e8f0; }';
-    html += '.id-header { background: #0d1b2a; color: #fff; padding: 20px; text-align: center; border-bottom: 4px solid #f0a500; }';
-    html += '.school-name { font-size: 16px; font-weight: bold; text-transform: uppercase; margin: 0; letter-spacing: 1px; }';
-    html += '.school-motto { font-size: 10px; color: #cbd5e1; margin-top: 4px; font-style: italic; }';
-    html += '.id-body { padding: 20px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; }';
-    html += '.student-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: -40px; background: #f0f0f0; }';
-    html += '.student-name { font-size: 20px; font-weight: 800; color: #1e293b; margin: 15px 0 5px; text-transform: uppercase; }';
-    html += '.student-class { font-size: 14px; font-weight: 600; color: #f0a500; margin-bottom: 20px; padding: 4px 12px; background: #fff8eb; border-radius: 20px; border: 1px solid #ffe8c2; }';
-    html += '.info-grid { width: 100%; text-align: left; margin-top: 10px; }';
-    html += '.info-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #e2e8f0; }';
-    html += '.info-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }';
-    html += '.info-value { font-size: 13px; color: #0f172a; font-weight: 600; }';
-    html += '.id-footer { background: #f8fafc; padding: 12px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; }';
+    html += '@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap");';
+    html += 'body { font-family: "Outfit", sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #e2e8f0; gap: 30px; padding: 20px; }';
+    html += '.card { width: 520px; height: 320px; background: #ffffff; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.05); position: relative; overflow: hidden; display: flex; flex-direction: row; box-sizing: border-box; }';
+    html += '.card::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 75% 25%, rgba(240, 165, 0, 0.08) 0%, transparent 40%), radial-gradient(circle at 10% 90%, rgba(13, 27, 42, 0.04) 0%, transparent 40%); z-index: 0; pointer-events: none; }';
+    
+    // Front Watermarks
+    html += '.watermark-front { position: absolute; top: 0; left: -100px; width: 800px; height: 400px; display: flex; flex-wrap: wrap; transform: rotate(-25deg); opacity: 0.04; pointer-events: none; z-index: 1; align-content: center; justify-content: center; }';
+    html += '.watermark-text { font-size: 18px; font-weight: 800; color: #0f172a; margin: 10px 20px; white-space: nowrap; text-transform: uppercase; letter-spacing: 2px; }';
+
+    
+    // LEFT SIDE - PHOTO PROFILE
+    html += '.photo-pane { width: 38%; height: 100%; position: relative; z-index: 2; padding: 25px 20px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; border-right: 1px solid rgba(0,0,0,0.05); }';
+    html += '.student-photo { width: 135px; height: 155px; border-radius: 14px; object-fit: cover; box-shadow: 0 12px 24px rgba(0,0,0,0.12); border: 4px solid #ffffff; background: #e2e8f0; }';
+    html += '.badge { margin-top: 20px; background: rgba(240, 165, 0, 0.15); color: #c27d00; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: max-content; }';
+
+    // RIGHT SIDE - CONTENT
+    html += '.content-pane { width: 62%; height: 100%; position: relative; z-index: 2; padding: 25px 30px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }';
+    html += '.header { display: flex; align-items: center; gap: 12px; }';
+    html += '.logo-img { width: 45px; height: 45px; border-radius: 10px; object-fit: contain; background: #fff; padding: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }';
+    html += '.school-info { display: flex; flex-direction: column; justify-content: center; }';
+    html += '.school-name { font-size: 15px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; line-height: 1.2; }';
+    html += '.school-motto { font-size: 10px; color: #64748b; font-weight: 500; font-style: italic; margin-top: 3px; }';
+    
+    html += '.identity-section { margin-top: auto; margin-bottom: auto; }';
+    html += '.card-title { font-size: 9px; font-weight: 800; color: #f0a500; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }';
+    html += '.student-name { font-size: 24px; font-weight: 800; color: #0f172a; text-transform: uppercase; line-height: 1.1; margin-bottom: 15px; letter-spacing: -0.5px; }';
+    
+    html += '.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 15px; }';
+    html += '.info-item { display: flex; flex-direction: column; gap: 3px; }';
+    html += '.info-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }';
+    html += '.info-value { font-size: 13px; font-weight: 600; color: #334155; }';
+    
+    html += '.footer { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.06); margin-top: auto; }';
+    html += '.footer-text { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }';
+    html += '.accent-line { position: absolute; left: 0; bottom: 0; width: 100%; height: 5px; background: linear-gradient(90deg, #f0a500, #ffc947); }';
+    
+    // BACK SIDE
+    html += '.card.back { flex-direction: column; padding: 30px; justify-content: center; }';
+    html += '.back-header { text-align: center; font-size: 16px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 1.5px; z-index: 2; margin-bottom: 25px; }';
+    html += '.terms-title { font-size: 11px; font-weight: 800; color: #f0a500; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; z-index: 2; }';
+    html += '.terms-list { margin: 0; padding-left: 15px; z-index: 2; font-size: 12px; color: #475569; font-weight: 500; line-height: 1.6; }';
+    html += '.terms-list li { margin-bottom: 6px; }';
+    html += '.terms-list li::marker { color: #f0a500; font-size: 14px; }';
+    html += '.barcode-wrapper { text-align: center; margin-top: auto; z-index: 2; }';
+    html += '.barcode { font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: 3px; font-family: monospace; }';
+    html += '.barcode-bars { margin: 8px auto 0; width: 220px; height: 30px; background-image: repeating-linear-gradient(90deg, #0f172a, #0f172a 2px, transparent 2px, transparent 5px, #0f172a 5px, #0f172a 9px, transparent 9px, transparent 12px); opacity: 0.85; }';
+    html += '.watermark-back { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.04; z-index: 1; width: 240px; height: 240px; object-fit: contain; }';
+    
     html += '</style></head><body>';
-    html += '<div class="id-card">';
     
-    html += '<div class="id-header">';
-    html += '<div class="school-name">' + (cfg.schoolName || 'MySchool Portal') + '</div>';
-    if(cfg.schoolMotto) html += '<div class="school-motto">' + cfg.schoolMotto + '</div>';
-    html += '</div>';
+    // ====== FRONT CARD ======
+    html += '<div class="card front">';
+    html += '<div class="watermark-front">' + wmText + '</div>';
     
-    html += '<div class="id-body">';
-    html += '<img src="https://ui-avatars.com/api/?name=' + encodeURIComponent(student.fullName || 'S') + '&background=0d1b2a&color=fff&size=120" class="student-photo" alt="Photo">';
+    html += '<div class="photo-pane">';
+    html += '<img src="' + photoUrl + '" class="student-photo" alt="Photo">';
+    html += '<div class="badge">' + sectionName + '</div>';
+    html += '</div>'; // end photo-pane
+    
+    html += '<div class="content-pane">';
+    
+    html += '<div class="header">';
+    html += '<img src="' + logoUrl + '" class="logo-img" alt="Logo">';
+    html += '<div class="school-info">';
+    html += '<div class="school-name">' + schoolName + '</div>';
+    html += '<div class="school-motto">' + motto + '</div>';
+    html += '</div>'; // end school-info
+    html += '</div>'; // end header
+    
+    html += '<div class="identity-section">';
+    html += '<div class="card-title">Student Identity Card</div>';
     html += '<div class="student-name">' + (student.fullName || 'N/A') + '</div>';
-    html += '<div class="student-class">' + (student.className || 'N/A') + '</div>';
     
-    html += '<div class="info-grid">';
-    html += '<div class="info-row"><span class="info-label">Admission No</span><span class="info-value">' + (student.admissionNumber || 'N/A') + '</span></div>';
-    html += '<div class="info-row"><span class="info-label">Gender</span><span class="info-value">' + (student.gender || 'N/A') + '</span></div>';
-    html += '<div class="info-row"><span class="info-label">DOB</span><span class="info-value">' + (student.dob || 'N/A') + '</span></div>';
-    html += '</div>';
+    html += '<div class="info-grid" style="grid-template-columns: 1fr; gap: 8px;">';
+    html += '<div class="info-item"><span class="info-label">Admission No</span><span class="info-value">' + (student.admissionNumber || 'N/A') + '</span></div>';
+    html += '<div class="info-item"><span class="info-label">Class</span><span class="info-value">' + (student.className || 'N/A') + '</span></div>';
+    html += '<div class="info-item"><span class="info-label">Gender</span><span class="info-value">' + (student.gender || 'N/A') + '</span></div>';
+    html += '</div>'; // end info-grid
+    html += '</div>'; // end identity-section
     
-    html += '</div>';
+    html += '<div class="footer">';
+    html += '<div class="footer-text">Valid: ' + termSess + '</div>';
+    html += '<div class="footer-text">Academic Session</div>';
+    html += '</div>'; // end footer
     
-    html += '<div class="id-footer">If found, please return to the school authority.</div>';
-    html += '</div></body></html>';
+    html += '<div class="accent-line"></div>';
+    html += '</div>'; // end content-pane
+    html += '</div>'; // end front card
+
+    // ====== BACK CARD ======
+    html += '<div class="card back">';
+    html += '<img src="' + logoUrl + '" class="watermark-back" alt="Watermark">';
+    html += '<div class="back-header">' + schoolName + '</div>';
+    
+    html += '<div class="terms-title">Terms & Conditions</div>';
+    html += '<ul class="terms-list">';
+    html += '<li>This card must be worn at all times within the school premises.</li>';
+    html += '<li>This card is non-transferable and must not be defaced.</li>';
+    html += '<li>Loss of card must be reported to the school office immediately.</li>';
+    html += '<li>If found, please return to the school office.</li>';
+    html += '</ul>';
+    
+    html += '<div class="barcode-wrapper">';
+    html += '<div class="barcode">' + (student.admissionNumber || 'N/A') + '</div>';
+    html += '<div class="barcode-bars"></div>';
+    html += '</div>'; // end barcode-wrapper
+    
+    html += '<div class="accent-line"></div>';
+    html += '</div>'; // end back card
+
+    html += '</body></html>';
     
     return html;
   }
