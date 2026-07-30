@@ -812,6 +812,55 @@ module.exports = function(db, notificationsActions) {
         
         return res.json({ success: true, message: `Successfully generated results for ${Object.keys(studentResults).length} students.` });
       } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
+    
+    adminGetBroadsheetData: async (req, res) => {
+      try {
+        const { className, term, session } = req.body;
+        if (!className || !term || !session) return res.json({ success: false, message: "Class, term, and session required." });
+        
+        const assessmentsSnap = await db.collection("assessments")
+          .where("className", "==", className)
+          .where("term", "==", term)
+          .where("session", "==", session)
+          .get();
+          
+        const assessments = assessmentsSnap.docs.map(doc => doc.data());
+        
+        const subjectsSet = new Set();
+        const studentMap = {}; 
+        
+        const studentsSnap = await db.collection("students").where("className", "==", className).get();
+        studentsSnap.forEach(doc => {
+          const s = doc.data();
+          studentMap[doc.id] = { id: doc.id, fullName: s.fullName || (s.firstName + ' ' + s.lastName), subjects: {}, totalScore: 0 };
+        });
+        
+        assessments.forEach(ass => {
+          if (!ass.subjectName) return; 
+          subjectsSet.add(ass.subjectName);
+          
+          if (!studentMap[ass.studentId]) {
+            studentMap[ass.studentId] = { id: ass.studentId, fullName: ass.studentName || ass.studentId, subjects: {}, totalScore: 0 };
+          }
+          const total = Number(ass.total) || 0;
+          studentMap[ass.studentId].subjects[ass.subjectName] = total;
+          studentMap[ass.studentId].totalScore += total;
+        });
+        
+        const subjects = Array.from(subjectsSet).sort();
+        const students = Object.values(studentMap).map(st => {
+          st.average = subjects.length > 0 ? (st.totalScore / subjects.length).toFixed(1) : 0;
+          return st;
+        });
+        
+        students.sort((a, b) => (a.fullName || "").localeCompare(b.fullName || ""));
+        
+        return res.json({ success: true, data: { subjects, students } });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
     }
+
   };
 };

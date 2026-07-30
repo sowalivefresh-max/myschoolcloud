@@ -6,6 +6,8 @@
   <title>School Management Portal</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <div class="aa-layout">
@@ -254,6 +256,7 @@
             <div class="aa-card-header">
               <h3 class="aa-card-title">Classes</h3>
               <div class="d-flex gap-2">
+                <button class="aa-btn aa-btn-secondary" onclick="openBroadsheetModal()"><i class="fa fa-file-excel"></i> Broadsheet</button>
                 <button class="aa-btn aa-btn-outline" onclick="openBulkModal('classes')"><i class="fa fa-upload"></i> Bulk Import</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('classModal');resetForm('classForm');document.getElementById('classId').value=''"><i class="fa fa-plus"></i> Add Class</button>
               </div>

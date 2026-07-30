@@ -722,3 +722,124 @@ function updateBadge(badge, count) {
     badge.style.display = 'none';
   }
 }
+
+// --- Broadsheet Logic ---
+function openBroadsheetModal() {
+  var html = `
+    <div class="aa-modal" id="broadsheetModal" style="display:block;">
+      <div class="aa-modal-content" style="max-width: 450px;">
+        <div class="aa-modal-header">
+          <h3 class="aa-modal-title">Download Broadsheet</h3>
+          <button class="aa-modal-close" onclick="document.body.removeChild(this.closest('.aa-modal'))"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="aa-modal-body">
+          <div class="aa-form-group">
+            <label class="aa-label">Class</label>
+            <input type="text" id="bsClass" class="aa-input" placeholder="e.g. JSS 1" />
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Term</label>
+            <select id="bsTerm" class="aa-input">
+              <option value="First Term">First Term</option>
+              <option value="Second Term">Second Term</option>
+              <option value="Third Term">Third Term</option>
+            </select>
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Session</label>
+            <input type="text" id="bsSession" class="aa-input" placeholder="e.g. 2024/2025" />
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Format</label>
+            <select id="bsFormat" class="aa-input">
+              <option value="csv">Excel / CSV</option>
+              <option value="pdf">PDF Document</option>
+            </select>
+          </div>
+          <button class="aa-btn aa-btn-primary" style="width:100%" onclick="generateBroadsheet()"><i class="fa fa-download"></i> Download</button>
+        </div>
+      </div>
+    </div>
+  `;
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstElementChild);
+  
+  if (AA.settings.current_session) document.getElementById('bsSession').value = AA.settings.current_session;
+  if (AA.settings.current_term) document.getElementById('bsTerm').value = AA.settings.current_term;
+}
+
+function generateBroadsheet() {
+  var cls = document.getElementById('bsClass').value;
+  var term = document.getElementById('bsTerm').value;
+  var session = document.getElementById('bsSession').value;
+  var format = document.getElementById('bsFormat').value;
+  
+  if (!cls || !term || !session) return showToast('Please fill all fields', 'error');
+  
+  showToast('Gathering broadsheet data...', 'info');
+  var btn = document.querySelector('#broadsheetModal .aa-btn-primary');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generating...';
+  
+  callServer('adminGetBroadsheetData', [AA.token, cls, term, session], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-download"></i> Download';
+    
+    if (!res.success) return showToast(res.message, 'error');
+    if (!res.data || res.data.students.length === 0) return showToast('No data found for this class.', 'warning');
+    
+    var subjects = res.data.subjects;
+    var students = res.data.students;
+    var schoolName = AA.settings.school_name || 'School';
+    
+    if (format === 'csv') {
+      var csv = "Student Name,";
+      csv += subjects.join(",") + ",Total,Average\n";
+      students.forEach(function(s) {
+        csv += '"' + s.fullName + '",';
+        subjects.forEach(function(sub) {
+          csv += (s.subjects[sub] || 0) + ",";
+        });
+        csv += s.totalScore + "," + s.average + "\n";
+      });
+      var link = document.createElement("a");
+      link.setAttribute("href", encodeURI("data:text/csv;charset=utf-8," + csv));
+      link.setAttribute("download", cls + "_Broadsheet_" + term + ".csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Broadsheet downloaded.', 'success');
+      document.querySelector('#broadsheetModal .aa-modal-close').click();
+    } else if (format === 'pdf') {
+      if (typeof window.jspdf === 'undefined') return showToast('PDF library not loaded.', 'error');
+      var doc = new window.jspdf.jsPDF({ orientation: 'landscape' });
+      doc.setFontSize(16);
+      doc.text(schoolName + ' - Broadsheet', 14, 15);
+      doc.setFontSize(10);
+      doc.text('Class: ' + cls + ' | Term: ' + term + ' | Session: ' + session, 14, 22);
+      
+      var head = [['Student Name'].concat(subjects).concat(['Total', 'Avg'])];
+      var body = students.map(function(s) {
+        var row = [s.fullName];
+        subjects.forEach(function(sub) { row.push(s.subjects[sub] || 0); });
+        row.push(s.totalScore);
+        row.push(s.average);
+        return row;
+      });
+      
+      doc.autoTable({
+        startY: 28,
+        head: head,
+        body: body,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [30, 58, 95] }
+      });
+      
+      doc.save(cls + "_Broadsheet.pdf");
+      showToast('Broadsheet PDF downloaded.', 'success');
+      document.querySelector('#broadsheetModal .aa-modal-close').click();
+    }
+  });
+}

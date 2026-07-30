@@ -121,6 +121,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminProcessPasswordReset") { req.body.requestId = args[1]; req.body.newPassword = args[2]; }
         if (action === "adminGetComplianceSummary") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminGetBroadsheetData") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
 
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
         if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
@@ -216,6 +217,7 @@ app.post("/api", async (req, res) => {
       case "adminUnenrollStudent": return requireRole(req, res, () => adminActions.adminUnenrollStudent(req, res));
       case "adminSaveGradeRule": return requireRole(req, res, () => adminActions.adminSaveGradeRule(req, res));
       case "adminGenerateBulkResult": return requireRole(req, res, () => adminActions.adminGenerateBulkResult(req, res));
+      case "adminGetBroadsheetData": return requireRole(req, res, () => adminActions.adminGetBroadsheetData(req, res));
       case "adminGetComplianceSummary": return requireRole(req, res, () => adminActions.adminGetComplianceSummary(req, res));
       case "adminGetSchoolPerformance": return requireRole(req, res, () => adminActions.adminGetSchoolPerformance(req, res));
 
