@@ -1851,8 +1851,23 @@
       var reader = new FileReader();
       reader.onload = function(e) {
         var csvText = e.target.result;
-        var data = parseCSV(csvText);
-        if(!data || data.length === 0) return showToast('CSV is empty or invalid', 'error');
+        var rawData = parseCSV(csvText);
+        if(!rawData || rawData.length < 2) return showToast('CSV is empty or invalid', 'error');
+        
+        var headers = rawData[0].map(function(h) { return h ? h.trim() : ''; });
+        var data = [];
+        for (var i = 1; i < rawData.length; i++) {
+          if (!rawData[i] || rawData[i].length === 0 || !rawData[i][0]) continue;
+          var obj = {};
+          for (var j = 0; j < headers.length; j++) {
+            if (!headers[j]) continue;
+            // Convert HeaderName to headerName to match db schema
+            var key = headers[j].charAt(0).toLowerCase() + headers[j].slice(1);
+            obj[key] = rawData[i][j] ? String(rawData[i][j]).trim() : '';
+          }
+          data.push(obj);
+        }
+        if(data.length === 0) return showToast('No valid data rows found in CSV', 'error');
         var endpoint = '';
         if(currentBulkType === 'students') endpoint = 'adminBulkCreateStudents';
         else if(currentBulkType === 'classes') endpoint = 'adminBulkCreateClasses';
