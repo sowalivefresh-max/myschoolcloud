@@ -592,7 +592,6 @@
               <option value="parent">Parent/Guardian</option>
               <option value="admin">Administrator</option>
               <option value="admin_assistant">Admin Assistant</option>
-              <option value="external">External Vendor</option>
               <option value="developer">Developer</option>
             </select>
           </div>
@@ -1257,7 +1256,7 @@
             principal: 'PrincipalDashboard.html', vp: 'VPDashboard.html',
             headteacher: 'HeadTeacherDashboard.html', teacher: 'TeacherDashboard.html',
             primary_teacher: 'PrimaryTeacherDashboard.html', accounts: 'AccountsDashboard.html',
-            parent: 'ParentDashboard.html', external: 'VendorDashboard.html'
+            parent: 'ParentDashboard.html'
           };
           var dashboard = dashboardMap[res.role] || 'Login.html';
           var redirectUrl = dashboard + '?token=' + encodeURIComponent(res.token);
