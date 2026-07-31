@@ -1863,18 +1863,17 @@
         try {
           var csvText = e.target.result;
           var rawData = parseCSV(csvText);
-          if(!rawData || rawData.length < 2) throw new Error('CSV is empty or invalid');
+          if(!rawData || rawData.length === 0) throw new Error('CSV is empty or invalid');
           
-          var headers = rawData[0].map(function(h) { return h ? h.trim() : ''; });
           var data = [];
-          for (var i = 1; i < rawData.length; i++) {
-            if (!rawData[i] || rawData[i].length === 0 || !rawData[i][0]) continue;
+          for (var i = 0; i < rawData.length; i++) {
+            var oldObj = rawData[i];
             var obj = {};
-            for (var j = 0; j < headers.length; j++) {
-              if (!headers[j]) continue;
-              // Convert HeaderName to headerName to match db schema
-              var key = headers[j].charAt(0).toLowerCase() + headers[j].slice(1);
-              obj[key] = rawData[i][j] ? String(rawData[i][j]).trim() : '';
+            for (var key in oldObj) {
+              if (oldObj.hasOwnProperty(key)) {
+                var newKey = key.charAt(0).toLowerCase() + key.slice(1);
+                obj[newKey] = oldObj[key];
+              }
             }
             data.push(obj);
           }
