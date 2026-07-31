@@ -613,7 +613,10 @@
           </div>
           <div class="aa-form-group">
             <label class="aa-label">Password (Leave blank to keep existing)</label>
-            <input type="password" name="password" class="aa-input">
+            <div style="position:relative;">
+              <input type="password" name="password" id="userFormPassword" class="aa-input" style="padding-right: 40px;">
+              <i class="fa fa-eye" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#64748b;" onclick="var p = document.getElementById('userFormPassword'); if(p.type === 'password') { p.type = 'text'; this.classList.remove('fa-eye'); this.classList.add('fa-eye-slash'); } else { p.type = 'password'; this.classList.remove('fa-eye-slash'); this.classList.add('fa-eye'); }"></i>
+            </div>
           </div>
           <div class="aa-form-group">
             <label class="aa-label">User Signature</label>
