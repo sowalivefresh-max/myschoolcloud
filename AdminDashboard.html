@@ -1847,49 +1847,65 @@
 
     function processBulkImport() {
       var fileInput = document.getElementById('bulkImportFile');
+      var btn = document.getElementById('btnProcessBulk');
       if(!fileInput.files || !fileInput.files[0]) return showToast('Please select a CSV file', 'error');
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var csvText = e.target.result;
-        var rawData = parseCSV(csvText);
-        if(!rawData || rawData.length < 2) return showToast('CSV is empty or invalid', 'error');
-        
-        var headers = rawData[0].map(function(h) { return h ? h.trim() : ''; });
-        var data = [];
-        for (var i = 1; i < rawData.length; i++) {
-          if (!rawData[i] || rawData[i].length === 0 || !rawData[i][0]) continue;
-          var obj = {};
-          for (var j = 0; j < headers.length; j++) {
-            if (!headers[j]) continue;
-            // Convert HeaderName to headerName to match db schema
-            var key = headers[j].charAt(0).toLowerCase() + headers[j].slice(1);
-            obj[key] = rawData[i][j] ? String(rawData[i][j]).trim() : '';
-          }
-          data.push(obj);
-        }
-        if(data.length === 0) return showToast('No valid data rows found in CSV', 'error');
-        var endpoint = '';
-        if(currentBulkType === 'students') endpoint = 'adminBulkCreateStudents';
-        else if(currentBulkType === 'classes') endpoint = 'adminBulkCreateClasses';
-        else if(currentBulkType === 'subjects') endpoint = 'adminBulkCreateSubjects';
-        
-        document.getElementById('btnProcessBulk').innerText = 'Importing...';
-        document.getElementById('btnProcessBulk').disabled = true;
+      
+      btn.innerText = 'Importing...';
+      btn.disabled = true;
 
-        callServer(endpoint, [AA.token, data], function(res) {
-          document.getElementById('btnProcessBulk').innerText = 'Upload & Import';
-          document.getElementById('btnProcessBulk').disabled = false;
-          showToast(res.message, res.success ? 'success' : 'error');
-          if(res.success) {
-            closeModal('bulkImportModal');
-            if(currentBulkType === 'students') loadStudents();
-            if(currentBulkType === 'classes') loadClasses();
-            if(currentBulkType === 'subjects') loadSubjects();
+      var reader = new FileReader();
+      reader.onerror = function() {
+        btn.innerText = 'Upload & Import';
+        btn.disabled = false;
+        showToast('Error reading file. It may be locked by another program.', 'error');
+      };
+      reader.onload = function(e) {
+        try {
+          var csvText = e.target.result;
+          var rawData = parseCSV(csvText);
+          if(!rawData || rawData.length < 2) throw new Error('CSV is empty or invalid');
+          
+          var headers = rawData[0].map(function(h) { return h ? h.trim() : ''; });
+          var data = [];
+          for (var i = 1; i < rawData.length; i++) {
+            if (!rawData[i] || rawData[i].length === 0 || !rawData[i][0]) continue;
+            var obj = {};
+            for (var j = 0; j < headers.length; j++) {
+              if (!headers[j]) continue;
+              // Convert HeaderName to headerName to match db schema
+              var key = headers[j].charAt(0).toLowerCase() + headers[j].slice(1);
+              obj[key] = rawData[i][j] ? String(rawData[i][j]).trim() : '';
+            }
+            data.push(obj);
           }
-        }, function() {
-          document.getElementById('btnProcessBulk').innerText = 'Upload & Import';
-          document.getElementById('btnProcessBulk').disabled = false;
-        });
+          if(data.length === 0) throw new Error('No valid data rows found in CSV');
+          
+          var endpoint = '';
+          if(currentBulkType === 'students') endpoint = 'adminBulkCreateStudents';
+          else if(currentBulkType === 'classes') endpoint = 'adminBulkCreateClasses';
+          else if(currentBulkType === 'subjects') endpoint = 'adminBulkCreateSubjects';
+          
+          if(!endpoint) throw new Error('Invalid bulk import type: ' + currentBulkType);
+
+          callServer(endpoint, [AA.token, data], function(res) {
+            btn.innerText = 'Upload & Import';
+            btn.disabled = false;
+            showToast(res.message, res.success ? 'success' : 'error');
+            if(res.success) {
+              closeModal('bulkImportModal');
+              if(currentBulkType === 'students') loadStudents();
+              if(currentBulkType === 'classes') loadClasses();
+              if(currentBulkType === 'subjects') loadSubjects();
+            }
+          }, function(err) {
+            btn.innerText = 'Upload & Import';
+            btn.disabled = false;
+          });
+        } catch (err) {
+          btn.innerText = 'Upload & Import';
+          btn.disabled = false;
+          showToast(err.message || 'Error processing CSV', 'error');
+        }
       };
       reader.readAsText(fileInput.files[0]);
     }
