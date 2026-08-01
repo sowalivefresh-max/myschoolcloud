@@ -1793,7 +1793,7 @@
         buildTable('subjectsTable', [
           { key: 'subjectName' },
           { key: 'section', render: function(r){ return normalizeSection(r.section) === 'high' ? 'High' : 'Primary'; } },
-          { key: 'className', render: function(r){ return r.className || r.class || 'All'; } },
+          { key: 'className', render: function(r){ return (r.className || r.class || 'All').split(',').join(', '); } },
           { key: 'assignedTeacherId', render: function(r){ 
              var tId = r.assignedTeacherId || r.assignedTeacherID;
              var t = globalUsers.find(function(u){return String(u.id||u.iD)===String(tId);});
@@ -1874,8 +1874,12 @@
             for (var key in oldObj) {
               if (oldObj.hasOwnProperty(key)) {
                 var newKey = key.charAt(0).toLowerCase() + key.slice(1);
-                var val = oldObj[key];
+                var val = String(oldObj[key] || '');
                 if (newKey === 'section') val = normalizeSection(val);
+                if (newKey === 'targetClass' || newKey === 'className' || newKey === 'class') {
+                  newKey = 'className';
+                  val = val.split(',').map(function(s) { return s.trim(); }).filter(Boolean).join(',');
+                }
                 obj[newKey] = val;
               }
             }
