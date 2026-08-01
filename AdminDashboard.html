@@ -1921,7 +1921,7 @@
     function loadAuditLogs() {
       callServer('adminGetAuditLogs', [AA.token], function(data) {
         buildTable('auditTable', [
-          { key: 'timestamp', render: function(r){ return formatDate(r.timestamp || r.date || r[4] || ''); } },
+          { key: 'timestamp', render: function(r){ return formatDateTime(r.timestamp || r.date || r[4] || ''); } },
           { key: 'userId', render: function(r){ return AA.escapeHTML(r.userId || r[1] || 'system'); } },
           { key: 'action', render: function(r){ return '<span class="aa-badge aa-badge-info">' + AA.escapeHTML(r.action || r[2] || '') + '</span>'; } },
           { key: 'details', render: function(r){ return AA.escapeHTML(r.details || r[3] || ''); } }
