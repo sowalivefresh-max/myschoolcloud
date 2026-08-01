@@ -1095,6 +1095,7 @@
         if (institutionType === 'secondary') return sec === 'high' || !sec;
         return true;
       });
+      filteredClasses.sort(function(a, b) { return (a.className || '').localeCompare(b.className || '', undefined, {numeric: true, sensitivity: 'base'}); });
       var options = '<option value="">Select Class</option>';
       filteredClasses.forEach(function(c){ options += '<option value="'+c.className+'">'+c.className+'</option>'; });
       document.getElementById('studentClassSelect').innerHTML = options;
