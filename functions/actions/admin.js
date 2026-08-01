@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcrypt");
 
 module.exports = function(db, notificationsActions) {
   return {
@@ -115,16 +116,9 @@ module.exports = function(db, notificationsActions) {
       try {
         // If password is being updated, we need to hash it
         if (updates.password) {
-          const crypto = require("crypto");
-          function hashPassword(password, salt) {
-             return crypto.createHash("sha256").update((salt || "") + String(password)).digest("hex");
-          }
-          const userDoc = await db.collection("users").doc(userId).get();
-          if (userDoc.exists) {
-            const user = userDoc.data();
-            updates.passwordHash = hashPassword(updates.password, user.salt || "");
-            delete updates.password;
-          }
+          updates.passwordHash = await bcrypt.hash(String(updates.password), 10);
+          updates.salt = null;
+          delete updates.password;
         }
         
         await db.collection("users").doc(userId).update(updates);
@@ -252,22 +246,30 @@ module.exports = function(db, notificationsActions) {
         const feesSnap = await db.collection("feeStructure").where("term", "==", term).where("session", "==", session).get();
         const feeStructures = feesSnap.docs.map(doc => doc.data());
 
+        // Pre-fetch all existing bills for this term and session to avoid N+1 queries
+        const existingBillsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
+        const existingBillStudentIds = new Set(existingBillsSnap.docs.map(doc => doc.data().studentId));
+
         let generated = 0;
         let skipped = 0;
-        const batch = db.batch(); // Note: Firestore batch is limited to 500 operations, this might need chunking in production
+        
+        const batches = [];
+        let currentBatch = db.batch();
+        let operationCount = 0;
+
+        const commitBatchIfNeeded = () => {
+          if (operationCount >= 490) {
+            batches.push(currentBatch.commit());
+            currentBatch = db.batch();
+            operationCount = 0;
+          }
+        };
 
         for (let student of students) {
           const sid = student.id;
           const className = student.className || "";
           
-          // Check existing bill
-          const existingBillSnap = await db.collection("bills")
-            .where("studentId", "==", sid)
-            .where("term", "==", term)
-            .where("session", "==", session)
-            .get();
-            
-          if (!existingBillSnap.empty) {
+          if (existingBillStudentIds.has(sid)) {
             skipped++;
             continue;
           }
@@ -286,34 +288,48 @@ module.exports = function(db, notificationsActions) {
           const billStatus = finalBalance <= 0 ? "Paid" : (appliedCredit > 0 ? "Partial" : "Outstanding");
           
           const newBillRef = db.collection("bills").doc();
-          batch.set(newBillRef, {
+          currentBatch.set(newBillRef, {
             id: newBillRef.id, studentId: sid, studentName: student.fullName, className: className,
             term: term, session: session, totalBilled: total, totalPaid: appliedCredit,
             balance: finalBalance, status: billStatus, createdAt: new Date().toISOString()
           });
+          operationCount++;
+          commitBatchIfNeeded();
 
-          // Trigger notification to the parent
-          if (student.parentId && notificationsActions) {
-            notificationsActions.createNotification(
-              student.parentId,
-              "New Bill Assigned",
-              `A new fee bill of ₦${total.toLocaleString()} for ${student.fullName || 'your child'} (${term}, ${session}) has been generated.`,
-              "BILL"
-            );
+          // Add notification to batch instead of calling notificationsActions to avoid N+1
+          if (student.parentId) {
+            const notifRef = db.collection("notifications").doc();
+            currentBatch.set(notifRef, {
+              targetUserId: student.parentId,
+              title: "New Bill Assigned",
+              message: `A new fee bill of ₦${total.toLocaleString()} for ${student.fullName || 'your child'} (${term}, ${session}) has been generated.`,
+              type: "BILL",
+              isRead: false,
+              createdAt: new Date().toISOString()
+            });
+            operationCount++;
+            commitBatchIfNeeded();
           }
 
           generated++;
         }
         
         if (generated > 0) {
-          await batch.commit();
-          await db.collection("audit_logs").add({
+          const auditRef = db.collection("audit_logs").doc();
+          currentBatch.set(auditRef, {
             timestamp: new Date().toISOString(),
             userId: recordedByUserId,
             action: "GENERATE_BILLS",
             details: `${term} ${session}: ${generated} bills generated.`
           });
+          operationCount++;
         }
+        
+        if (operationCount > 0) {
+          batches.push(currentBatch.commit());
+        }
+        
+        await Promise.all(batches);
         
         return res.json({ success: true, message: `${generated} bill(s) generated. ${skipped} skipped.` });
       } catch (err) {
@@ -333,15 +349,13 @@ module.exports = function(db, notificationsActions) {
         const existing = await db.collection("users").where("email", "==", data.email).get();
         if (!existing.empty) return res.json({ success: false, message: "User with this email already exists." });
 
-        const crypto = require("crypto");
-        const salt = crypto.randomBytes(16).toString("hex");
-        const passwordHash = crypto.createHash("sha256").update(salt + String(data.password)).digest("hex");
+        const passwordHash = await bcrypt.hash(String(data.password), 10);
 
         const newUserRef = db.collection("users").doc();
         const userData = {
           ...data,
           passwordHash,
-          salt,
+          salt: null,
           createdAt: new Date().toISOString()
         };
         delete userData.password; // Don't store plain text
@@ -540,8 +554,40 @@ module.exports = function(db, notificationsActions) {
     },
 
     // --- SECONDARY ACTION ENDPOINTS ---
-    adminProcessPasswordReset: async (req, res) => { return res.json({ success: true, message: "Processed (stubbed)" }); },
-    adminResetUserPassword: async (req, res) => { return res.json({ success: true, message: "Password reset (stubbed)" }); },
+    adminProcessPasswordReset: async (req, res) => { 
+      try {
+        const { requestId, newPassword } = req.body;
+        if (!requestId || !newPassword) return res.json({ success: false, message: "Request ID and new password required" });
+        
+        const reqRef = db.collection("password_requests").doc(requestId);
+        const reqSnap = await reqRef.get();
+        if (!reqSnap.exists) return res.json({ success: false, message: "Request not found" });
+        
+        const requestData = reqSnap.data();
+        const userId = requestData.userId;
+        
+        const hash = await bcrypt.hash(String(newPassword), 10);
+        
+        await db.collection("users").doc(userId).update({ salt: null, passwordHash: hash });
+        await reqRef.update({ status: "Processed", processedAt: new Date().toISOString() });
+        
+        return res.json({ success: true, message: "Password reset successfully." });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
+    adminResetUserPassword: async (req, res) => { 
+      try {
+        const userId = req.body.userId;
+        if (!userId) return res.json({ success: false, message: "User ID required" });
+        
+        // Generate a random temporary password
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const hash = await bcrypt.hash(String(tempPassword), 10);
+        
+        await db.collection("users").doc(userId).update({ salt: null, passwordHash: hash });
+        
+        return res.json({ success: true, message: `Password reset. New temporary password is: ${tempPassword}` });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
     adminApprovePayment: async (req, res) => { 
       try {
         const pid = req.body.paymentId;
@@ -657,92 +703,11 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: false, message: "Error generating ID card: " + err.message });
       }
     },
-    
-    adminBulkCreateStudents: async (req, res) => { 
-      try {
-        const students = req.body.students;
-        if (!Array.isArray(students)) return res.json({ success: false, message: "Invalid payload" });
-        
-        const batch = db.batch();
-        students.forEach(student => {
-          const docRef = db.collection("students").doc();
-          batch.set(docRef, { ...student, createdAt: new Date().toISOString() });
-        });
-        await batch.commit();
-        return res.json({ success: true, message: `Successfully imported ${students.length} students.` });
-      } catch (err) { return res.json({ success: false, message: err.message }); }
-    },
-    adminBulkCreateClasses: async (req, res) => { 
-      try {
-        const classes = req.body.classes;
-        if (!Array.isArray(classes)) return res.json({ success: false, message: "Invalid payload" });
-        
-        const batch = db.batch();
-        classes.forEach(c => {
-          const docRef = db.collection("classes").doc();
-          batch.set(docRef, { ...c, createdAt: new Date().toISOString() });
-        });
-        await batch.commit();
-        return res.json({ success: true, message: `Successfully imported ${classes.length} classes.` });
-      } catch (err) { return res.json({ success: false, message: err.message }); }
-    },
-    adminBulkCreateSubjects: async (req, res) => { 
-      try {
-        const subjects = req.body.subjects;
-        if (!Array.isArray(subjects)) return res.json({ success: false, message: "Invalid payload" });
-        
-        const batch = db.batch();
-        subjects.forEach(s => {
-          const docRef = db.collection("subjects").doc();
-          batch.set(docRef, { ...s, createdAt: new Date().toISOString() });
-        });
-        await batch.commit();
-        return res.json({ success: true, message: `Successfully imported ${subjects.length} subjects.` });
-      } catch (err) { return res.json({ success: false, message: err.message }); }
-    },
-    
-    adminProcessPasswordReset: async (req, res) => { 
-      try {
-        const { requestId, newPassword } = req.body;
-        if (!requestId || !newPassword) return res.json({ success: false, message: "Request ID and new password required" });
-        
-        const reqRef = db.collection("password_requests").doc(requestId);
-        const reqSnap = await reqRef.get();
-        if (!reqSnap.exists) return res.json({ success: false, message: "Request not found" });
-        
-        const requestData = reqSnap.data();
-        const userId = requestData.userId;
-        
-        const salt = crypto.randomBytes(16).toString('hex');
-        const hash = crypto.createHash("sha256").update(salt + String(newPassword)).digest("hex");
-        
-        await db.collection("users").doc(userId).update({ salt: salt, passwordHash: hash });
-        await reqRef.update({ status: "Processed", processedAt: new Date().toISOString() });
-        
-        return res.json({ success: true, message: "Password reset successfully." });
-      } catch (err) { return res.json({ success: false, message: err.message }); }
-    },
-    adminResetUserPassword: async (req, res) => { 
-      try {
-        const userId = req.body.userId;
-        if (!userId) return res.json({ success: false, message: "User ID required" });
-        
-        // Generate a random temporary password
-        const tempPassword = Math.random().toString(36).slice(-8);
-        const salt = crypto.randomBytes(16).toString('hex');
-        const hash = crypto.createHash("sha256").update(salt + String(tempPassword)).digest("hex");
-        
-        await db.collection("users").doc(userId).update({ salt: salt, passwordHash: hash });
-        
-        return res.json({ success: true, message: `Password reset. New temporary password is: ${tempPassword}` });
-      } catch (err) { return res.json({ success: false, message: err.message }); }
-    },
     adminEnrollStudent: async (req, res) => { 
       try {
         const { studentId, subjectId, session, term } = req.body;
         if (!studentId || !subjectId) return res.json({ success: false, message: "Student and Subject ID required" });
         
-        // Check if already enrolled
         const existing = await db.collection("student_subjects")
           .where("studentId", "==", studentId)
           .where("subjectId", "==", subjectId).get();

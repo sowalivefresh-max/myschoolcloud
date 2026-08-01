@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcrypt");
 
 // --- UTILITY: Hash Password ---
 function hashPassword(password, salt) {
@@ -20,28 +21,28 @@ module.exports = function(db) {
       
       const usersSnapshot = await db.collection("users").where("email", "==", email.trim().toLowerCase()).get();
       if (usersSnapshot.empty) {
-        if (email.trim().toLowerCase() === "developer@myschool.com") {
-          const salt = generateSalt();
-          const pHash = hashPassword(password, salt);
-          await db.collection("users").add({
-             email: "developer@myschool.com",
-             role: "developer",
-             fullName: "System Developer",
-             salt: salt,
-             passwordHash: pHash,
-             status: "Active",
-             section: "both",
-             createdAt: new Date().toISOString()
-          });
-          return res.json({ success: false, message: "Developer account seeded successfully! Please click Sign In again to log in." });
-        }
         return res.json({ success: false, message: "Invalid email or password." });
       }
       
       const userDoc = usersSnapshot.docs[0];
       const user = userDoc.data();
       
-      if (hashPassword(password, user.salt || "") !== user.passwordHash) {
+      let isMatch = false;
+      if (user.passwordHash && (user.passwordHash.startsWith("$2b$") || user.passwordHash.startsWith("$2a$"))) {
+        isMatch = await bcrypt.compare(String(password), user.passwordHash);
+      } else {
+        isMatch = hashPassword(password, user.salt || "") === user.passwordHash;
+        // Upgrade to bcrypt silently if login succeeds
+        if (isMatch) {
+          const newHash = await bcrypt.hash(String(password), 10);
+          await db.collection("users").doc(userDoc.id).update({
+            passwordHash: newHash,
+            salt: null
+          });
+        }
+      }
+      
+      if (!isMatch) {
         return res.json({ success: false, message: "Invalid email or password." });
       }
       
@@ -150,15 +151,21 @@ module.exports = function(db) {
         const userDoc = await userRef.get();
         const user = userDoc.data();
 
-        if (hashPassword(currentPassword, user.salt || "") !== user.passwordHash) {
+        let isMatch = false;
+        if (user.passwordHash && (user.passwordHash.startsWith("$2b$") || user.passwordHash.startsWith("$2a$"))) {
+          isMatch = await bcrypt.compare(String(currentPassword), user.passwordHash);
+        } else {
+          isMatch = hashPassword(currentPassword, user.salt || "") === user.passwordHash;
+        }
+
+        if (!isMatch) {
           return res.json({ success: false, message: "Incorrect current password." });
         }
 
-        const newSalt = generateSalt();
-        const newHash = hashPassword(newPassword, newSalt);
+        const newHash = await bcrypt.hash(String(newPassword), 10);
 
         await userRef.update({
-          salt: newSalt,
+          salt: null,
           passwordHash: newHash
         });
 

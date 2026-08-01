@@ -24,6 +24,7 @@ const parentActions = require("./actions/parent")(db);
 // --- UTILITY: Role Middleware ---
 async function requireRole(req, res, next) {
   const token = req.body.token;
+  const action = req.body.action;
   if (!token) return res.status(401).json({ success: false, message: "No token provided." });
 
   try {
@@ -35,6 +36,24 @@ async function requireRole(req, res, next) {
     }
 
     const session = sessionDoc.data();
+    
+    if (action) {
+      const role = session.role;
+      if (action.startsWith("admin")) {
+        if (!["admin", "admin_assistant", "developer", "principal", "vp"].includes(role)) {
+          return res.status(403).json({ success: false, message: "Forbidden: Admin access required." });
+        }
+      } else if (action.startsWith("teacher")) {
+        if (!["teacher", "primary_teacher", "headteacher", "admin", "developer", "principal", "vp"].includes(role)) {
+          return res.status(403).json({ success: false, message: "Forbidden: Teacher access required." });
+        }
+      } else if (action.startsWith("parent")) {
+        if (!["parent", "admin", "developer"].includes(role)) {
+          return res.status(403).json({ success: false, message: "Forbidden: Parent access required." });
+        }
+      }
+    }
+
     const created = new Date(session.createdAt);
     const hoursElapsed = (new Date() - created) / (1000 * 60 * 60);
     
