@@ -40,7 +40,7 @@ async function requireRole(req, res, next) {
     if (action) {
       const role = session.role;
       if (action.startsWith("admin")) {
-        if (!["admin", "admin_assistant", "developer", "principal", "vp"].includes(role)) {
+        if (!["admin", "admin_assistant", "developer", "principal", "vp", "accounts"].includes(role)) {
           return res.status(403).json({ success: false, message: "Forbidden: Admin access required." });
         }
       } else if (action.startsWith("teacher")) {
@@ -75,8 +75,15 @@ async function requireRole(req, res, next) {
 // ============================================================
 
 app.post("/api", async (req, res) => {
-  const action = req.body.action;
+  let action = req.body.action;
   if (!action) return res.status(400).json({ success: false, message: "No action specified." });
+
+  // Map alternative dashboard prefixes to the core 'admin' API endpoints
+  if (action.startsWith("principal") || action.startsWith("accounts") || action.startsWith("vp")) {
+    const base = action.startsWith("vp") ? action.substring(2) : (action.startsWith("accounts") ? action.substring(8) : action.substring(9));
+    action = "admin" + base;
+    req.body.action = action; // update it so the rest of the file (including requireRole) sees 'admin...'
+  }
 
   // --- GAS Compatibility Shim ---
   // The frontend sends { action: "...", args: [...] }
