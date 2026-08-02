@@ -72,7 +72,75 @@ module.exports = function(db, notificationsActions) {
 
     adminGetComplianceSummary: async (req, res) => {
       try {
-        return res.json({ success: true, totalTeachers: 0, submittedPlans: 0, resultsEntered: 0 });
+        const { term, session } = req.body;
+        
+        // 1. Get all teachers
+        const usersSnap = await db.collection("users").where("role", "in", ["teacher", "primary_teacher"]).get();
+        let teachers = [];
+        usersSnap.forEach(doc => {
+          const d = doc.data();
+          teachers.push({ id: doc.id, fullName: d.fullName, role: d.role });
+        });
+        
+        // 2. Attendance Compliance (Today)
+        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const attendanceSnap = await db.collection("attendance").where("date", "==", todayStr).get();
+        const attendanceTeacherIds = new Set();
+        attendanceSnap.forEach(doc => {
+          const d = doc.data();
+          if (d.teacherId) attendanceTeacherIds.add(d.teacherId);
+        });
+        
+        let attendanceCompliant = [];
+        let attendanceDefaulted = [];
+        teachers.forEach(t => {
+          if (attendanceTeacherIds.has(t.id)) {
+            attendanceCompliant.push(t);
+          } else {
+            attendanceDefaulted.push(t);
+          }
+        });
+        
+        // 3. Lesson Plans Compliance (This Week)
+        const now = new Date();
+        const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay())); 
+        firstDayOfWeek.setHours(0,0,0,0);
+        
+        // Fetch plans for current term/session to filter by date in memory (since we might not have a composite index)
+        let query = db.collection("lessonPlans");
+        if(term) query = query.where("term", "==", term);
+        if(session) query = query.where("session", "==", session);
+        const plansSnap = await query.get();
+        
+        const plansTeacherIds = new Set();
+        plansSnap.forEach(doc => {
+          const d = doc.data();
+          if (d.createdAt) {
+            const planDate = new Date(d.createdAt);
+            if (planDate >= firstDayOfWeek) {
+              if (d.teacherId) plansTeacherIds.add(d.teacherId);
+            }
+          }
+        });
+        
+        let plansCompliant = [];
+        let plansDefaulted = [];
+        teachers.forEach(t => {
+          if (plansTeacherIds.has(t.id)) {
+            plansCompliant.push(t);
+          } else {
+            plansDefaulted.push(t);
+          }
+        });
+
+        return res.json({ 
+          success: true, 
+          totalTeachers: teachers.length, 
+          attendanceCompliant: attendanceCompliant,
+          attendanceDefaulted: attendanceDefaulted,
+          plansCompliant: plansCompliant,
+          plansDefaulted: plansDefaulted
+        });
       } catch (err) {
         return res.json({ success: false, message: "Error fetching compliance: " + err.message });
       }

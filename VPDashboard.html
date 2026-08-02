@@ -32,6 +32,9 @@
         <button class="aa-nav-item" id="nav-lessonplans" onclick="switchTab('vp-tabs', 'tab-lessonplans'); setActiveNav('nav-lessonplans')">
           <i class="fa fa-book-open"></i> Lesson Plans
         </button>
+        <button class="aa-nav-item" id="nav-analytics" onclick="switchTab('vp-tabs', 'tab-analytics'); setActiveNav('nav-analytics'); loadAnalytics();">
+          <i class="fa fa-chart-line"></i> Analytics
+        </button>
         <button class="aa-nav-item text-danger" onclick="AA.logout()">
           <i class="fa fa-sign-out-alt"></i> Logout
         </button>
@@ -58,9 +61,10 @@
 
       <div class="aa-content">
         <div id="vp-tabs" style="display:none;">
-          <div class="aa-tab active" data-tab="tab-dashboard" data-onload="loadDashboard"></div>
-          <div class="aa-tab" data-tab="tab-reports" data-onload="loadClassesForReports"></div>
+          <div class="aa-tab" data-tab="tab-dashboard" data-onload="loadDashboard"></div>
+          <div class="aa-tab" data-tab="tab-reports" data-onload="loadClassesForVP"></div>
           <div class="aa-tab" data-tab="tab-lessonplans" data-onload="loadLessonPlans"></div>
+          <div class="aa-tab" data-tab="tab-analytics" data-onload="loadAnalytics"></div>
         </div>
 
         <!-- TAB: Dashboard -->
@@ -140,6 +144,16 @@
       <div class="aa-modal-footer">
         <button class="aa-btn aa-btn-danger" onclick="processPlan('reject')">Reject</button>
         <button class="aa-btn aa-btn-success" onclick="processPlan('approve')">Approve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Analytics -->
+  <div class="aa-tab-content" data-group="vp-tabs" data-id="tab-analytics">
+    <div class="aa-card">
+      <div class="aa-card-header"><h3 class="aa-card-title">Teacher Compliance Summary</h3></div>
+      <div class="aa-card-body" id="compliance-summary">
+        <p class="text-muted">Loading compliance data...</p>
       </div>
     </div>
   </div>
@@ -252,6 +266,48 @@
     function processPlan(action) {
       callServer(action==='approve'?'principalApprovePlan':'principalRejectPlan', [AA.token, document.getElementById('reviewPlanId').value, document.getElementById('reviewNote').value], function(res) {
         showToast(res.message, res.success?'success':'error'); if(res.success) { closeModal('reviewModal'); loadLessonPlans(); loadDashboard(); }
+      }, null, true);
+    }
+    
+    function loadAnalytics() {
+      callServer('adminGetComplianceSummary', [AA.token, currentTerm, currentSession], function(res) {
+        var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
+        
+        // Attendance Block
+        html += '<div style="flex:1; min-width:250px; background:#f9fbfc; padding:15px; border-radius:8px;">';
+        html += '<h6>Daily Attendance (Today)</h6>';
+        html += '<div style="margin-top:10px;">';
+        html += '<strong style="color:green;"><i class="fa fa-check-circle"></i> Compliant ('+res.attendanceCompliant.length+')</strong>';
+        html += '<ul style="margin:5px 0 15px 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.attendanceCompliant.length === 0) html += '<li>None</li>';
+        res.attendanceCompliant.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '<strong style="color:red;"><i class="fa fa-times-circle"></i> Defaulted ('+res.attendanceDefaulted.length+')</strong>';
+        html += '<ul style="margin:5px 0 0 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.attendanceDefaulted.length === 0) html += '<li>None</li>';
+        res.attendanceDefaulted.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '</div></div>';
+
+        // Lesson Plans Block
+        html += '<div style="flex:1; min-width:250px; background:#f9fbfc; padding:15px; border-radius:8px;">';
+        html += '<h6>Lesson Plans (This Week)</h6>';
+        html += '<div style="margin-top:10px;">';
+        html += '<strong style="color:green;"><i class="fa fa-check-circle"></i> Submitted ('+res.plansCompliant.length+')</strong>';
+        html += '<ul style="margin:5px 0 15px 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.plansCompliant.length === 0) html += '<li>None</li>';
+        res.plansCompliant.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '<strong style="color:red;"><i class="fa fa-times-circle"></i> Defaulted ('+res.plansDefaulted.length+')</strong>';
+        html += '<ul style="margin:5px 0 0 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.plansDefaulted.length === 0) html += '<li>None</li>';
+        res.plansDefaulted.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '</div></div>';
+
+        html += '</div>';
+        
+        document.getElementById('compliance-summary').innerHTML = html;
       }, null, true);
     }
   </script>

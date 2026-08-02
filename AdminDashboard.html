@@ -1707,9 +1707,42 @@
 
     function loadReports() {
       callServer('adminGetComplianceSummary', [AA.token, AA.settings.current_term, AA.settings.current_session], function(res) {
-        var html = '<div class="aa-stat-card mb-3"><h6>Total Teachers: '+res.totalTeachers+'</h6><div class="mt-2">';
-        html += '<p class="fs-12">Lesson Plans Submitted: <b>'+res.submittedPlans+'</b></p>';
-        html += '<p class="fs-12">Results Entered: <b>'+res.resultsEntered+'</b></p></div></div>';
+        var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
+        
+        // Attendance Block
+        html += '<div style="flex:1; min-width:250px; background:#f9fbfc; padding:15px; border-radius:8px;">';
+        html += '<h6>Daily Attendance (Today)</h6>';
+        html += '<div style="margin-top:10px;">';
+        html += '<strong style="color:green;"><i class="fa fa-check-circle"></i> Compliant ('+res.attendanceCompliant.length+')</strong>';
+        html += '<ul style="margin:5px 0 15px 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.attendanceCompliant.length === 0) html += '<li>None</li>';
+        res.attendanceCompliant.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '<strong style="color:red;"><i class="fa fa-times-circle"></i> Defaulted ('+res.attendanceDefaulted.length+')</strong>';
+        html += '<ul style="margin:5px 0 0 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.attendanceDefaulted.length === 0) html += '<li>None</li>';
+        res.attendanceDefaulted.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '</div></div>';
+
+        // Lesson Plans Block
+        html += '<div style="flex:1; min-width:250px; background:#f9fbfc; padding:15px; border-radius:8px;">';
+        html += '<h6>Lesson Plans (This Week)</h6>';
+        html += '<div style="margin-top:10px;">';
+        html += '<strong style="color:green;"><i class="fa fa-check-circle"></i> Submitted ('+res.plansCompliant.length+')</strong>';
+        html += '<ul style="margin:5px 0 15px 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.plansCompliant.length === 0) html += '<li>None</li>';
+        res.plansCompliant.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '<strong style="color:red;"><i class="fa fa-times-circle"></i> Defaulted ('+res.plansDefaulted.length+')</strong>';
+        html += '<ul style="margin:5px 0 0 15px; padding:0; font-size:12px; color:#555;">';
+        if(res.plansDefaulted.length === 0) html += '<li>None</li>';
+        res.plansDefaulted.forEach(function(t) { html += '<li>'+t.fullName+'</li>'; });
+        html += '</ul>';
+        html += '</div></div>';
+
+        html += '</div>';
+        
         document.getElementById('compliance-summary').innerHTML = html;
       }, null, true);
       
