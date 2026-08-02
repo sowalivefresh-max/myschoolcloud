@@ -40,7 +40,7 @@ async function requireRole(req, res, next) {
     if (action) {
       const role = session.role;
       if (action.startsWith("admin")) {
-        if (!["admin", "admin_assistant", "developer", "principal", "vp", "accounts"].includes(role)) {
+        if (!["admin", "admin_assistant", "developer", "principal", "vp", "accounts", "headteacher"].includes(role)) {
           return res.status(403).json({ success: false, message: "Forbidden: Admin access required." });
         }
       } else if (action.startsWith("teacher")) {
