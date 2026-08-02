@@ -90,9 +90,19 @@ module.exports = function(db) {
       const settingsDoc = await db.collection("settings").doc("global").get();
       const settings = settingsDoc.exists ? settingsDoc.data() : { currentTerm: "1", currentSession: "2026/2027" };
       
+      const userData = { id: uDoc.id, ...uDoc.data() };
+
+      // Dynamically attach classAssigned if the user is a class teacher
+      if (sess.role === "teacher" || sess.role === "primary_teacher") {
+        const classesSnap = await db.collection("classes").where("classTeacherId", "==", uDoc.id).get();
+        if (!classesSnap.empty) {
+          userData.classAssigned = classesSnap.docs[0].data().className;
+        }
+      }
+      
       return res.json({
         success: true,
-        user: { id: uDoc.id, ...uDoc.data() },
+        user: userData,
         role: sess.role,
         settings: settings
       });
