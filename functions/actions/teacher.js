@@ -408,6 +408,35 @@ module.exports = function(db, notificationsActions) {
       } catch (err) {
         return res.json({ success: false, message: "Error saving affective record: " + err.message });
       }
+    },
+    
+    teacherGenerateLessonPlanPDF: async (req, res) => {
+      try {
+        const { planId } = req.body;
+        const planDoc = await db.collection("lessonPlans").doc(planId).get();
+        if (!planDoc.exists) return res.json({ success: false, message: "Plan not found." });
+        const p = planDoc.data();
+        
+        let html = `<html><body style="font-family:sans-serif; padding:20px;">
+          <h2 style="text-align:center;">Lesson Plan</h2>
+          <p><strong>Topic:</strong> ${p.topic}</p>
+          <p><strong>Subject:</strong> ${p.subject}</p>
+          <p><strong>Class:</strong> ${p.className}</p>
+          <p><strong>Teacher:</strong> ${p.teacherName}</p>
+          <hr/>
+          <h4>Objectives</h4>
+          <p>${p.objectives || ''}</p>
+          <h4>Content</h4>
+          <p>${p.content || ''}</p>
+          <hr/>
+          <p><strong>Status:</strong> ${p.status || 'Pending'}</p>
+        </body></html>`;
+        
+        const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        return res.json({ success: true, previewUrl: dataUri, downloadUrl: dataUri });
+      } catch (err) {
+        return res.json({ success: false, message: "Error generating PDF: " + err.message });
+      }
     }
   };
 };

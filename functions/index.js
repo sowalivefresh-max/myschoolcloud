@@ -149,6 +149,26 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGetBroadsheetData") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
 
+        // Additional Principal/VP Mappings
+        if (action === "adminGetLessonPlans") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminApprovePlan") { req.body.planId = args[1]; req.body.note = args[2]; }
+        if (action === "adminRejectPlan") { req.body.planId = args[1]; req.body.note = args[2]; }
+        if (action === "adminGetStudentResultPDF") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.rptType = args[4]; }
+        if (action === "teacherGenerateLessonPlanPDF") { req.body.planId = args[1]; }
+        
+        // Additional Accounts Mappings
+        if (action === "adminGetFinancialStats") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminGetDebtors") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminGetBills") { req.body.filters = args[1]; }
+        if (action === "adminRecordPayment") { req.body.data = args[1]; }
+        if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
+        if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
+        if (action === "adminRecordExpense") { req.body.data = args[1]; }
+        if (action === "adminDeleteExpense") { req.body.expenseId = args[1]; }
+        if (action === "adminSendReminders") { req.body.term = args[1]; req.body.session = args[2]; req.body.batchSize = args[3]; }
+        if (action === "adminDeleteFeeStructure") { req.body.feeId = args[1]; }
+        if (action === "adminGetAllStudents") { /* no args */ }
+
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
         if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
         if (action === "teacherGetScores") { req.body.className = args[1]; req.body.subject = args[2]; req.body.term = args[3]; req.body.session = args[4]; }
@@ -260,8 +280,45 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetFeeStructures(req, res));
       case "adminSaveFeeStructure":
         return requireRole(req, res, () => adminActions.adminSaveFeeStructure(req, res));
+      case "adminDeleteFeeStructure":
+        return requireRole(req, res, () => adminActions.adminDeleteFeeStructure(req, res));
       case "adminGenerateBills":
         return requireRole(req, res, () => adminActions.adminGenerateBills(req, res));
+      case "adminGetBills":
+        return requireRole(req, res, () => adminActions.adminGetBills(req, res));
+      
+      // New Accounts & Finance Endpoints
+      case "adminGetFinancialStats":
+        return requireRole(req, res, () => adminActions.adminGetFinancialStats(req, res));
+      case "adminGetDebtors":
+        return requireRole(req, res, () => adminActions.adminGetDebtors(req, res));
+      case "adminRecordPayment":
+        return requireRole(req, res, () => adminActions.adminRecordPayment(req, res));
+      case "adminGetStudentLedger":
+        return requireRole(req, res, () => adminActions.adminGetStudentLedger(req, res));
+      case "adminGenerateReceipt":
+        return requireRole(req, res, () => adminActions.adminGenerateReceipt(req, res));
+      case "adminRecordExpense":
+        return requireRole(req, res, () => adminActions.adminRecordExpense(req, res));
+      case "adminDeleteExpense":
+        return requireRole(req, res, () => adminActions.adminDeleteExpense(req, res));
+      case "adminSendReminders":
+        return requireRole(req, res, () => adminActions.adminSendReminders(req, res));
+        
+      // New Principal Endpoints
+      case "adminGetLessonPlans":
+        return requireRole(req, res, () => adminActions.adminGetLessonPlans(req, res));
+      case "adminApprovePlan":
+        return requireRole(req, res, () => adminActions.adminApprovePlan(req, res));
+      case "adminRejectPlan":
+        return requireRole(req, res, () => adminActions.adminRejectPlan(req, res));
+      case "adminGetAllStudents":
+        return requireRole(req, res, () => adminActions.adminGetStudents(req, res)); // Alias to existing
+      case "adminGetStudentResultPDF":
+        return requireRole(req, res, () => adminActions.adminGetStudentResultPDF(req, res));
+      case "teacherGenerateLessonPlanPDF":
+        // Allow teachers and principals
+        return requireRole(req, res, () => teacherActions.teacherGenerateLessonPlanPDF(req, res));
 
       // --- TEACHER ACTIONS ---
       case "teacherGetMySubjects":
