@@ -218,17 +218,17 @@
     });
 
     function loadDashboard() {
-      callServer('principalGetStats', [AA.token], function(s) {
+      callServer('principalGetStats', [AA.token, 'primary'], function(s) {
         document.getElementById('stat-students').textContent = s.students;
         document.getElementById('stat-teachers').textContent = s.users;
       }, null, true);
-      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession], function(p) {
+      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession, 'primary'], function(p) {
         document.getElementById('stat-plans').textContent = p.length;
       });
     }
 
     function loadClassesForReports() {
-      callServer('principalGetClasses', [AA.token], function(data) {
+      callServer('principalGetClasses', [AA.token, 'primary'], function(data) {
         var sel = document.getElementById('rptClassSelect');
         sel.innerHTML = '<option value="">-- Select Class --</option>';
         data.forEach(function(c) { 
@@ -240,7 +240,7 @@
     
     function loadStudentsForClass(cls) {
       if(!cls) { document.getElementById('rptCard').style.display='none'; return; }
-      callServer('principalGetAllStudents', [AA.token], function(data) {
+      callServer('principalGetAllStudents', [AA.token, 'primary'], function(data) {
         var filtered = data.filter(function(s){ return String(s.class || s.className) === String(cls); });
         document.getElementById('rptCard').style.display='block';
         buildTable('rptTable', [
@@ -258,7 +258,7 @@
     }
 
     function loadLessonPlans() {
-      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession], function(data) {
+      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession, 'primary'], function(data) {
         buildTable('plansTable', [
           { key:'teacherName' }, { key:'subjectName' }, { key:'class' }, { key:'topic' },
           { key:'createdAt', render: function(r){ return formatDate(r.createdAt); } }
@@ -308,7 +308,7 @@
       });
     }
     function loadAnalytics() {
-      callServer('adminGetComplianceSummary', [AA.token, currentTerm, currentSession], function(res) {
+      callServer('adminGetComplianceSummary', [AA.token, currentTerm, currentSession, 'primary'], function(res) {
         var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
         
         // Attendance Block

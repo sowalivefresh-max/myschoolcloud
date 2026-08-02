@@ -9,29 +9,56 @@ module.exports = function(db, notificationsActions) {
       const section = req.body.section || "both";
 
       try {
-        // We use Firestore aggregate count queries for O(1) performance instead of fetching all docs
-        const [usersSnap, studentsSnap, classesSnap, subjectsSnap] = await Promise.all([
-          db.collection("users").count().get(),
-          db.collection("students").where("status", "==", "active").count().get(), // active students only
-          db.collection("classes").count().get(),
-          db.collection("subjects").count().get()
-        ]);
+        let totalUsers = 0, totalStudents = 0, totalClasses = 0, totalSubjects = 0;
+        let totalTeachers = 0, totalParents = 0, totalStaff = 0;
 
-        const totalUsers = usersSnap.data().count;
-        const totalStudents = studentsSnap.data().count;
-        const totalClasses = classesSnap.data().count;
-        const totalSubjects = subjectsSnap.data().count;
+        if (section === "both" || !section) {
+          // Fast path: Use aggregate queries when not filtering by section
+          const [usersSnap, studentsSnap, classesSnap, subjectsSnap, teachersSnap, parentsSnap, staffSnap] = await Promise.all([
+            db.collection("users").count().get(),
+            db.collection("students").where("status", "==", "active").count().get(),
+            db.collection("classes").count().get(),
+            db.collection("subjects").count().get(),
+            db.collection("users").where("role", "in", ["teacher", "primary_teacher"]).count().get(),
+            db.collection("users").where("role", "==", "parent").count().get(),
+            db.collection("users").where("role", "not-in", ["developer", "admin", "parent", "vendor", "student"]).count().get()
+          ]);
+          
+          totalUsers = usersSnap.data().count;
+          totalStudents = studentsSnap.data().count;
+          totalClasses = classesSnap.data().count;
+          totalSubjects = subjectsSnap.data().count;
+          totalTeachers = teachersSnap.data().count;
+          totalParents = parentsSnap.data().count;
+          totalStaff = staffSnap.data().count;
+        } else {
+          // Filtered path: Fetch documents and filter in memory to overcome Firestore composite query limits
+          const [usersSnap, studentsSnap, classesSnap, subjectsSnap] = await Promise.all([
+            db.collection("users").get(),
+            db.collection("students").where("status", "==", "active").get(),
+            db.collection("classes").get(),
+            db.collection("subjects").get()
+          ]);
 
-        // For role breakdowns, we query specifically
-        const [teachersSnap, parentsSnap, staffSnap] = await Promise.all([
-          db.collection("users").where("role", "in", ["teacher", "primary_teacher"]).count().get(),
-          db.collection("users").where("role", "==", "parent").count().get(),
-          db.collection("users").where("role", "not-in", ["developer", "admin", "parent", "vendor", "student"]).count().get()
-        ]);
+          const matchSection = (d) => {
+            const sec = (d.section || "").toLowerCase();
+            return sec === section || sec === "both";
+          };
 
-        const totalTeachers = teachersSnap.data().count;
-        const totalParents = parentsSnap.data().count;
-        const totalStaff = staffSnap.data().count;
+          const users = usersSnap.docs.map(doc => doc.data()).filter(matchSection);
+          totalUsers = users.length;
+          
+          totalStudents = studentsSnap.docs.map(doc => doc.data()).filter(matchSection).length;
+          totalClasses = classesSnap.docs.map(doc => doc.data()).filter(matchSection).length;
+          totalSubjects = subjectsSnap.docs.map(doc => doc.data()).filter(matchSection).length;
+
+          // Breakdowns
+          users.forEach(u => {
+            if (u.role === "teacher" || u.role === "primary_teacher") totalTeachers++;
+            if (u.role === "parent") totalParents++;
+            if (!["developer", "admin", "parent", "vendor", "student"].includes(u.role)) totalStaff++;
+          });
+        }
 
         return res.json({
           success: true,
@@ -54,11 +81,18 @@ module.exports = function(db, notificationsActions) {
 
     adminGetUsers: async (req, res) => {
       try {
+        const section = req.body.section;
         const usersSnap = await db.collection("users").get();
         const users = [];
         usersSnap.forEach(doc => {
           let data = doc.data();
           if (data.role === "developer") return; // Hide developer from the admin list
+          
+          // Section filtering
+          if (section && section !== "both") {
+            const sec = (data.section || "").toLowerCase();
+            if (sec !== section && sec !== "both") return;
+          }
           data.id = doc.id; // ensure ID is attached
           delete data.passwordHash; // SECURITY: Never send hashes to frontend
           delete data.salt;
@@ -72,13 +106,19 @@ module.exports = function(db, notificationsActions) {
 
     adminGetComplianceSummary: async (req, res) => {
       try {
-        const { term, session } = req.body;
+        const { term, session, section } = req.body;
         
         // 1. Get all teachers
         const usersSnap = await db.collection("users").where("role", "in", ["teacher", "primary_teacher"]).get();
         let teachers = [];
         usersSnap.forEach(doc => {
           const d = doc.data();
+          
+          if (section && section !== "both") {
+            const sec = (d.section || "").toLowerCase();
+            if (sec !== section && sec !== "both") return;
+          }
+          
           teachers.push({ id: doc.id, fullName: d.fullName, role: d.role });
         });
         
@@ -154,10 +194,15 @@ module.exports = function(db, notificationsActions) {
     },
     adminGetStudents: async (req, res) => {
       try {
+        const section = req.body.section;
         const snap = await db.collection("students").get();
         const students = [];
         snap.forEach(doc => {
           let data = doc.data();
+          if (section && section !== "both") {
+            const sec = (data.section || "").toLowerCase();
+            if (sec !== section && sec !== "both") return;
+          }
           data.id = doc.id;
           students.push(data);
         });
@@ -198,10 +243,15 @@ module.exports = function(db, notificationsActions) {
 
     adminGetClasses: async (req, res) => {
       try {
+        const section = req.body.section;
         const classesSnap = await db.collection("classes").get();
         const classes = [];
         classesSnap.forEach(doc => {
           let data = doc.data();
+          if (section && section !== "both") {
+            const sec = (data.section || "").toLowerCase();
+            if (sec !== section && sec !== "both") return;
+          }
           data.id = doc.id;
           classes.push(data);
         });
@@ -1087,13 +1137,28 @@ module.exports = function(db, notificationsActions) {
     
     adminGetLessonPlans: async (req, res) => {
       try {
-        const { term, session } = req.body;
+        const { term, session, section } = req.body;
         let query = db.collection("lessonPlans");
         if(term) query = query.where("term", "==", term);
         if(session) query = query.where("session", "==", session);
         
         const snap = await query.get();
-        const plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (section && section !== "both") {
+          // Fetch teachers for the requested section to filter plans
+          const usersSnap = await db.collection("users").get();
+          const allowedTeacherIds = new Set();
+          usersSnap.forEach(doc => {
+            const d = doc.data();
+            const sec = (d.section || "").toLowerCase();
+            if (sec === section || sec === "both") {
+              allowedTeacherIds.add(doc.id);
+            }
+          });
+          plans = plans.filter(p => allowedTeacherIds.has(p.teacherId));
+        }
+
         return res.json({ success: true, data: plans });
       } catch (err) {
         return res.json({ success: false, message: err.message });

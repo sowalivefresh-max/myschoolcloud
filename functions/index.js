@@ -106,6 +106,11 @@ app.post("/api", async (req, res) => {
         
         // Positional mappings for other routes that pass more than just token
         if (action === "adminGetStats") { req.body.section = args[1]; }
+        if (action === "adminGetClasses") { req.body.section = args[1]; }
+        if (action === "adminGetAllStudents") { req.body.section = args[1]; }
+        if (action === "adminGetUsers") { req.body.section = args[1]; }
+        if (action === "adminGetComplianceSummary") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
+        if (action === "adminGetLessonPlans") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
         if (action === "adminCreateUser") { req.body.data = args[1]; }
         if (action === "adminUpdateUser") { req.body.userId = args[1]; req.body.updates = args[2]; }
         if (action === "adminDeleteUser") { req.body.userId = args[1]; }
@@ -145,14 +150,6 @@ app.post("/api", async (req, res) => {
         if (action === "adminApproveTask") { req.body.taskId = args[1]; }
         if (action === "adminRejectTask") { req.body.taskId = args[1]; req.body.note = args[2]; }
         if (action === "adminProcessPasswordReset") { req.body.requestId = args[1]; req.body.newPassword = args[2]; }
-        if (action === "adminGetComplianceSummary") { req.body.term = args[1]; req.body.session = args[2]; }
-        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
-        if (action === "adminGetBroadsheetData") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
-
-        // Additional Principal/VP Mappings
-        if (action === "adminGetLessonPlans") { req.body.term = args[1]; req.body.session = args[2]; }
-        if (action === "adminApprovePlan") { req.body.planId = args[1]; req.body.note = args[2]; }
-        if (action === "adminRejectPlan") { req.body.planId = args[1]; req.body.note = args[2]; }
         if (action === "adminGetStudentResultPDF") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.rptType = args[4]; }
         if (action === "teacherGenerateLessonPlanPDF") { req.body.planId = args[1]; }
         
@@ -166,9 +163,8 @@ app.post("/api", async (req, res) => {
         if (action === "adminRecordExpense") { req.body.data = args[1]; }
         if (action === "adminDeleteExpense") { req.body.expenseId = args[1]; }
         if (action === "adminSendReminders") { req.body.term = args[1]; req.body.session = args[2]; req.body.batchSize = args[3]; }
-        if (action === "adminDeleteFeeStructure") { req.body.feeId = args[1]; }
-        if (action === "adminGetAllStudents") { /* no args */ }
-
+        if (action === "adminGetSubjects") { /* no args */ }
+        
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
         if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
         if (action === "teacherGetScores") { req.body.className = args[1]; req.body.subject = args[2]; req.body.term = args[3]; req.body.session = args[4]; }

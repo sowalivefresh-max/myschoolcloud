@@ -239,12 +239,12 @@
     });
 
     function loadDashboard() {
-      callServer('principalGetStats', [AA.token], function(s) {
+      callServer('principalGetStats', [AA.token, 'high'], function(s) {
         document.getElementById('stat-students').textContent = s.students;
         document.getElementById('stat-teachers').textContent = s.users; // Approximate
       }, null, true);
 
-      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession], function(p) {
+      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession, 'high'], function(p) {
         document.getElementById('stat-plans').textContent = p.length;
       });
 
@@ -258,7 +258,7 @@
 
     // -- Reports --
     function loadClassesForReports() {
-      callServer('principalGetClasses', [AA.token], function(data) {
+      callServer('principalGetClasses', [AA.token, 'high'], function(data) {
         var sel = document.getElementById('rptClassSelect');
         sel.innerHTML = '<option value="">-- Select Class --</option>';
         data.forEach(function(c) {
@@ -269,7 +269,7 @@
     
     function loadStudentsForClass(cls) {
       if(!cls) { document.getElementById('rptCard').style.display='none'; return; }
-      callServer('principalGetAllStudents', [AA.token], function(data) {
+      callServer('principalGetAllStudents', [AA.token, 'high'], function(data) {
         var filtered = data.filter(function(s){ return String(s.class || s.className) === String(cls); });
         document.getElementById('rptCard').style.display='block';
         buildTable('rptTable', [
@@ -302,7 +302,7 @@
     // -- Lesson Plans --
     var pendingPlans = [];
     function loadLessonPlans() {
-      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession], function(data) {
+      callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession, 'high'], function(data) {
         pendingPlans = data;
         buildTable('plansTable', [
           { key:'teacherName' }, { key:'subjectName' }, { key:'class' }, { key:'topic' },
@@ -340,7 +340,7 @@
     }
 
     function loadAnalytics() {
-      callServer('adminGetComplianceSummary', [AA.token, currentTerm, currentSession], function(res) {
+      callServer('adminGetComplianceSummary', [AA.token, currentTerm, currentSession, 'high'], function(res) {
         var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
         
         // Attendance Block
