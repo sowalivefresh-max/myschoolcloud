@@ -403,7 +403,8 @@ module.exports = function(db, notificationsActions) {
             continue;
           }
 
-          let total = parseFloat(fee.totalFee) || parseFloat(fee.totalAmount) || 0;
+          const originalFeeTotal = parseFloat(fee.totalFee) || parseFloat(fee.totalAmount) || 0;
+          let total = originalFeeTotal;
           
           let lineItems = [];
           try { lineItems = typeof fee.lineItems === 'string' ? JSON.parse(fee.lineItems) : (fee.lineItems || []); } catch(e){}
@@ -431,7 +432,7 @@ module.exports = function(db, notificationsActions) {
           const newBillRef = db.collection("bills").doc();
           currentBatch.set(newBillRef, {
             id: newBillRef.id, studentId: sid, studentName: student.fullName, className: className,
-            term: term, session: session, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
+            term: term, session: session, originalFeeTotal, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
             balance: finalBalance, status: billStatus, createdAt: new Date().toISOString()
           });
           operationCount++;
@@ -1362,8 +1363,18 @@ module.exports = function(db, notificationsActions) {
               try { lineItems = typeof feeData.lineItems === 'string' ? JSON.parse(feeData.lineItems) : (feeData.lineItems || []); } catch(e){}
             }
 
-            // Get original total from fee structure (before any discount)
-            const feeTotal = !feeSnap.empty ? (parseFloat(feeSnap.docs[0].data().totalFee) || 0) : (parseFloat(bill.totalBilled) || 0);
+            // Determine original (pre-discount) fee total using best available source
+            // Priority: 1) originalFeeTotal stored on bill, 2) fee structure totalFee, 3) reconstruct from totalBilled + existing discount
+            let feeTotal = 0;
+            if (!feeSnap.empty) {
+              feeTotal = parseFloat(feeSnap.docs[0].data().totalFee) || 0;
+            }
+            if (bill.originalFeeTotal && parseFloat(bill.originalFeeTotal) > 0) {
+              feeTotal = parseFloat(bill.originalFeeTotal);
+            } else if (feeTotal === 0) {
+              // Reconstruct from existing stored values (totalBilled was post-discount, so add back old discount)
+              feeTotal = (parseFloat(bill.totalBilled) || 0) + (parseFloat(bill.discountAmount) || 0);
+            }
 
             let discountAmount = 0;
             if (discountConfig.type && discountConfig.type !== 'none') {

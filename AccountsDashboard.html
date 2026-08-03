@@ -712,9 +712,11 @@
     function loadBills() {
       callServer('adminGetBills', [AA.token, {}], function(bills) {
         buildTable('billsTable', [
-          {key:'studentName', render:function(r){return '<a href="#" class="fw-600 text-navy" style="text-decoration:none;" onclick="event.preventDefault();viewLedger(\''+(r.studentID||r.studentId)+'\')">'+r.studentName+'</a>';}},
-          {key:'class'},
-          {key:'totalBilled', render:function(r){return formatNaira(r.totalBilled);}},
+          {key:'studentName', render:function(r){return '<a href="#" class="fw-600 text-navy" style="text-decoration:none;" onclick="event.preventDefault();viewLedger(\''+(r.studentID||r.studentId)+'\')">' +r.studentName+'</a>';}},
+          {key:'class', render:function(r){return r.class||r.className||'';}},
+          {key:'originalFeeTotal', render:function(r){return formatNaira(r.originalFeeTotal||r.totalBilled);}},
+          {key:'discountAmount', render:function(r){ var d=r.discountAmount||0; return d>0?'<span class="text-success">-'+formatNaira(d)+'</span>':'<span class="text-muted">-</span>'; }},
+          {key:'totalBilled', render:function(r){return '<strong>'+formatNaira(r.totalBilled)+'</strong>';}},
           {key:'totalPaid', render:function(r){return '<strong class="text-success">'+formatNaira(r.totalPaid)+'</strong>';}},
           {key:'balance', render:function(r){return '<strong class="text-danger">'+formatNaira(r.balance)+'</strong>';}},
           {key:'status', render:function(r){return formatStatus(r.status);}}
