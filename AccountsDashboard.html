@@ -237,7 +237,7 @@
         <div class="aa-grid-2 mb-3">
           <div class="aa-form-group">
             <label class="aa-label">Class Name</label>
-            <input type="text" id="feeClassName" class="aa-input" placeholder="e.g. JSS 1A" required>
+            <select id="feeClassName" class="aa-select" required></select>
           </div>
           <div class="aa-form-group">
             <label class="aa-label">Section</label>
@@ -412,6 +412,7 @@
         document.getElementById('currentTermText').textContent = currentTerm + ' - ' + currentSession;
         document.getElementById('expDate').valueAsDate = new Date();
         loadStudentsDropdown();
+        loadClassesDropdown();
         loadDashboard();
       }
       initDashboard();
@@ -428,6 +429,16 @@
         globalStudents = data;
         var sel = document.getElementById('payStudentSelect'); sel.innerHTML='';
         data.forEach(function(s){ sel.innerHTML += '<option value="'+(s.id||s.iD)+'">'+s.fullName+' ('+s.admissionNumber+')</option>'; });
+      });
+    }
+
+    function loadClassesDropdown() {
+      callServer('adminGetClasses', [AA.token], function(data) {
+        var sel = document.getElementById('feeClassName'); 
+        if(sel) {
+          sel.innerHTML = '<option value="">-- Select Class --</option>';
+          data.forEach(function(c){ sel.innerHTML += '<option value="'+c.className+'">'+c.className+'</option>'; });
+        }
       });
     }
 
@@ -485,7 +496,7 @@
 
     // -- Dashboard --
     function loadDashboard() {
-      callServer('accountsGetFinancialStats', [AA.token, currentTerm, currentSession], function(res) {
+      callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession], function(res) {
         document.getElementById('stat-billed').textContent = formatNaira(res.totalBilled);
         document.getElementById('stat-collected').textContent = formatNaira(res.totalCollected);
         document.getElementById('stat-outstanding').textContent = formatNaira(res.totalOutstanding);
@@ -494,7 +505,7 @@
         document.getElementById('stat-net').style.color = res.netBalance >= 0 ? 'var(--aa-success)' : 'var(--aa-danger)';
       }, null, true);
 
-      callServer('accountsGetDebtors', [AA.token, currentTerm, currentSession], function(data) {
+      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(data) {
         var top = data.slice(0, 10); // top 10 debtors
         buildTable('debtorsTable', [
           {key:'studentName'},{key:'class', render:function(r){return r.class||r.className||'';}},
@@ -513,11 +524,11 @@
     }
 
     function openReviewPaymentModal(payId) {
-      callServer('accountsGetPayments', [AA.token, {status:'Pending'}], function(payments) {
+      callServer('adminGetPayments', [AA.token, {status:'Pending'}], function(payments) {
         var p = payments.find(function(x) { return String(x.id||x.iD) === String(payId); });
         if(!p) {
           // Not found in pending, try all
-          callServer('accountsGetPayments', [AA.token, {}], function(allPayments) {
+          callServer('adminGetPayments', [AA.token, {}], function(allPayments) {
             var pp = allPayments.find(function(x) { return String(x.id||x.iD) === String(payId); });
             if(pp) _openReviewModal(pp);
           });
@@ -556,7 +567,7 @@
     function approvePayment() {
       var pid = document.getElementById('revPayId').value;
       if(confirm('Are you sure you want to approve this payment? The balance will be updated.')) {
-        callServer('accountsApprovePayment', [AA.token, pid], function(res) {
+        callServer('adminApprovePayment', [AA.token, pid], function(res) {
           if(res.success) { showToast(res.message, 'success'); closeModal('reviewPaymentModal'); loadBills(); loadDashboard(); }
           else showToast(res.message, 'error');
         });
@@ -566,7 +577,7 @@
     function rejectPayment() {
       var pid = document.getElementById('revPayId').value;
       if(confirm('Are you sure you want to REJECT this payment? The parent will be notified.')) {
-        callServer('accountsRejectPayment', [AA.token, pid], function(res) {
+        callServer('adminRejectPayment', [AA.token, pid], function(res) {
           if(res.success) { showToast(res.message, 'success'); closeModal('reviewPaymentModal'); loadBills(); }
           else showToast(res.message, 'error');
         });
@@ -606,7 +617,7 @@
     }
 
     function loadFeeStructures() {
-      callServer('accountsGetFeeStructures', [AA.token], function(data) {
+      callServer('adminGetFeeStructures', [AA.token], function(data) {
         var filtered = data.filter(function(d){ return d.term===currentTerm && d.session===currentSession; });
         buildTable('feesTable', [
           {key:'className'},
@@ -633,7 +644,7 @@
     }
 
     function editFee(id) {
-      callServer('accountsGetFeeStructures', [AA.token], function(data) {
+      callServer('adminGetFeeStructures', [AA.token], function(data) {
         var f = data.find(function(x){return String(x.id||x.iD)===String(id);});
         if (!f) return;
         document.getElementById('feeId').value = id;
@@ -657,7 +668,7 @@
 
     function deleteFee(id) {
       aaConfirm('Delete this fee structure?', function() {
-        callServer('accountsDeleteFeeStructure', [AA.token, id], function(res){
+        callServer('adminDeleteFeeStructure', [AA.token, id], function(res){
           showToast(res.message, res.success?'success':'error');
           if(res.success) loadFeeStructures();
         }, null, true);
@@ -689,7 +700,7 @@
         lineItems: JSON.stringify(items),
         totalFee: total
       };
-      callServer('accountsSaveFeeStructure', [AA.token, data], function(res) {
+      callServer('adminSaveFeeStructure', [AA.token, data], function(res) {
         showToast(res.message, res.success?'success':'error');
         if(res.success){ closeModal('feeModal'); loadFeeStructures(); }
       }, null, true);
@@ -697,7 +708,7 @@
 
     // -- Bills & Payments --
     function loadBills() {
-      callServer('accountsGetBills', [AA.token, {}], function(bills) {
+      callServer('adminGetBills', [AA.token, {}], function(bills) {
         buildTable('billsTable', [
           {key:'studentName', render:function(r){return '<a href="#" class="fw-600 text-navy" style="text-decoration:none;" onclick="event.preventDefault();viewLedger(\''+(r.studentID||r.studentId)+'\')">'+r.studentName+'</a>';}},
           {key:'class'},
@@ -713,7 +724,7 @@
       }, null, true);
 
       // Load pending payments
-      callServer('accountsGetPayments', [AA.token, {status: 'Pending'}], function(payments) {
+      callServer('adminGetPayments', [AA.token, {status: 'Pending'}], function(payments) {
         var pending = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'pending'; });
         if(pending.length > 0) {
           document.getElementById('pendingPaymentsCard').style.display = 'block';
@@ -736,17 +747,17 @@
     }
     function generateBills() {
       aaConfirm('Generate term bills for all active students based on current fee structures? This will skip existing bills.', function() {
-        callServer('accountsGenerateBills', [AA.token, currentTerm, currentSession], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){loadBills();loadDashboard();} }, null, true);
+        callServer('adminGenerateBills', [AA.token, currentTerm, currentSession], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){loadBills();loadDashboard();} }, null, true);
       });
     }
     function savePayment() {
       var data = getFormData('paymentForm'); data.term = currentTerm; data.session = currentSession;
-      callServer('accountsRecordPayment', [AA.token, data], function(res) {
+      callServer('adminRecordPayment', [AA.token, data], function(res) {
         showToast(res.message, res.success?'success':'error'); if(res.success){closeModal('paymentModal');loadBills();loadDashboard();}
       }, null, true);
     }
     function viewLedger(sid) {
-      callServer('accountsGetStudentLedger', [AA.token, sid], function(res) {
+      callServer('adminGetStudentLedger', [AA.token, sid], function(res) {
         var html = '';
         if (res.creditBalance > 0) {
           html += '<div class="aa-alert aa-alert-success mb-4" style="display:flex; align-items:center; gap:8px;"><i class="fa fa-piggy-bank" style="font-size:16px;"></i> <div>Student has an overage (credit balance) of <strong>' + formatNaira(res.creditBalance) + '</strong>.</div></div>';
@@ -766,14 +777,14 @@
       }, null, true);
     }
     function downloadReceipt(payId) {
-      callServer('accountsGenerateReceipt', [AA.token, payId], function(res){
+      callServer('adminGenerateReceipt', [AA.token, payId], function(res){
         if(res.success) window.open(res.previewUrl, '_blank'); else showToast(res.message, 'error');
       }, null, true);
     }
 
     // -- Expenses --
     function loadExpenses() {
-      callServer('accountsGetExpenses', [AA.token], function(data) {
+      callServer('adminGetExpenses', [AA.token], function(data) {
         buildTable('expensesTable', [
           {key:'date',render:function(r){return formatDate(r.date);}},
           {key:'category'},{key:'description'},
@@ -783,13 +794,13 @@
     }
     function saveExpense() {
       var data = getFormData('expenseForm');
-      callServer('accountsRecordExpense', [AA.token, data], function(res) {
+      callServer('adminRecordExpense', [AA.token, data], function(res) {
         showToast(res.message, res.success?'success':'error'); if(res.success){closeModal('expenseModal');loadExpenses();loadDashboard();}
       }, null, true);
     }
     function delExp(id) {
       aaConfirm('Delete this expense record?', function() {
-        callServer('accountsDeleteExpense', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){loadExpenses();loadDashboard();} }, null, true);
+        callServer('adminDeleteExpense', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){loadExpenses();loadDashboard();} }, null, true);
       });
     }
 
@@ -802,7 +813,7 @@
 
     function processRemindersBatch(batchSize) {
         showToast('Processing reminder batch...', 'info');
-        callServer('accountsSendReminders', [AA.token, currentTerm, currentSession, batchSize], function(res) {
+        callServer('adminSendReminders', [AA.token, currentTerm, currentSession, batchSize], function(res) {
             if (res.success) {
                 showToast(res.message, 'success');
                 if (res.remaining > 0) {
@@ -820,3 +831,4 @@
   </script>
 </body>
 </html>
+
