@@ -538,7 +538,10 @@
                   <div class="col-md-6">
                     <div class="aa-form-group">
                       <label class="aa-label">App Password (No spaces)</label>
-                      <input type="password" name="smtp_password" class="aa-input" placeholder="xxxx xxxx xxxx xxxx">
+                      <div style="position:relative;">
+                        <input type="password" id="smtp_password_input" name="smtp_password" class="aa-input" placeholder="xxxx xxxx xxxx xxxx" style="padding-right:40px;">
+                        <i class="fa fa-eye text-muted" style="position:absolute; right:12px; top:12px; cursor:pointer;" onclick="var x = document.getElementById('smtp_password_input'); if(x.type === 'password') { x.type = 'text'; this.className = 'fa fa-eye-slash text-muted'; } else { x.type = 'password'; this.className = 'fa fa-eye text-muted'; }"></i>
+                      </div>
                       <small class="text-muted" style="font-size:11px;display:block;margin-top:4px;">Generate an App Password from your Google Account Security settings.</small>
                     </div>
                   </div>
