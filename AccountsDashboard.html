@@ -158,7 +158,7 @@
           <div class="aa-card">
             <div class="aa-card-body" style="padding:0;">
               <table class="aa-table" id="billsTable">
-                <thead><tr><th>Student Name</th><th>Class</th><th>Total Billed</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>Student Name</th><th>Class</th><th>Gross Fee</th><th>Discount</th><th>Net Billed</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>
@@ -510,8 +510,8 @@
       callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(data) {
         var top = data.slice(0, 10); // top 10 debtors
         buildTable('debtorsTable', [
-          {key:'studentName'},{key:'class', render:function(r){return r.class||r.className||'';}},
-          {key:'balance', render:function(r){return '<strong class="text-danger">'+formatNaira(r.balance)+'</strong>';}}
+          {key:'studentName'},{key:'class', render:function(r){return r.class||r.className||'';} },
+          {key:'amountOwed', render:function(r){return '<strong class="text-danger">'+formatNaira(r.amountOwed)+'</strong>';}}
         ], top);
       });
     }
