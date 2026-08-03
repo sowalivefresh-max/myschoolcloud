@@ -352,13 +352,18 @@ module.exports = function(db, notificationsActions) {
       const recordedByUserId = req.session.userId;
       
       try {
-        // Query active students
-        let studentsQuery = db.collection("students").where("status", "==", "active");
-        if (section && section !== "both") {
-          studentsQuery = studentsQuery.where("section", "==", section);
+        // Query all students (no status filter to avoid missing students with no status field)
+        let studentsSnap = await db.collection("students").get();
+        let students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Filter: include students with no status OR status 'active' (exclude explicitly inactive/suspended)
+        students = students.filter(s => !s.status || s.status === 'active');
+        // Filter by section if specified
+        if (section && section !== 'both') {
+          students = students.filter(s => {
+            const sec = (s.section || '').toLowerCase();
+            return sec === section || sec === 'both';
+          });
         }
-        const studentsSnap = await studentsQuery.get();
-        const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
         // Query fee structures
         const feesSnap = await db.collection("feeStructure").where("term", "==", term).where("session", "==", session).get();
@@ -524,7 +529,7 @@ module.exports = function(db, notificationsActions) {
       if (!data || !data.fullName) return res.json({ success: false, message: "Student name is required." });
       try {
         const docRef = db.collection("students").doc();
-        await docRef.set({ ...data, createdAt: new Date().toISOString() });
+        await docRef.set({ status: "active", ...data, createdAt: new Date().toISOString() });
         return res.json({ success: true, message: "Student created successfully." });
       } catch (err) {
         return res.json({ success: false, message: "Error creating student: " + err.message });
