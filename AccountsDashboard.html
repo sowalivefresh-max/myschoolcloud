@@ -424,7 +424,7 @@
     }
 
     function loadStudentsDropdown() {
-      callServer('accountsGetStudents', [AA.token], function(data) {
+      callServer('adminGetStudents', [AA.token], function(data) {
         globalStudents = data;
         var sel = document.getElementById('payStudentSelect'); sel.innerHTML='';
         data.forEach(function(s){ sel.innerHTML += '<option value="'+(s.id||s.iD)+'">'+s.fullName+' ('+s.admissionNumber+')</option>'; });
