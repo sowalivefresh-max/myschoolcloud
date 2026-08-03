@@ -283,6 +283,12 @@ module.exports = function(db, notificationsActions) {
         feesSnap.forEach(doc => {
           let data = doc.data();
           data.id = doc.id;
+          // Normalise: ensure totalFee is always set (handle legacy totalAmount field)
+          if (!data.totalFee && data.totalAmount) data.totalFee = data.totalAmount;
+          // Normalise lineItems to string for consistent frontend parsing
+          if (data.lineItems && typeof data.lineItems !== 'string') {
+            data.lineItems = JSON.stringify(data.lineItems);
+          }
           fees.push(data);
         });
         return res.json({ success: true, data: fees });
@@ -303,18 +309,17 @@ module.exports = function(db, notificationsActions) {
         catch (e) { lineItems = []; }
       }
 
-      let total = lineItems.length > 0
-        ? lineItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
-        : (parseFloat(data.tuitionFee) || 0) + (parseFloat(data.developmentLevy) || 0) + (parseFloat(data.examFee) || 0) + (parseFloat(data.sportsFee) || 0);
-
+      // Always recalculate total from line items
+      const totalFee = lineItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
       const section = data.section || "";
+      const lineItemsStr = JSON.stringify(lineItems);
 
       try {
         if (data.id) {
           await db.collection("feeStructure").doc(data.id).update({
-            className: data.className.trim(), section: section, totalAmount: total, lineItems: lineItems
+            className: data.className.trim(), section, totalFee, lineItems: lineItemsStr, updatedAt: new Date().toISOString()
           });
-          return res.json({ success: true, message: `Fee structure updated. Total: ₦${total}` });
+          return res.json({ success: true, message: `Fee structure updated. Total: ₦${totalFee.toLocaleString()}` });
         }
 
         const classes = data.className.split(",").map(c => c.trim()).filter(Boolean);
@@ -330,18 +335,18 @@ module.exports = function(db, notificationsActions) {
             .get();
 
           if (!existingSnap.empty) {
-            batch.update(existingSnap.docs[0].ref, { section: section, totalAmount: total, lineItems: lineItems });
+            batch.update(existingSnap.docs[0].ref, { section, totalFee, lineItems: lineItemsStr, updatedAt: new Date().toISOString() });
           } else {
             const newRef = db.collection("feeStructure").doc();
             batch.set(newRef, {
-              id: newRef.id, className: cls, section: section, term: data.term, session: data.session,
-              totalAmount: total, lineItems: lineItems, createdAt: new Date().toISOString()
+              id: newRef.id, className: cls, section, term: data.term, session: data.session,
+              totalFee, lineItems: lineItemsStr, createdAt: new Date().toISOString()
             });
           }
           saved.push(cls);
         }
         await batch.commit();
-        return res.json({ success: true, message: `Fee structures saved for: ${saved.join(", ")}. Total: ₦${total}` });
+        return res.json({ success: true, message: `Fee structures saved for: ${saved.join(", ")}. Total: ₦${totalFee.toLocaleString()}` });
       } catch (err) {
         return res.json({ success: false, message: "Error saving fee structure: " + err.message });
       }
@@ -1367,7 +1372,8 @@ module.exports = function(db, notificationsActions) {
             // Priority: 1) originalFeeTotal stored on bill, 2) fee structure totalFee, 3) reconstruct from totalBilled + existing discount
             let feeTotal = 0;
             if (!feeSnap.empty) {
-              feeTotal = parseFloat(feeSnap.docs[0].data().totalFee) || 0;
+              const feeData = feeSnap.docs[0].data();
+              feeTotal = parseFloat(feeData.totalFee) || parseFloat(feeData.totalAmount) || 0;
             }
             if (bill.originalFeeTotal && parseFloat(bill.originalFeeTotal) > 0) {
               feeTotal = parseFloat(bill.originalFeeTotal);
