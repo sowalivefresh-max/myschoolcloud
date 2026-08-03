@@ -146,6 +146,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminGenerateIDCard") { req.body.studentId = args[1]; }
         if (action === "adminBulkCreateStudents") { req.body.students = args[1]; }
         if (action === "adminBulkCreateClasses") { req.body.classes = args[1]; }
+        if (action === "adminSetStudentDiscount") { req.body.studentId = args[1]; req.body.discountConfig = args[2]; }
         if (action === "adminBulkCreateSubjects") { req.body.subjects = args[1]; }
         if (action === "adminApproveTask") { req.body.taskId = args[1]; }
         if (action === "adminRejectTask") { req.body.taskId = args[1]; req.body.note = args[2]; }
@@ -226,6 +227,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminUpdateStudent(req, res));
       case "adminDeleteStudent":
         return requireRole(req, res, () => adminActions.adminDeleteStudent(req, res));
+      case "adminSetStudentDiscount":
+        return requireRole(req, res, () => adminActions.adminSetStudentDiscount(req, res));
         
       case "adminGetSettings":
         return requireRole(req, res, () => adminActions.adminGetSettings(req, res));

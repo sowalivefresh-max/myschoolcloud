@@ -293,6 +293,33 @@
     </div>
   </div>
 
+  <!-- Discount Modal -->
+  <div class="aa-modal-backdrop" id="discountModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header"><h5 class="aa-modal-title">Set Student Discount</h5><button class="aa-modal-close" onclick="closeModal('discountModal')">×</button></div>
+      <div class="aa-modal-body">
+        <input type="hidden" id="discountStudentId">
+        <p style="font-size:13px; color:var(--aa-muted); margin-bottom:15px;">Configure a fee discount for <strong id="discountStudentName" class="text-navy"></strong>. This discount will be applied automatically whenever term bills are generated for their class.</p>
+        <div class="aa-form-group">
+          <label class="aa-label">Discount Type</label>
+          <select id="discountType" class="aa-select" onchange="toggleDiscountValueField()">
+            <option value="none">None (No Discount)</option>
+            <option value="fixed">Fixed Amount (₦)</option>
+            <option value="percentage">Percentage (of Tuition)</option>
+          </select>
+        </div>
+        <div class="aa-form-group" id="discountValueWrap" style="display:none;">
+          <label class="aa-label" id="discountValueLabel">Discount Value</label>
+          <input type="number" id="discountValue" class="aa-input" min="0" placeholder="e.g. 5000 or 10">
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('discountModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" onclick="saveStudentDiscount()">Save Discount</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Expense Modal -->
   <div class="aa-modal-backdrop" id="expenseModal">
     <div class="aa-modal">
@@ -410,6 +437,50 @@
         document.getElementById('payStudentSelect').value = studentId;
       }
       openModal('paymentModal');
+    }
+
+    function toggleDiscountValueField() {
+      var type = document.getElementById('discountType').value;
+      var wrap = document.getElementById('discountValueWrap');
+      var label = document.getElementById('discountValueLabel');
+      if (type === 'none') {
+        wrap.style.display = 'none';
+      } else {
+        wrap.style.display = 'block';
+        label.textContent = type === 'percentage' ? 'Percentage (%)' : 'Amount (₦)';
+      }
+    }
+
+    function openDiscountModal(studentId) {
+      var student = globalStudents.find(function(s){ return s.id === studentId || s.iD === studentId; });
+      if (!student) return showToast('Student not found. Wait for load.', 'error');
+      
+      document.getElementById('discountStudentId').value = studentId;
+      document.getElementById('discountStudentName').textContent = student.fullName;
+      
+      var config = student.discountConfig || { type: 'none', value: '' };
+      document.getElementById('discountType').value = config.type || 'none';
+      document.getElementById('discountValue').value = config.value || '';
+      toggleDiscountValueField();
+      
+      openModal('discountModal');
+    }
+
+    function saveStudentDiscount() {
+      var studentId = document.getElementById('discountStudentId').value;
+      var type = document.getElementById('discountType').value;
+      var value = document.getElementById('discountValue').value;
+      
+      if (type !== 'none' && !value) return showToast('Please enter a discount value', 'error');
+      
+      var config = { type: type, value: value };
+      callServer('adminSetStudentDiscount', [AA.token, studentId, config], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) {
+          closeModal('discountModal');
+          loadStudentsDropdown(); // Refresh student data
+        }
+      }, null, true);
     }
 
     // -- Dashboard --
@@ -636,6 +707,7 @@
           {key:'status', render:function(r){return formatStatus(r.status);}}
         ], bills, function(r){
           return '<button class="aa-btn aa-btn-outline aa-btn-xs me-1" onclick="openPaymentModal(\''+(r.studentID||r.studentId)+'\')">Record Payment</button>' +
+                 '<button class="aa-btn aa-btn-warning aa-btn-xs me-1" onclick="openDiscountModal(\''+(r.studentID||r.studentId)+'\')" title="Set Discount"><i class="fa fa-percent"></i></button>' +
                  '<button class="aa-btn aa-btn-info aa-btn-xs" onclick="viewLedger(\''+(r.studentID||r.studentId)+'\')">Ledger</button>';
         });
       }, null, true);

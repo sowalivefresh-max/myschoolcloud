@@ -398,7 +398,25 @@ module.exports = function(db, notificationsActions) {
             continue;
           }
 
-          const total = parseFloat(fee.totalAmount) || 0;
+          let total = parseFloat(fee.totalFee) || parseFloat(fee.totalAmount) || 0;
+          
+          let lineItems = [];
+          try { lineItems = typeof fee.lineItems === 'string' ? JSON.parse(fee.lineItems) : (fee.lineItems || []); } catch(e){}
+          
+          let discountAmount = 0;
+          if (student.discountConfig && student.discountConfig.type && student.discountConfig.type !== 'none') {
+            if (student.discountConfig.type === 'fixed') {
+              discountAmount = parseFloat(student.discountConfig.value) || 0;
+            } else if (student.discountConfig.type === 'percentage') {
+              const tuitionItem = lineItems.find(i => i.name && i.name.toLowerCase().includes('tuition'));
+              const tuitionAmount = tuitionItem ? (parseFloat(tuitionItem.amount) || 0) : 0;
+              discountAmount = (parseFloat(student.discountConfig.value) || 0) / 100 * tuitionAmount;
+            }
+          }
+          if (discountAmount > 0) {
+            total = Math.max(0, total - discountAmount);
+          }
+
           // For simplicity in this chunk, assuming 0 credit. Real implementation would fetch credit.
           const credit = 0; 
           const appliedCredit = Math.min(credit, total);
@@ -408,7 +426,7 @@ module.exports = function(db, notificationsActions) {
           const newBillRef = db.collection("bills").doc();
           currentBatch.set(newBillRef, {
             id: newBillRef.id, studentId: sid, studentName: student.fullName, className: className,
-            term: term, session: session, totalBilled: total, totalPaid: appliedCredit,
+            term: term, session: session, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
             balance: finalBalance, status: billStatus, createdAt: new Date().toISOString()
           });
           operationCount++;
@@ -1291,6 +1309,17 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, message: "Invite revoked successfully." });
       } catch (err) {
         return res.json({ success: false, message: "Error revoking invite: " + err.message });
+      }
+    },
+
+    adminSetStudentDiscount: async (req, res) => {
+      const { studentId, discountConfig } = req.body;
+      if (!studentId || !discountConfig) return res.json({ success: false, message: "Student ID and config required." });
+      try {
+        await db.collection("students").doc(studentId).update({ discountConfig });
+        return res.json({ success: true, message: "Student discount configured successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: "Error setting discount: " + err.message });
       }
     }
 
