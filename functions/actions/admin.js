@@ -1178,7 +1178,102 @@ module.exports = function(db, notificationsActions) {
     },
 
     adminSendReminders: async (req, res) => {
-      return res.json({ success: true, message: "Reminders queued successfully for debtors." });
+      try {
+        const { term, session } = req.body;
+        
+        // 1. Fetch SMTP settings
+        const settingsDoc = await db.collection("settings").doc("global").get();
+        const settings = settingsDoc.data() || {};
+        if (!settings.smtp_email || !settings.smtp_password) {
+          return res.json({ success: false, message: "Email settings are not configured. Please set them in the Admin Dashboard Settings." });
+        }
+        
+        const nodemailer = require("nodemailer");
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: settings.smtp_email,
+            pass: settings.smtp_password
+          }
+        });
+
+        // 2. Fetch all bills and payments to determine debtors
+        const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
+        const paymentsSnap = await db.collection("payments").where("term", "==", term).where("session", "==", session).where("status", "==", "Approved").get();
+        
+        let studentBalances = {};
+        billsSnap.forEach(doc => {
+          const b = doc.data();
+          if(!studentBalances[b.studentId]) studentBalances[b.studentId] = { studentName: b.studentName, class: b.className, totalBilled: 0, totalPaid: 0 };
+          studentBalances[b.studentId].totalBilled += Number(b.totalBilled || 0);
+        });
+        
+        paymentsSnap.forEach(doc => {
+          const p = doc.data();
+          if(studentBalances[p.studentId]) {
+             studentBalances[p.studentId].totalPaid += Number(p.amount || 0);
+          }
+        });
+
+        // 3. Send emails to parents of debtors
+        let sentCount = 0;
+        let errors = [];
+
+        for (let sid in studentBalances) {
+          let bal = studentBalances[sid];
+          let owed = bal.totalBilled - bal.totalPaid;
+          
+          if (owed > 0) {
+            // Find student parent
+            const studentDoc = await db.collection("students").doc(sid).get();
+            if (studentDoc.exists && studentDoc.data().parentId) {
+              const parentId = studentDoc.data().parentId;
+              const parentDoc = await db.collection("users").doc(parentId).get();
+              
+              if (parentDoc.exists && parentDoc.data().email) {
+                const parentEmail = parentDoc.data().email;
+                const parentName = parentDoc.data().fullName || "Parent/Guardian";
+                
+                const mailOptions = {
+                  from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
+                  to: parentEmail,
+                  subject: `Fee Reminder: Outstanding Balance for ${bal.studentName}`,
+                  html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+                      <h2 style="color: #0f172a;">Fee Payment Reminder</h2>
+                      <p>Dear ${parentName},</p>
+                      <p>This is a gentle reminder that there is an outstanding balance of <strong>₦${owed.toLocaleString()}</strong> for your ward, <strong>${bal.studentName}</strong> (${bal.class}), for the current term (${term}, ${session}).</p>
+                      <p>Please log in to your Parent Portal to view the full ledger and record a payment.</p>
+                      <p>If you have already made this payment, kindly upload your proof of payment on the portal or contact the accounts office.</p>
+                      <br>
+                      <p>Best regards,<br><strong>${settings.school_name || 'School Administration'}</strong></p>
+                    </div>
+                  `
+                };
+                
+                try {
+                  await transporter.sendMail(mailOptions);
+                  sentCount++;
+                } catch(e) {
+                  errors.push(`Failed to send to ${parentEmail}`);
+                }
+              }
+            }
+          }
+        }
+        
+        if (sentCount === 0 && errors.length === 0) {
+           return res.json({ success: true, message: "No debtors found with linked parent emails." });
+        }
+        
+        return res.json({ 
+          success: true, 
+          message: `Successfully sent ${sentCount} reminders.${errors.length > 0 ? ' (' + errors.length + ' failed)' : ''}` 
+        });
+
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
     },
     
     adminDeleteFeeStructure: async (req, res) => {
