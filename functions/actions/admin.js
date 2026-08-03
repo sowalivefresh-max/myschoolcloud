@@ -993,22 +993,39 @@ module.exports = function(db, notificationsActions) {
     adminGetFinancialStats: async (req, res) => {
       try {
         const { term, session } = req.body;
-        // Simple aggregation
-        const paymentsSnap = await db.collection("payments").get();
-        let totalIncome = 0;
+
+        // Total billed & outstanding from bills collection
+        const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
+        let totalBilled = 0, totalOutstanding = 0;
+        billsSnap.forEach(doc => {
+          const d = doc.data();
+          totalBilled += Number(d.totalBilled || 0);
+          totalOutstanding += Number(d.balance || 0);
+        });
+
+        // Total collected from approved payments
+        const paymentsSnap = await db.collection("payments").where("term", "==", term).where("session", "==", session).get();
+        let totalCollected = 0;
         paymentsSnap.forEach(doc => {
           const d = doc.data();
-          if (d.status === "Approved") totalIncome += Number(d.amount || 0);
+          if (d.status === "Approved") totalCollected += Number(d.amount || 0);
         });
-        
+
+        // Total expenses
         const expensesSnap = await db.collection("expenses").get();
-        let totalExpense = 0;
-        expensesSnap.forEach(doc => {
-          totalExpense += Number(doc.data().amount || 0);
+        let totalExpenses = 0;
+        expensesSnap.forEach(doc => { totalExpenses += Number(doc.data().amount || 0); });
+
+        const netBalance = totalCollected - totalExpenses;
+
+        return res.json({
+          success: true,
+          totalBilled,
+          totalCollected,
+          totalOutstanding,
+          totalExpenses,
+          netBalance
         });
-        
-        const balance = totalIncome - totalExpense;
-        return res.json({ success: true, income: totalIncome, expense: totalExpense, balance: balance });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
@@ -1026,7 +1043,7 @@ module.exports = function(db, notificationsActions) {
         billsSnap.forEach(doc => {
           const b = doc.data();
           if(!studentBalances[b.studentId]) studentBalances[b.studentId] = { studentName: b.studentName, class: b.className, totalBilled: 0, totalPaid: 0 };
-          studentBalances[b.studentId].totalBilled += Number(b.amount || 0);
+          studentBalances[b.studentId].totalBilled += Number(b.totalBilled || 0);
         });
         
         paymentsSnap.forEach(doc => {
@@ -1079,12 +1096,15 @@ module.exports = function(db, notificationsActions) {
         const billsSnap = await db.collection("bills").where("studentId", "==", studentId).get();
         const paymentsSnap = await db.collection("payments").where("studentId", "==", studentId).get();
         
-        const bills = billsSnap.docs.map(doc => ({ id: doc.id, type: 'bill', ...doc.data() }));
-        const payments = paymentsSnap.docs.map(doc => ({ id: doc.id, type: 'payment', ...doc.data() }));
+        const bills = billsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const payments = paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Calculate credit balance (overpayments)
+        const totalBilled = bills.reduce((s, b) => s + Number(b.totalBilled || 0), 0);
+        const totalPaid = payments.filter(p => p.status === 'Approved').reduce((s, p) => s + Number(p.amount || 0), 0);
+        const creditBalance = Math.max(0, totalPaid - totalBilled);
         
-        let ledger = [...bills, ...payments].sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
-        
-        return res.json({ success: true, data: ledger });
+        return res.json({ success: true, bills, payments, creditBalance });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
@@ -1321,8 +1341,57 @@ module.exports = function(db, notificationsActions) {
       const { studentId, discountConfig } = req.body;
       if (!studentId || !discountConfig) return res.json({ success: false, message: "Student ID and config required." });
       try {
+        // Save discount config to student profile
         await db.collection("students").doc(studentId).update({ discountConfig });
-        return res.json({ success: true, message: "Student discount configured successfully." });
+
+        // Also recalculate & update any existing bills for this student
+        const billsSnap = await db.collection("bills").where("studentId", "==", studentId).get();
+        if (!billsSnap.empty) {
+          const batch = db.batch();
+          for (const billDoc of billsSnap.docs) {
+            const bill = billDoc.data();
+            // Fetch fee structure to get lineItems for percentage calc
+            let lineItems = [];
+            const feeSnap = await db.collection("feeStructure")
+              .where("className", "==", bill.className)
+              .where("term", "==", bill.term)
+              .where("session", "==", bill.session)
+              .limit(1).get();
+            if (!feeSnap.empty) {
+              const feeData = feeSnap.docs[0].data();
+              try { lineItems = typeof feeData.lineItems === 'string' ? JSON.parse(feeData.lineItems) : (feeData.lineItems || []); } catch(e){}
+            }
+
+            // Get original total from fee structure (before any discount)
+            const feeTotal = !feeSnap.empty ? (parseFloat(feeSnap.docs[0].data().totalFee) || 0) : (parseFloat(bill.totalBilled) || 0);
+
+            let discountAmount = 0;
+            if (discountConfig.type && discountConfig.type !== 'none') {
+              if (discountConfig.type === 'fixed') {
+                discountAmount = parseFloat(discountConfig.value) || 0;
+              } else if (discountConfig.type === 'percentage') {
+                const tuitionItem = lineItems.find(i => i.name && i.name.toLowerCase().includes('tuition'));
+                const tuitionAmount = tuitionItem ? (parseFloat(tuitionItem.amount) || 0) : 0;
+                discountAmount = (parseFloat(discountConfig.value) || 0) / 100 * tuitionAmount;
+              }
+            }
+
+            const newTotal = Math.max(0, feeTotal - discountAmount);
+            const totalPaid = parseFloat(bill.totalPaid) || 0;
+            const newBalance = Math.max(0, newTotal - totalPaid);
+            const newStatus = newBalance <= 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Outstanding');
+
+            batch.update(billDoc.ref, {
+              totalBilled: newTotal,
+              discountAmount,
+              balance: newBalance,
+              status: newStatus
+            });
+          }
+          await batch.commit();
+        }
+
+        return res.json({ success: true, message: "Student discount applied and bills updated successfully." });
       } catch (err) {
         return res.json({ success: false, message: "Error setting discount: " + err.message });
       }
