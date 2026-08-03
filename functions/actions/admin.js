@@ -1084,6 +1084,17 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    adminDeleteBill: async (req, res) => {
+      try {
+        const { billId } = req.body;
+        if (!billId) return res.json({ success: false, message: "Bill ID is required." });
+        await db.collection("bills").doc(billId).delete();
+        return res.json({ success: true, message: "Bill deleted successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: "Error deleting bill: " + err.message });
+      }
+    },
+
     adminRecordPayment: async (req, res) => {
       try {
         const { data } = req.body;

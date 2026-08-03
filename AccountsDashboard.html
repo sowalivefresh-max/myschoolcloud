@@ -721,9 +721,12 @@
           {key:'balance', render:function(r){return '<strong class="text-danger">'+formatNaira(r.balance)+'</strong>';}},
           {key:'status', render:function(r){return formatStatus(r.status);}}
         ], bills, function(r){
-          return '<button class="aa-btn aa-btn-outline aa-btn-xs me-1" onclick="openPaymentModal(\''+(r.studentID||r.studentId)+'\')">Record Payment</button>' +
-                 '<button class="aa-btn aa-btn-warning aa-btn-xs me-1" onclick="openDiscountModal(\''+(r.studentID||r.studentId)+'\')" title="Set Discount"><i class="fa fa-percent"></i></button>' +
-                 '<button class="aa-btn aa-btn-info aa-btn-xs" onclick="viewLedger(\''+(r.studentID||r.studentId)+'\')">Ledger</button>';
+          var bid = r.id||r.iD;
+          var sid = r.studentID||r.studentId;
+          return '<button class="aa-btn aa-btn-outline aa-btn-xs me-1" onclick="openPaymentModal(\''+sid+'\')">' + 'Record Payment</button>' +
+                 '<button class="aa-btn aa-btn-warning aa-btn-xs me-1" onclick="openDiscountModal(\''+sid+'\')" title="Set Discount"><i class="fa fa-percent"></i></button>' +
+                 '<button class="aa-btn aa-btn-info aa-btn-xs me-1" onclick="viewLedger(\''+sid+'\')">' + 'Ledger</button>' +
+                 '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="deleteBill(\''+bid+'\')" title="Delete Bill"><i class="fa fa-trash"></i></button>';
         });
       }, null, true);
 
@@ -752,6 +755,14 @@
     function generateBills() {
       aaConfirm('Generate term bills for all active students based on current fee structures? This will skip existing bills.', function() {
         callServer('adminGenerateBills', [AA.token, currentTerm, currentSession], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){loadBills();loadDashboard();} }, null, true);
+      });
+    }
+    function deleteBill(billId) {
+      aaConfirm('Delete this bill record? This will allow it to be regenerated. This cannot be undone.', function() {
+        callServer('adminDeleteBill', [AA.token, billId], function(res) {
+          showToast(res.message, res.success?'success':'error');
+          if(res.success){ loadBills(); loadDashboard(); }
+        }, null, true);
       });
     }
     function savePayment() {

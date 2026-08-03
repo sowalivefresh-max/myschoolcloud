@@ -164,6 +164,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
         if (action === "adminRecordExpense") { req.body.data = args[1]; }
         if (action === "adminDeleteExpense") { req.body.expenseId = args[1]; }
+        if (action === "adminDeleteBill") { req.body.billId = args[1]; }
         if (action === "adminSendReminders") { req.body.term = args[1]; req.body.session = args[2]; req.body.batchSize = args[3]; }
         if (action === "adminGetSubjects") { /* no args */ }
         
@@ -292,6 +293,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGenerateBills(req, res));
       case "adminGetBills":
         return requireRole(req, res, () => adminActions.adminGetBills(req, res));
+      case "adminDeleteBill":
+        return requireRole(req, res, () => adminActions.adminDeleteBill(req, res));
       
       // New Accounts & Finance Endpoints
       case "adminGetFinancialStats":
