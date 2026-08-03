@@ -1142,7 +1142,7 @@ module.exports = function(db, notificationsActions) {
     adminDeleteFeeStructure: async (req, res) => {
       try {
         const { feeId } = req.body;
-        await db.collection("feeStructures").doc(feeId).delete();
+        await db.collection("feeStructure").doc(feeId).delete();
         return res.json({ success: true, message: "Fee structure deleted." });
       } catch (err) {
         return res.json({ success: false, message: err.message });

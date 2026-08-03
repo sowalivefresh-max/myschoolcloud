@@ -131,6 +131,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminApprovePayment") { req.body.paymentId = args[1]; }
         if (action === "adminRejectPayment") { req.body.paymentId = args[1]; }
         if (action === "adminSaveFeeStructure") { req.body.data = args[1]; }
+        if (action === "adminDeleteFeeStructure") { req.body.feeId = args[1]; }
         if (action === "adminGenerateBills") { req.body.term = args[1]; req.body.session = args[2]; req.body.classFilters = args[3]; }
         
         // Phase 2 Mappings
