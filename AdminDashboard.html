@@ -177,6 +177,7 @@
                   <i class="fa fa-search"></i>
                   <input type="text" id="search-users" class="aa-input" placeholder="Search users..." onkeyup="filterTable('search-users', 'usersTable')">
                 </div>
+                <button class="aa-btn aa-btn-success" onclick="openParentInvites()"><i class="fa fa-link"></i> Parent Invites</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('userModal');resetForm('userForm');document.getElementById('userId').value='';document.getElementById('userSigPreview').innerHTML='<i class=\'fa fa-signature text-muted\'></i>';applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add User</button>
               </div>
             </div>
@@ -891,6 +892,66 @@
       <div class="aa-modal-footer">
         <button class="aa-btn aa-btn-outline" onclick="closeModal('gradingModal')">Cancel</button>
         <button class="aa-btn aa-btn-primary" onclick="saveGrade()">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================
+       PARENT INVITE MODAL
+  ====================================================== -->
+  <div class="aa-modal-backdrop" id="parentInviteModal">
+    <div class="aa-modal" style="max-width:680px;">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title"><i class="fa fa-link" style="margin-right:8px;color:#10b981;"></i>Parent Registration Invites</h5>
+        <button class="aa-modal-close" onclick="closeModal('parentInviteModal')"><i class='fa fa-times'></i></button>
+      </div>
+      <div class="aa-modal-body">
+        <!-- Generate Section -->
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+          <div style="font-weight:600;color:#e2e8f0;margin-bottom:12px;"><i class="fa fa-paper-plane" style="margin-right:8px;color:#6366f1;"></i>Generate New Invite</div>
+          <div class="aa-grid-2" style="gap:12px;align-items:flex-end;">
+            <div class="aa-form-group mb-0">
+              <label class="aa-label">Link to Student (Optional)</label>
+              <select id="inviteStudentSelect" class="aa-select">
+                <option value="">No specific student</option>
+              </select>
+              <div class="aa-helper">If selected, parent will be auto-linked to this student on registration.</div>
+            </div>
+            <div class="aa-form-group mb-0">
+              <button class="aa-btn aa-btn-primary w-100" onclick="generateParentInvite()"><i class="fa fa-plus"></i> Generate Invite Link</button>
+            </div>
+          </div>
+
+          <!-- Generated link display -->
+          <div id="inviteLinkBox" style="display:none;margin-top:16px;">
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:14px 16px;">
+              <div style="font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Invite Link (Valid 48 hours)</div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <input type="text" id="generatedInviteLink" class="aa-input" style="flex:1;font-size:12px;" readonly>
+                <button class="aa-btn aa-btn-outline aa-btn-sm" onclick="copyInviteLink()" title="Copy Link"><i class="fa fa-copy"></i></button>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                <button class="aa-btn aa-btn-success" onclick="shareViaWhatsApp()" style="flex:1;min-width:140px;">
+                  <i class="fab fa-whatsapp"></i> Send via WhatsApp
+                </button>
+                <button class="aa-btn aa-btn-primary" onclick="shareViaEmail()" style="flex:1;min-width:140px;">
+                  <i class="fa fa-envelope"></i> Send via Email
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invite History -->
+        <div>
+          <div style="font-weight:600;color:#e2e8f0;margin-bottom:12px;"><i class="fa fa-history" style="margin-right:8px;color:#64748b;"></i>Recent Invites</div>
+          <div class="aa-table-wrap">
+            <table class="aa-table" id="invitesTable">
+              <thead><tr><th>Created</th><th>Linked Student</th><th>Status</th><th>Expires</th><th>Action</th></tr></thead>
+              <tbody><tr><td colspan="5" style="text-align:center;color:#64748b;">Loading invites...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2133,6 +2194,127 @@
           }, null, true);
         });
       }
+    }
+
+    // ================================================================
+    //  PARENT INVITE SYSTEM
+    // ================================================================
+
+    var currentInviteLink = '';
+    var currentInviteSchoolName = '';
+
+    function openParentInvites() {
+      // Populate student dropdown
+      var sel = document.getElementById('inviteStudentSelect');
+      sel.innerHTML = '<option value="">No specific student</option>';
+      if (globalStudents && globalStudents.length) {
+        globalStudents.forEach(function(s) {
+          var opt = document.createElement('option');
+          opt.value = s.id || s.iD;
+          opt.textContent = (s.fullName || 'Student') + (s.className ? ' — ' + s.className : '');
+          sel.appendChild(opt);
+        });
+      }
+      document.getElementById('inviteLinkBox').style.display = 'none';
+      openModal('parentInviteModal');
+      loadInviteHistory();
+    }
+
+    function generateParentInvite() {
+      var linkedStudentId = document.getElementById('inviteStudentSelect').value || null;
+      callServer('adminGenerateParentInvite', [AA.token, linkedStudentId], function(res) {
+        if (!res.success) { showToast(res.message || 'Failed to generate invite', 'error'); return; }
+        
+        // Build the public URL for the registration page
+        var baseUrl = window.location.href.replace(/\/[^\/]*$/, '/');
+        currentInviteLink = baseUrl + 'ParentRegister.html?token=' + encodeURIComponent(res.token);
+        currentInviteSchoolName = res.schoolName || 'the school portal';
+
+        document.getElementById('generatedInviteLink').value = currentInviteLink;
+        document.getElementById('inviteLinkBox').style.display = 'block';
+        showToast('Invite link generated! Share it with the parent.', 'success');
+        loadInviteHistory();
+      }, null, true);
+    }
+
+    function copyInviteLink() {
+      var inp = document.getElementById('generatedInviteLink');
+      inp.select();
+      inp.setSelectionRange(0, 99999);
+      try {
+        navigator.clipboard.writeText(inp.value).then(function() {
+          showToast('Link copied to clipboard!', 'success');
+        });
+      } catch(e) {
+        document.execCommand('copy');
+        showToast('Link copied to clipboard!', 'success');
+      }
+    }
+
+    function shareViaWhatsApp() {
+      if (!currentInviteLink) return;
+      var msg = 'Hello! You are invited to create your parent account on ' + currentInviteSchoolName + '\'s school portal.\n\nClick the link below to register (valid for 48 hours):\n' + currentInviteLink + '\n\nIf you have any issues, please contact the school office.';
+      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+    }
+
+    function shareViaEmail() {
+      if (!currentInviteLink) return;
+      var subject = encodeURIComponent('Your Parent Portal Registration Invite — ' + currentInviteSchoolName);
+      var body = encodeURIComponent(
+        'Dear Parent,\n\nYou have been invited to create your parent account on ' + currentInviteSchoolName + '\'s school portal.\n\n' +
+        'Please click the link below to complete your registration (this link is valid for 48 hours):\n\n' +
+        currentInviteLink + '\n\n' +
+        'Once registered, you will be able to:\n' +
+        '  • View your child\'s academic results\n' +
+        '  • Track attendance records\n' +
+        '  • Pay school fees online\n' +
+        '  • Receive school announcements\n\n' +
+        'If you have any questions, please contact the school office.\n\nRegards,\n' + currentInviteSchoolName
+      );
+      window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
+    }
+
+    function loadInviteHistory() {
+      var tbody = document.querySelector('#invitesTable tbody');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#64748b;">Loading...</td></tr>';
+      callServer('adminGetParentInvites', [AA.token], function(data) {
+        if (!data || !data.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:20px;">No invites generated yet.</td></tr>';
+          return;
+        }
+        var rows = '';
+        data.forEach(function(inv) {
+          var statusBadge = {
+            pending:  '<span class="aa-badge aa-badge-warning">Pending</span>',
+            used:     '<span class="aa-badge aa-badge-success">Used</span>',
+            revoked:  '<span class="aa-badge" style="background:#ef444420;color:#ef4444;">Revoked</span>',
+            expired:  '<span class="aa-badge" style="background:#94a3b820;color:#94a3b8;">Expired</span>'
+          }[inv.effectiveStatus || inv.status] || '<span class="aa-badge">Unknown</span>';
+
+          var linkedName = inv.linkedStudentId ? (globalStudents || []).reduce(function(found, s) {
+            return (s.id === inv.linkedStudentId || s.iD === inv.linkedStudentId) ? (s.fullName || '—') : found;
+          }, '—') : '—';
+
+          var created = new Date(inv.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+          var expires = new Date(inv.expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+          
+          var revokeBtn = (inv.status === 'pending') 
+            ? '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="revokeInvite(\'' + inv.id + '\')"><i class="fa fa-ban"></i></button>'
+            : '—';
+
+          rows += '<tr><td>' + created + '</td><td>' + AA.escapeHTML(linkedName) + '</td><td>' + statusBadge + '</td><td>' + expires + '</td><td>' + revokeBtn + '</td></tr>';
+        });
+        tbody.innerHTML = rows;
+      });
+    }
+
+    function revokeInvite(token) {
+      aaConfirm('Revoke this invite link? The parent will no longer be able to use it.', function() {
+        callServer('adminRevokeParentInvite', [AA.token, token], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+          if (res.success) loadInviteHistory();
+        }, null, true);
+      });
     }
 
   </script>

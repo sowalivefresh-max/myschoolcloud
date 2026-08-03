@@ -219,6 +219,118 @@ module.exports = function(db) {
       // In a real app, send an email with a reset token here.
       // For now, we simulate success so the UI doesn't crash.
       return res.json({ success: true, message: "If that email exists, a password reset link has been sent." });
+    },
+
+    // ================================================================
+    // PARENT SELF-REGISTRATION
+    // ================================================================
+
+    validateParentInvite: async (req, res) => {
+      const { token } = req.body;
+      if (!token) return res.json({ success: false, message: "Invite token is required." });
+
+      try {
+        const inviteDoc = await db.collection("parent_invites").doc(token).get();
+        if (!inviteDoc.exists) {
+          return res.json({ success: false, message: "Invalid invite link. Please request a new one from the school." });
+        }
+
+        const invite = inviteDoc.data();
+
+        if (invite.status === "used") {
+          return res.json({ success: false, message: "This invite link has already been used. Please contact the school if you need a new one." });
+        }
+        if (invite.status === "revoked") {
+          return res.json({ success: false, message: "This invite link has been revoked. Please contact the school for a new one." });
+        }
+        if (new Date(invite.expiresAt) < new Date()) {
+          return res.json({ success: false, message: "This invite link has expired (valid for 48 hours). Please request a new one." });
+        }
+
+        // Optionally get the linked student name if present
+        let linkedStudentName = null;
+        if (invite.linkedStudentId) {
+          const stuDoc = await db.collection("students").doc(invite.linkedStudentId).get();
+          if (stuDoc.exists) linkedStudentName = stuDoc.data().fullName;
+        }
+
+        return res.json({
+          success: true,
+          schoolName: invite.schoolName || "MySchool Cloud",
+          linkedStudentId: invite.linkedStudentId || null,
+          linkedStudentName
+        });
+      } catch (err) {
+        return res.json({ success: false, message: "Error validating invite: " + err.message });
+      }
+    },
+
+    parentSelfRegister: async (req, res) => {
+      const { token, fullName, email, password, phone } = req.body;
+
+      if (!token || !fullName || !email || !password) {
+        return res.json({ success: false, message: "All required fields must be filled." });
+      }
+
+      try {
+        // 1. Re-validate the invite token
+        const inviteDoc = await db.collection("parent_invites").doc(token).get();
+        if (!inviteDoc.exists) return res.json({ success: false, message: "Invalid invite token." });
+
+        const invite = inviteDoc.data();
+        if (invite.status !== "pending") return res.json({ success: false, message: "This invite has already been used or revoked." });
+        if (new Date(invite.expiresAt) < new Date()) return res.json({ success: false, message: "This invite has expired. Please request a new one." });
+
+        // 2. Check if email already in use
+        const existing = await db.collection("users").where("email", "==", email.trim().toLowerCase()).get();
+        if (!existing.empty) return res.json({ success: false, message: "An account with this email already exists. Please use the Login page." });
+
+        // 3. Create parent account
+        const passwordHash = await bcrypt.hash(String(password), 10);
+        const newUserRef = db.collection("users").doc();
+        const userData = {
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone || "",
+          role: "parent",
+          section: "both",
+          status: "active",
+          passwordHash,
+          salt: null,
+          createdAt: new Date().toISOString(),
+          createdVia: "parent_self_registration"
+        };
+        await newUserRef.set(userData);
+
+        // 4. Link to student if applicable
+        if (invite.linkedStudentId) {
+          try {
+            await db.collection("students").doc(invite.linkedStudentId).update({ parentId: newUserRef.id });
+          } catch (e) {
+            console.error("Could not link parent to student:", e.message);
+          }
+        }
+
+        // 5. Mark invite as used
+        await db.collection("parent_invites").doc(token).update({
+          status: "used",
+          usedAt: new Date().toISOString(),
+          usedBy: email.trim().toLowerCase(),
+          parentUserId: newUserRef.id
+        });
+
+        // 6. Audit log
+        await db.collection("audit_logs").add({
+          timestamp: new Date().toISOString(),
+          userId: newUserRef.id,
+          action: "PARENT_SELF_REGISTERED",
+          details: `${fullName.trim()} registered as parent via invite link`
+        });
+
+        return res.json({ success: true, message: "Account created successfully! You can now log in." });
+      } catch (err) {
+        return res.json({ success: false, message: "Registration failed: " + err.message });
+      }
     }
   };
 };

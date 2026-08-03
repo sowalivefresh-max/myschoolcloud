@@ -179,6 +179,12 @@ app.post("/api", async (req, res) => {
         if (action === "parentGetPayments") { req.body.studentId = args[1]; }
         if (action === "parentSubmitPaymentData") { req.body.data = args[1]; }
         if (action === "parentDownloadReceipt") { req.body.paymentId = args[1]; }
+        
+        // Parent Invite Mappings
+        if (action === "adminGenerateParentInvite") { req.body.linkedStudentId = args[1]; }
+        if (action === "adminRevokeParentInvite") { req.body.token = args[1]; }
+        if (action === "validateParentInvite") { req.body.token = args[0]; }
+        if (action === "parentSelfRegister") { req.body.token = args[0]; req.body.fullName = args[1]; req.body.email = args[2]; req.body.password = args[3]; req.body.phone = args[4]; }
       }
     }
   }
@@ -369,6 +375,20 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => notificationsActions.getNotifications(req, res));
       case "markNotificationRead":
         return requireRole(req, res, () => notificationsActions.markNotificationRead(req, res));
+
+      // --- PARENT INVITE ACTIONS ---
+      case "adminGenerateParentInvite":
+        return requireRole(req, res, () => adminActions.adminGenerateParentInvite(req, res));
+      case "adminGetParentInvites":
+        return requireRole(req, res, () => adminActions.adminGetParentInvites(req, res));
+      case "adminRevokeParentInvite":
+        return requireRole(req, res, () => adminActions.adminRevokeParentInvite(req, res));
+      
+      // Public (no session required) — parent self-registration
+      case "validateParentInvite":
+        return authActions.validateParentInvite(req, res);
+      case "parentSelfRegister":
+        return authActions.parentSelfRegister(req, res);
 
       // Add more routes here as we build chunks...
 

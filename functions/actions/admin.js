@@ -1222,6 +1222,76 @@ module.exports = function(db, notificationsActions) {
       } catch(err) {
         return res.json({ success: false, message: err.message });
       }
+    },
+
+    // =============================================================
+    // PARENT SELF-REGISTRATION INVITE SYSTEM
+    // =============================================================
+
+    adminGenerateParentInvite: async (req, res) => {
+      try {
+        const { linkedStudentId } = req.body;
+        const token = uuidv4();
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48 hours
+
+        // Fetch school name for the invite
+        const cfgDoc = await db.collection("settings").doc("global").get();
+        const cfg = cfgDoc.exists ? cfgDoc.data() : {};
+        const schoolName = cfg.school_name || cfg.schoolName || "MySchool Cloud";
+
+        const inviteData = {
+          token,
+          schoolName,
+          createdBy: req.session ? req.session.userId : "admin",
+          createdByName: req.session ? req.session.fullName : "Admin",
+          createdAt: now.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          status: "pending",
+          linkedStudentId: linkedStudentId || null
+        };
+
+        await db.collection("parent_invites").doc(token).set(inviteData);
+
+        return res.json({ success: true, token, schoolName, expiresAt: expiresAt.toISOString() });
+      } catch (err) {
+        return res.json({ success: false, message: "Error generating invite: " + err.message });
+      }
+    },
+
+    adminGetParentInvites: async (req, res) => {
+      try {
+        const snap = await db.collection("parent_invites")
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+
+        const invites = [];
+        const now = new Date();
+        snap.forEach(doc => {
+          const d = doc.data();
+          // Auto-mark expired invites for display
+          const effectiveStatus = d.status === "pending" && new Date(d.expiresAt) < now
+            ? "expired"
+            : d.status;
+          invites.push({ id: doc.id, ...d, effectiveStatus });
+        });
+
+        return res.json({ success: true, data: invites });
+      } catch (err) {
+        return res.json({ success: false, message: "Error fetching invites: " + err.message });
+      }
+    },
+
+    adminRevokeParentInvite: async (req, res) => {
+      const { token } = req.body;
+      if (!token) return res.json({ success: false, message: "Token required." });
+      try {
+        await db.collection("parent_invites").doc(token).update({ status: "revoked" });
+        return res.json({ success: true, message: "Invite revoked successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: "Error revoking invite: " + err.message });
+      }
     }
 
   };
