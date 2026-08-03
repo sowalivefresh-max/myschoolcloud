@@ -101,7 +101,8 @@ app.post("/api", async (req, res) => {
         // Positional mappings for specific auth routes
         if (action === "loginUser") { req.body.email = args[0]; req.body.password = args[1]; }
         if (action === "requestPasswordReset") { req.body.email = args[0]; }
-        if (action === "userChangePassword") { req.body.oldPassword = args[0]; req.body.newPassword = args[1]; }
+        if (action === "userChangePassword") { req.body.token = args[0]; req.body.oldPassword = args[1]; req.body.newPassword = args[2]; }
+        if (action === "userUpdateProfile") { req.body.data = args[1]; }
         if (action === "markNotificationRead") { req.body.notificationId = args[0]; }
         
         // Positional mappings for other routes that pass more than just token
