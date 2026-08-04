@@ -393,7 +393,10 @@
             </div>
             
             <div class="aa-card">
-              <div class="aa-card-header"><h3 class="aa-card-title">Top Debtors</h3></div>
+              <div class="aa-card-header">
+                <h3 class="aa-card-title">Top Debtors</h3>
+                <button class="aa-btn aa-btn-primary aa-btn-sm" onclick="downloadDebtorsReport()"><i class="fa fa-download"></i> Export CSV</button>
+              </div>
               <div class="aa-card-body" style="padding:0;">
                 <table class="aa-table" id="finDebtorsTable">
                   <thead><tr><th>Student Name</th><th>Class</th><th>Balance</th></tr></thead>
@@ -1649,6 +1652,32 @@
           
           showToast('Download started.', 'success');
         }, null, true);
+      }, null, true);
+    }
+
+    function downloadDebtorsReport() {
+      showToast('Generating debtors report...', 'info');
+      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(debtorsData) {
+        if (!debtorsData || debtorsData.length === 0) {
+          showToast('No debtors found to export.', 'warning');
+          return;
+        }
+        var csvContent = "data:text/csv;charset=utf-8,Student Name,Class,Outstanding Balance\n";
+        debtorsData.forEach(function(r) {
+          var name = '"' + String(r.fullName).replace(/"/g, '""') + '"';
+          var cls = '"' + String(r.className).replace(/"/g, '""') + '"';
+          csvContent += name + "," + cls + "," + (r.outstanding || 0) + "\n";
+        });
+        
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "Debtors_Report_" + currentTerm + "_" + currentSession + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('Download started.', 'success');
       }, null, true);
     }
 
