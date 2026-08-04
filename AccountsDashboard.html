@@ -236,7 +236,7 @@
         <input type="hidden" id="feeId">
         <div class="aa-grid-2 mb-3">
           <div class="aa-form-group">
-            <label class="aa-label">Class Name</label>
+            <label class="aa-label">Class Name <small>(Hold Ctrl/Cmd to select multiple)</small></label>
             <select id="feeClassName" class="aa-select" required></select>
           </div>
           <div class="aa-form-group">
@@ -607,7 +607,10 @@
 
     function openNewFeeModal() {
       document.getElementById('feeId').value = '';
-      document.getElementById('feeClassName').value = '';
+      var feeClassSelect = document.getElementById('feeClassName');
+      feeClassSelect.multiple = true;
+      feeClassSelect.style.height = '120px';
+      Array.from(feeClassSelect.options).forEach(function(o){o.selected=false;});
       document.getElementById('feeSectionSelect').value = AA.user && AA.user.section && AA.user.section !== 'both' ? AA.user.section : 'high';
       document.getElementById('feeItemsList').innerHTML = '';
       // Seed with 2 default rows
@@ -649,7 +652,10 @@
         var f = data.find(function(x){return String(x.id||x.iD)===String(id);});
         if (!f) return;
         document.getElementById('feeId').value = id;
-        document.getElementById('feeClassName').value = f.className || '';
+        var feeClassSelect = document.getElementById('feeClassName');
+        feeClassSelect.multiple = false;
+        feeClassSelect.style.height = 'auto';
+        feeClassSelect.value = f.className || '';
         document.getElementById('feeSectionSelect').value = f.section || 'high';
         document.getElementById('feeItemsList').innerHTML = '';
         var items = [];
@@ -677,9 +683,13 @@
     }
 
     function saveFeeStructure() {
-      var className = document.getElementById('feeClassName').value.trim();
+      var feeClassSelect = document.getElementById('feeClassName');
+      var classesArr = Array.from(feeClassSelect.selectedOptions).map(function(opt) { return opt.value; });
+      var className = classesArr.join(',').trim();
+      var id = document.getElementById('feeId').value || '';
       var section = document.getElementById('feeSectionSelect').value;
       if (!className) return showToast('Class name is required.', 'error');
+      if (id && classesArr.length > 1) return showToast('You can only select one class when editing an existing fee structure.', 'error');
       var items = [];
       var rows = document.querySelectorAll('#feeItemsList .fee-item-row');
       var hasError = false;
