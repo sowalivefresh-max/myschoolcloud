@@ -534,6 +534,35 @@ module.exports = function(db, notificationsActions) {
       const data = req.body.data;
       if (!data || !data.fullName) return res.json({ success: false, message: "Student name is required." });
       try {
+        // Auto-generate admission number
+        const settingsSnap = await db.collection("settings").doc("global").get();
+        let prefix = "SCH";
+        if (settingsSnap.exists) {
+          const sData = settingsSnap.data();
+          if (sData.school_prefix) {
+            prefix = sData.school_prefix.trim().toUpperCase();
+          } else if (sData.school_name) {
+            prefix = sData.school_name.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase();
+          }
+        }
+        if (!prefix || prefix.length === 0) prefix = "SCH";
+        
+        const year = String(new Date().getFullYear()).slice(-2);
+        
+        const counterRef = db.collection("settings").doc("counters");
+        const newSerial = await db.runTransaction(async (t) => {
+          const doc = await t.get(counterRef);
+          let nextVal = 1;
+          if (doc.exists) {
+            nextVal = (doc.data().admission_serial || 0) + 1;
+          }
+          t.set(counterRef, { admission_serial: nextVal }, { merge: true });
+          return nextVal;
+        });
+        
+        const serialStr = String(newSerial).padStart(4, '0');
+        data.admissionNumber = `${prefix}/${year}/${serialStr}`;
+
         const docRef = db.collection("students").doc();
         await docRef.set({ status: "active", ...data, createdAt: new Date().toISOString() });
         return res.json({ success: true, message: "Student created successfully." });
