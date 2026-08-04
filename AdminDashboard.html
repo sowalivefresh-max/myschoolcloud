@@ -369,22 +369,34 @@
             </div>
           </div>
           
-          <div class="aa-card">
-            <div class="aa-card-header">
-              <h3 class="aa-card-title">Recent Transactions</h3>
-              <div class="d-flex gap-2" style="align-items: center;">
-                <select id="financeReportType" class="aa-input" style="width:auto; padding:4px 8px; margin-right:5px; height: 32px;" onchange="filterFinanceTable()">
-                  <option value="both">All</option>
-                  <option value="income">Income</option>
-                  <option value="expenses">Expenses</option>
-                </select>
-                <button class="aa-btn aa-btn-primary aa-btn-sm" onclick="downloadFinancialReport()"><i class="fa fa-download"></i> Export CSV</button>
+          <div class="aa-grid-2">
+            <div class="aa-card">
+              <div class="aa-card-header">
+                <h3 class="aa-card-title">Recent Transactions</h3>
+                <div class="d-flex gap-2" style="align-items: center;">
+                  <select id="financeReportType" class="aa-input" style="width:auto; padding:4px 8px; margin-right:5px; height: 32px;" onchange="filterFinanceTable()">
+                    <option value="both">All</option>
+                    <option value="income">Income</option>
+                    <option value="expenses">Expenses</option>
+                  </select>
+                  <button class="aa-btn aa-btn-primary aa-btn-sm" onclick="downloadFinancialReport()"><i class="fa fa-download"></i> Export CSV</button>
+                </div>
+              </div>
+              <div class="aa-card-body" style="padding:0;">
+                <div class="aa-table-wrap">
+                  <table class="aa-table" id="finTxTable">
+                    <thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
               </div>
             </div>
-            <div class="aa-card-body" style="padding:0;">
-              <div class="aa-table-wrap">
-                <table class="aa-table" id="finTxTable">
-                  <thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+            
+            <div class="aa-card">
+              <div class="aa-card-header"><h3 class="aa-card-title">Top Debtors</h3></div>
+              <div class="aa-card-body" style="padding:0;">
+                <table class="aa-table" id="finDebtorsTable">
+                  <thead><tr><th>Student Name</th><th>Class</th><th>Balance</th></tr></thead>
                   <tbody></tbody>
                 </table>
               </div>
@@ -1735,6 +1747,18 @@
 
           // Show pending approval count separately
           document.getElementById('fin-pending-approvals').textContent = pending.length > 0 ? pending.length : 0;
+
+          // Fetch top debtors
+          if(document.getElementById('finDebtorsTable')) {
+            callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(debtorsData) {
+              var top = debtorsData.slice(0, 10);
+              buildTable('finDebtorsTable', [
+                {key:'fullName'},
+                {key:'className'},
+                {key:'outstanding', render:function(r){ return '<span class="text-danger">'+formatNaira(r.outstanding)+'</span>'; }}
+              ], top);
+            });
+          }
 
           if(document.getElementById('finTxTable')) {
             buildTable('finTxTable', [
