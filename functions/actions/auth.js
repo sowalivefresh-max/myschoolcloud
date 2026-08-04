@@ -130,12 +130,20 @@ module.exports = function(db) {
       }
 
       try {
-        const allowedFields = ["phone", "address", "gender"]; // Only allow certain fields to be updated by user
+        const allowedFields = ["fullName", "phone", "address", "gender", "profilePicture", "email"]; // Fields allowed to be updated by user
         let safeUpdates = {};
         for (let key in updates) {
           if (allowedFields.includes(key)) {
             safeUpdates[key] = updates[key];
           }
+        }
+
+        if (safeUpdates.email) {
+          safeUpdates.email = safeUpdates.email.trim().toLowerCase();
+          const existing = await db.collection("users").where("email", "==", safeUpdates.email).get();
+          let conflict = false;
+          existing.forEach(doc => { if (doc.id !== req.session.userId) conflict = true; });
+          if (conflict) return res.json({ success: false, message: "That email is already in use by another account." });
         }
 
         if (Object.keys(safeUpdates).length > 0) {
