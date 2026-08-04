@@ -110,8 +110,27 @@ module.exports = function(db) {
           b.id = doc.id;
           bills.push(b);
         });
+        // Compute paid amount and balance per term/session
+        const paymentsSnap = await db.collection("payments").where("studentId", "==", studentId).where("status", "==", "Approved").get();
+        const paidMap = {};
+        paymentsSnap.forEach(doc => {
+          const p = doc.data();
+          const term = p.term || '';
+          const sess = p.session || '';
+          const key = term + "_" + sess;
+          paidMap[key] = (paidMap[key] || 0) + Number(p.amount || 0);
+        });
+
+        const enriched = bills.map(b => {
+          const key = (b.term || '') + "_" + (b.session || '');
+          const totalPaid = paidMap[key] || 0;
+          const netBilled = Number(b.totalBilled || 0);
+          const balance = Math.max(0, netBilled - totalPaid);
+          const status = balance === 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Unpaid');
+          return { ...b, totalPaid, balance, status };
+        });
         
-        return res.json({ success: true, data: bills });
+        return res.json({ success: true, data: enriched });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }

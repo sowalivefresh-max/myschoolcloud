@@ -1181,13 +1181,21 @@ module.exports = function(db, notificationsActions) {
         paymentsSnap.forEach(doc => {
           const p = doc.data();
           const sid = p.studentId || p.studentID;
-          if (sid) paidMap[sid] = (paidMap[sid] || 0) + Number(p.amount || 0);
+          const term = p.term || '';
+          const session = p.session || '';
+          if (sid) {
+            const key = sid + "_" + term + "_" + session;
+            paidMap[key] = (paidMap[key] || 0) + Number(p.amount || 0);
+          }
         });
 
         // Enrich bills with real paid amount and computed balance
         const enriched = bills.map(b => {
           const sid = b.studentId || b.studentID;
-          const totalPaid = paidMap[sid] || 0;
+          const term = b.term || '';
+          const session = b.session || '';
+          const key = sid + "_" + term + "_" + session;
+          const totalPaid = paidMap[key] || 0;
           const netBilled = Number(b.totalBilled || 0);
           const balance = Math.max(0, netBilled - totalPaid);
           const status = balance === 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Unpaid');
