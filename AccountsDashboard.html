@@ -793,7 +793,20 @@
     }
     function downloadReceipt(payId) {
       callServer('adminGenerateReceipt', [AA.token, payId], function(res){
-        if(res.success) window.open(res.previewUrl, '_blank'); else showToast(res.message, 'error');
+        if(res.success) {
+          // Decode the data URI and open in a new tab using document.write (avoids popup blockers)
+          var newTab = window.open('', '_blank');
+          if (newTab) {
+            var decoded = decodeURIComponent(res.previewUrl.replace('data:text/html;charset=utf-8,', ''));
+            newTab.document.open();
+            newTab.document.write(decoded);
+            newTab.document.close();
+          } else {
+            showToast('Popup blocked. Please allow popups for this site.', 'error');
+          }
+        } else {
+          showToast(res.message, 'error');
+        }
       }, null, true);
     }
 

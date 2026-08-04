@@ -1143,7 +1143,27 @@ module.exports = function(db, notificationsActions) {
       try {
         const snap = await db.collection("bills").get();
         const bills = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        return res.json({ success: true, data: bills });
+
+        // Aggregate approved payments per student to compute real totalPaid & balance
+        const paymentsSnap = await db.collection("payments").where("status", "==", "Approved").get();
+        const paidMap = {};
+        paymentsSnap.forEach(doc => {
+          const p = doc.data();
+          const sid = p.studentId || p.studentID;
+          if (sid) paidMap[sid] = (paidMap[sid] || 0) + Number(p.amount || 0);
+        });
+
+        // Enrich bills with real paid amount and computed balance
+        const enriched = bills.map(b => {
+          const sid = b.studentId || b.studentID;
+          const totalPaid = paidMap[sid] || 0;
+          const netBilled = Number(b.totalBilled || 0);
+          const balance = Math.max(0, netBilled - totalPaid);
+          const status = balance === 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Unpaid');
+          return { ...b, totalPaid, balance, status };
+        });
+
+        return res.json({ success: true, data: enriched });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
@@ -1163,10 +1183,58 @@ module.exports = function(db, notificationsActions) {
     adminRecordPayment: async (req, res) => {
       try {
         const { data } = req.body;
-        data.date = new Date().toISOString();
+        if (!data || !data.studentId) return res.json({ success: false, message: "Student and amount required." });
+        data.paymentDate = new Date().toISOString();
+        data.date = data.paymentDate;
         data.status = "Approved"; // Automatically approved if recorded by Admin/Accounts
-        await db.collection("payments").add(data);
-        return res.json({ success: true, message: "Payment recorded successfully." });
+        const payRef = await db.collection("payments").add(data);
+
+        // ---- SEND EMAIL RECEIPT ----
+        try {
+          const settingsDoc = await db.collection("settings").doc("global").get();
+          const settings = settingsDoc.data() || {};
+          if (settings.smtp_email && settings.smtp_password) {
+            const studentDoc = await db.collection("students").doc(data.studentId).get();
+            if (studentDoc.exists && studentDoc.data().parentId) {
+              const parentDoc = await db.collection("users").doc(studentDoc.data().parentId).get();
+              if (parentDoc.exists && parentDoc.data().email) {
+                const nodemailer = require("nodemailer");
+                const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: settings.smtp_email, pass: settings.smtp_password } });
+                const receiptNo = payRef.id.slice(-8).toUpperCase();
+                const mailOptions = {
+                  from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
+                  to: parentDoc.data().email,
+                  subject: `Payment Receipt: \u20a6${Number(data.amount).toLocaleString()} for ${data.studentName || 'your ward'}`,
+                  html: `
+                    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:8px;">
+                      <div style="text-align:center;border-bottom:2px solid #3b82f6;padding-bottom:15px;margin-bottom:20px;">
+                        <h2 style="color:#1e293b;margin:0;">Payment Receipt</h2>
+                        <h4 style="color:#64748b;margin:5px 0 0;">${settings.school_name || 'School Administration'}</h4>
+                      </div>
+                      <p>Dear ${parentDoc.data().fullName || 'Parent/Guardian'},</p>
+                      <p>Payment recorded by the accounts office has been confirmed. Details below:</p>
+                      <div style="background:#f8fafc;padding:15px;border-radius:6px;margin:20px 0;">
+                        <table style="width:100%;border-collapse:collapse;">
+                          <tr><td style="padding:8px 0;color:#64748b;width:40%;">Receipt No:</td><td style="font-weight:bold;color:#0f172a;">${receiptNo}</td></tr>
+                          <tr><td style="padding:8px 0;color:#64748b;">Student:</td><td style="font-weight:bold;color:#0f172a;">${data.studentName || '-'}</td></tr>
+                          <tr><td style="padding:8px 0;color:#64748b;">Amount Paid:</td><td style="font-weight:bold;color:#10b981;font-size:16px;">\u20a6${Number(data.amount).toLocaleString()}</td></tr>
+                          <tr><td style="padding:8px 0;color:#64748b;">Term/Session:</td><td style="font-weight:bold;color:#0f172a;">${data.term || '-'}, ${data.session || '-'}</td></tr>
+                          <tr><td style="padding:8px 0;color:#64748b;">Method:</td><td style="font-weight:bold;color:#0f172a;">${data.method || 'Bank Transfer'}</td></tr>
+                          <tr><td style="padding:8px 0;color:#64748b;">Date:</td><td style="font-weight:bold;color:#0f172a;">${new Date().toLocaleDateString()}</td></tr>
+                        </table>
+                      </div>
+                      <p>Thank you for your prompt payment!</p>
+                      <p style="color:#64748b;font-size:12px;margin-top:30px;border-top:1px solid #e2e8f0;padding-top:15px;">This is an automated message from the school accounts system.</p>
+                    </div>`
+                };
+                transporter.sendMail(mailOptions).catch(e => console.error("Receipt email failed:", e));
+              }
+            }
+          }
+        } catch(emailErr) { console.error("Email error:", emailErr); }
+        // ---- END SEND EMAIL RECEIPT ----
+
+        return res.json({ success: true, message: "Payment recorded successfully. A receipt has been emailed to the parent." });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
@@ -1198,20 +1266,52 @@ module.exports = function(db, notificationsActions) {
         const payDoc = await db.collection("payments").doc(paymentId).get();
         if(!payDoc.exists) return res.json({ success: false, message: "Payment not found" });
         const p = payDoc.data();
-        
-        let html = `<html><body style="font-family:sans-serif; text-align:center; padding:20px;">
-          <h2>Official Receipt</h2>
-          <p><strong>Receipt No:</strong> ${payDoc.id}</p>
-          <p><strong>Student:</strong> ${p.studentName}</p>
-          <p><strong>Amount Paid:</strong> ₦${p.amount}</p>
-          <p><strong>Method:</strong> ${p.method}</p>
-          <p><strong>Date:</strong> ${new Date(p.date || Date.now()).toLocaleDateString()}</p>
-          <hr/>
-          <p>Thank you!</p>
-        </body></html>`;
-        
+
+        const settingsDoc = await db.collection("settings").doc("global").get();
+        const settings = settingsDoc.data() || {};
+        const receiptNo = payDoc.id.slice(-8).toUpperCase();
+        const logoHtml = settings.school_logo_url ? `<img src="${settings.school_logo_url}" style="width:60px;height:60px;object-fit:contain;margin-right:15px;">` : `<div style="width:60px;height:60px;background:#0d1b2a;display:flex;align-items:center;justify-content:center;color:#f0a500;font-weight:bold;font-size:14px;margin-right:15px;">Logo</div>`;
+
+        let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+          <style>
+            body{font-family:"Times New Roman",serif;margin:0;padding:20px;color:#1a1a1a;}
+            .wrap{max-width:700px;margin:0 auto;border:3px double #0d1b2a;padding:20px;}
+            .hdr{display:flex;align-items:center;border-bottom:2px solid #0d1b2a;padding-bottom:12px;margin-bottom:16px;}
+            .school-name{font-size:20px;font-weight:bold;text-transform:uppercase;color:#0d1b2a;}
+            .title-badge{background:#0d1b2a;color:#f0a500;padding:4px 16px;font-size:13px;font-weight:bold;text-transform:uppercase;display:inline-block;margin-top:8px;}
+            table{width:100%;border-collapse:collapse;margin:16px 0;}
+            th{background:#0d1b2a;color:#f0a500;padding:6px 10px;border:1px solid #0d1b2a;}
+            td{padding:6px 10px;border:1px solid #ccc;}
+            tr:nth-child(even){background:#f8f8f8;}
+            .total-row td{font-weight:bold;font-size:14px;background:#e8f5e9;}
+            .footer{text-align:center;margin-top:20px;font-size:10px;color:#888;border-top:1px solid #e0e0e0;padding-top:10px;}
+          </style>
+        </head><body><div class="wrap">
+          <div class="hdr">
+            ${logoHtml}
+            <div>
+              <div class="school-name">${settings.school_name || 'MySchool Portal'}</div>
+              ${settings.school_address ? `<div style="font-size:11px;color:#555;">${settings.school_address}</div>` : ''}
+              <div class="title-badge">Official Payment Receipt</div>
+            </div>
+          </div>
+          <table>
+            <tr><th colspan="2" style="text-align:left;">Receipt Details</th></tr>
+            <tr><td>Receipt No</td><td><strong>${receiptNo}</strong></td></tr>
+            <tr><td>Student Name</td><td>${p.studentName || '-'}</td></tr>
+            <tr><td>Class</td><td>${p.className || '-'}</td></tr>
+            <tr><td>Term / Session</td><td>${p.term || '-'} / ${p.session || '-'}</td></tr>
+            <tr><td>Payment Method</td><td>${p.method || 'Bank Transfer'}</td></tr>
+            <tr><td>Date</td><td>${new Date(p.paymentDate || p.date || Date.now()).toLocaleDateString()}</td></tr>
+            <tr class="total-row"><td>Amount Paid</td><td style="color:#16a34a;font-size:16px;">\u20a6${Number(p.amount || 0).toLocaleString()}</td></tr>
+          </table>
+          ${p.receiptRef ? `<p style="font-size:11px;"><strong>Reference:</strong> ${p.receiptRef}</p>` : ''}
+          <p style="margin-top:20px;">This receipt confirms that the above payment has been received and approved by the accounts office.</p>
+          <div class="footer">Generated on ${new Date().toLocaleString()} &mdash; ${settings.school_name || 'MySchool Portal'}</div>
+        </div></body></html>`;
+
         const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
-        return res.json({ success: true, previewUrl: dataUri, downloadUrl: dataUri });
+        return res.json({ success: true, previewUrl: dataUri, receiptNo });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
