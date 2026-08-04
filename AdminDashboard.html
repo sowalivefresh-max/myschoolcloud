@@ -365,14 +365,12 @@
             <div class="aa-card-header">
               <h3 class="aa-card-title">Recent Transactions</h3>
               <div class="d-flex gap-2" style="align-items: center;">
-                <select id="financeReportType" class="aa-input" style="width:auto; padding:4px 8px; margin-right:5px; height: 32px;">
+                <select id="financeReportType" class="aa-input" style="width:auto; padding:4px 8px; margin-right:5px; height: 32px;" onchange="filterFinanceTable()">
                   <option value="both">All</option>
                   <option value="income">Income</option>
                   <option value="expenses">Expenses</option>
                 </select>
                 <button class="aa-btn aa-btn-primary aa-btn-sm" onclick="downloadFinancialReport()"><i class="fa fa-download"></i> Export CSV</button>
-                <button class="aa-btn aa-btn-outline aa-btn-sm" onclick="switchTab('admin-tabs', 'tab-finance')">Payments</button>
-                <button class="aa-btn aa-btn-outline aa-btn-sm" onclick="switchTab('admin-tabs', 'tab-finance')">Expenses</button>
               </div>
             </div>
             <div class="aa-card-body" style="padding:0;">
