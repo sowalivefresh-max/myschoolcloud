@@ -1716,6 +1716,104 @@ module.exports = function(db, notificationsActions) {
       } catch (err) {
         return res.json({ success: false, message: "Error setting discount: " + err.message });
       }
+    },
+
+    adminBulkCreateStudents: async (req, res) => {
+      const students = req.body.students || req.body.data;
+      if (!Array.isArray(students) || students.length === 0) {
+        return res.json({ success: false, message: "No students provided." });
+      }
+      try {
+        const settingsSnap = await db.collection("settings").doc("global").get();
+        let prefix = "SCH";
+        if (settingsSnap.exists) {
+          const sData = settingsSnap.data();
+          if (sData.school_prefix) {
+            prefix = sData.school_prefix.trim().toUpperCase();
+          } else if (sData.school_name) {
+            prefix = sData.school_name.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase();
+          }
+        }
+        if (!prefix || prefix.length === 0) prefix = "SCH";
+        const year = String(new Date().getFullYear()).slice(-2);
+
+        const numMissing = students.filter(s => !s.admissionNumber || s.admissionNumber.trim() === '').length;
+        let currentSerial = 1;
+
+        if (numMissing > 0) {
+          const counterRef = db.collection("settings").doc("counters");
+          currentSerial = await db.runTransaction(async (t) => {
+            const doc = await t.get(counterRef);
+            let nextVal = 1;
+            if (doc.exists) nextVal = (doc.data().admission_serial || 0) + 1;
+            t.set(counterRef, { admission_serial: nextVal + numMissing }, { merge: true });
+            return nextVal;
+          });
+        }
+
+        const chunks = [];
+        for (let i = 0; i < students.length; i += 500) {
+          chunks.push(students.slice(i, i + 500));
+        }
+
+        const createdAt = new Date().toISOString();
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          for (const st of chunk) {
+            if (!st.admissionNumber || st.admissionNumber.trim() === '') {
+              const serialStr = String(currentSerial++).padStart(4, '0');
+              st.admissionNumber = `${prefix}/${year}/${serialStr}`;
+            }
+            const docRef = db.collection("students").doc();
+            batch.set(docRef, { status: "active", ...st, createdAt });
+          }
+          await batch.commit();
+        }
+
+        return res.json({ success: true, message: `Successfully imported ${students.length} students.` });
+      } catch (err) {
+        return res.json({ success: false, message: "Bulk create error: " + err.message });
+      }
+    },
+
+    adminBulkCreateClasses: async (req, res) => {
+      const classes = req.body.classes || req.body.data;
+      if (!Array.isArray(classes) || classes.length === 0) return res.json({ success: false, message: "No classes provided." });
+      try {
+        const chunks = [];
+        for (let i = 0; i < classes.length; i += 500) chunks.push(classes.slice(i, i + 500));
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          for (const cl of chunk) {
+            const docRef = db.collection("classes").doc();
+            batch.set(docRef, cl);
+          }
+          await batch.commit();
+        }
+        return res.json({ success: true, message: `Successfully imported ${classes.length} classes.` });
+      } catch (err) {
+        return res.json({ success: false, message: "Bulk create error: " + err.message });
+      }
+    },
+
+    adminBulkCreateSubjects: async (req, res) => {
+      const subjects = req.body.subjects || req.body.data;
+      if (!Array.isArray(subjects) || subjects.length === 0) return res.json({ success: false, message: "No subjects provided." });
+      try {
+        const chunks = [];
+        for (let i = 0; i < subjects.length; i += 500) chunks.push(subjects.slice(i, i + 500));
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          for (const sub of chunk) {
+            const docRef = db.collection("subjects").doc();
+            batch.set(docRef, sub);
+          }
+          await batch.commit();
+        }
+        return res.json({ success: true, message: `Successfully imported ${subjects.length} subjects.` });
+      } catch (err) {
+        return res.json({ success: false, message: "Bulk create error: " + err.message });
+      }
     }
 
   };

@@ -236,7 +236,6 @@
                   <input type="text" id="search-students" class="aa-input" placeholder="Search students..." onkeyup="filterTable('search-students', 'studentsTable')">
                 </div>
                 <button class="aa-btn aa-btn-outline" onclick="openBulkModal('students')"><i class="fa fa-upload"></i> Bulk Import</button>
-                <button class="aa-btn aa-btn-secondary" onclick="openModal('bulkStudentModal')"><i class="fa fa-upload"></i> Bulk Upload</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('studentModal');resetForm('studentForm');document.getElementById('studentId').value='';applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add Student</button>
               </div>
             </div>
@@ -674,29 +673,7 @@
     </div>
   </div>
 
-    <!-- Bulk Student Modal -->
-  <div id="bulkStudentModal" class="aa-modal-backdrop" style="z-index: 99999 !important; justify-content: flex-end; padding-right: 24px;">
-    <div class="aa-modal" style="max-width:500px;">
-      <div class="aa-modal-header">
-        <h3 class="aa-modal-title">Bulk Upload Students</h3>
-        <button class="aa-modal-close" onclick="closeModal('bulkStudentModal')">&times;</button>
-      </div>
-      <div class="aa-modal-body">
-        <div class="aa-alert aa-alert-info">
-          Upload a CSV file with the following headers (case-insensitive):<br>
-          <b>FullName, AdmissionNumber, ClassName, Section, Gender</b>
-        </div>
-        <div class="aa-form-group">
-          <label class="aa-label">CSV File</label>
-          <input type="file" id="bulkStudentFile" class="aa-input" accept=".csv">
-        </div>
-      </div>
-      <div class="aa-modal-footer">
-        <button class="aa-btn aa-btn-outline" onclick="closeModal('bulkStudentModal')">Cancel</button>
-        <button class="aa-btn aa-btn-primary" onclick="uploadBulkStudents()">Upload CSV</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- Student Modal -->
   <div class="aa-modal-backdrop" id="studentModal">
@@ -1433,69 +1410,7 @@
       }
     }
     
-        function uploadBulkStudents() {
-      var fileInput = document.getElementById('bulkStudentFile');
-      if (!fileInput.files || !fileInput.files[0]) {
-        showToast('Please select a CSV file.', 'warning');
-        return;
-      }
-      var file = fileInput.files[0];
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var text = e.target.result;
-        var lines = text.split('\n');
-        if (lines.length < 2) {
-          showToast('File is empty or invalid.', 'error');
-          return;
-        }
-        var headers = lines[0].split(',').map(function(h){return h.trim().toLowerCase();});
-        var students = [];
-        for (var i = 1; i < lines.length; i++) {
-          var row = lines[i];
-          if (!row.trim()) continue;
-          // Simple CSV parse handling quotes (optional for advanced, this is basic split)
-          var values = row.split(','); 
-          var student = {};
-          for (var j = 0; j < headers.length; j++) {
-            if (values[j] !== undefined) {
-              var val = values[j].trim();
-              if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
-              if (headers[j].includes('name')) student.fullName = val;
-              else if (headers[j].includes('admission') || headers[j] === 'regno') student.admissionNumber = val;
-              else if (headers[j].includes('class')) student.className = val;
-              else if (headers[j].includes('section')) student.section = val.toLowerCase();
-              else if (headers[j].includes('gender')) student.gender = val;
-            }
-          }
-          if (student.fullName) students.push(student);
-        }
-        if (students.length === 0) {
-          showToast('No valid students found in CSV.', 'error');
-          return;
-        }
-        
-        var btn = document.querySelector('#bulkStudentModal .aa-btn-primary');
-        var originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Uploading...';
-        btn.disabled = true;
-        
-        callServer('adminBulkCreateStudents', [AA.token, students], function(res) {
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-          if (res.success) {
-            showToast(res.message, 'success');
-            closeModal('bulkStudentModal');
-            loadStudents();
-          } else {
-            showToast(res.message, 'error');
-          }
-        }, function(err) {
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-        });
-      };
-      reader.readAsText(file);
-    }
+
     function editStudent(id) {
       var s = globalStudents.find(function(x) { return String(x.id||x.iD) === String(id); });
       if(!s) return;
