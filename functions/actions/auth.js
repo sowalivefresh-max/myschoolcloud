@@ -203,7 +203,7 @@ module.exports = function(db) {
     
     getPublicBranding: async (req, res) => {
       try {
-        const settingsDoc = await db.collection("config").doc("settings").get();
+        const settingsDoc = await db.collection("settings").doc("global").get();
         let cfg = {};
         if (settingsDoc.exists) {
           cfg = settingsDoc.data();

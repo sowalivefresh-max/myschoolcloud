@@ -1067,11 +1067,9 @@ module.exports = function(db, notificationsActions) {
 
         // Total billed & outstanding from bills collection
         const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
-        let totalBilled = 0, totalOutstanding = 0;
+        let totalBilled = 0;
         billsSnap.forEach(doc => {
-          const d = doc.data();
-          totalBilled += Number(d.totalBilled || 0);
-          totalOutstanding += Number(d.balance || 0);
+          totalBilled += Number(doc.data().totalBilled || 0);
         });
 
         // Total collected from approved payments
@@ -1081,6 +1079,9 @@ module.exports = function(db, notificationsActions) {
           const d = doc.data();
           if (d.status === "Approved") totalCollected += Number(d.amount || 0);
         });
+
+        // Compute outstanding
+        let totalOutstanding = Math.max(0, totalBilled - totalCollected);
 
         // Total expenses
         const expensesSnap = await db.collection("expenses").get();
