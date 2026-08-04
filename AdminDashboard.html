@@ -318,22 +318,35 @@
 
         <!-- TAB: Finance -->
         <div class="aa-tab-content" data-group="admin-tabs" data-id="tab-finance">
-          <div class="aa-grid-3 mb-4">
-             <div class="aa-stat-card">
-               <div class="aa-stat-icon bg-success"><i class="fa fa-hand-holding-usd"></i></div>
-               <div class="aa-stat-value" id="fin-income">...0.00</div>
-               <div class="aa-stat-label">Total Income</div>
-             </div>
-             <div class="aa-stat-card">
-               <div class="aa-stat-icon bg-danger"><i class="fa fa-file-invoice-dollar"></i></div>
-               <div class="aa-stat-value" id="fin-expense">...0.00</div>
-               <div class="aa-stat-label">Total Expenses</div>
-             </div>
-             <div class="aa-stat-card">
-               <div class="aa-stat-icon bg-warning"><i class="fa fa-clock"></i></div>
-               <div class="aa-stat-value" id="fin-debtors">0</div>
-               <div class="aa-stat-label">Pending Approvals</div>
-             </div>
+          <div class="aa-grid-4 mb-4">
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-info"><i class="fa fa-file-invoice-dollar"></i></div>
+              <div class="aa-stat-value" id="fin-billed">...0.00</div>
+              <div class="aa-stat-label">Total Billed</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-success"><i class="fa fa-wallet"></i></div>
+              <div class="aa-stat-value" id="fin-collected">...0.00</div>
+              <div class="aa-stat-label">Total Collected</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-danger"><i class="fa fa-hand-holding-usd"></i></div>
+              <div class="aa-stat-value" id="fin-outstanding">...0.00</div>
+              <div class="aa-stat-label">Outstanding Balance</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-warning"><i class="fa fa-receipt"></i></div>
+              <div class="aa-stat-value" id="fin-expense">...0.00</div>
+              <div class="aa-stat-label">Total Expenses</div>
+            </div>
+          </div>
+          
+          <div class="aa-grid-4 mb-4">
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-warning"><i class="fa fa-clock"></i></div>
+              <div class="aa-stat-value" id="fin-pending-approvals">0</div>
+              <div class="aa-stat-label">Pending Approvals</div>
+            </div>
           </div>
           
           <div class="aa-card mb-4" id="pendingPaymentsCard" style="display:none; border-color:var(--aa-warning);">
@@ -1759,10 +1772,16 @@
             return new Date(b.date) - new Date(a.date);
           });
 
-          document.getElementById('fin-income').textContent = formatNaira(totalInc);
-          document.getElementById('fin-expense').textContent = formatNaira(totalExp);
+          // Fetch matched stats from backend for current term/session
+          callServer('adminGetFinancialStats', [AA.token, { term: currentTerm, session: currentSession }], function(statsRes) {
+            document.getElementById('fin-billed').textContent = formatNaira(statsRes.totalBilled);
+            document.getElementById('fin-collected').textContent = formatNaira(statsRes.totalCollected);
+            document.getElementById('fin-outstanding').textContent = formatNaira(statsRes.totalOutstanding);
+            document.getElementById('fin-expense').textContent = formatNaira(statsRes.totalExpenses);
+          });
+
           // Show pending approval count separately
-          document.getElementById('fin-debtors').textContent = pending.length > 0 ? pending.length : 0;
+          document.getElementById('fin-pending-approvals').textContent = pending.length > 0 ? pending.length : 0;
 
           if(document.getElementById('finTxTable')) {
             buildTable('finTxTable', [
