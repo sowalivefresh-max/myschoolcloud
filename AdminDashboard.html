@@ -1704,6 +1704,25 @@
       }, null, true);
     }
 
+    function filterFinanceTable() {
+      var type = document.getElementById('financeReportType').value; // 'both', 'income', 'expenses'
+      var rows = document.querySelectorAll('#finTxTable tbody tr');
+      rows.forEach(function(row) {
+        if (row.children.length > 2) {
+          var rowType = row.children[2].textContent.trim().toLowerCase(); // 'income' or 'expense'
+          if (type === 'both') {
+            row.style.display = '';
+          } else if (type === 'income' && rowType === 'income') {
+            row.style.display = '';
+          } else if (type === 'expenses' && rowType === 'expense') {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        }
+      });
+    }
+
     function loadFinance() {
       // Load all payments to split pending vs approved for display
       callServer('adminGetPayments', [AA.token], function(payments) {
