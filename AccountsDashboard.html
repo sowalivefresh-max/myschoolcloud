@@ -709,8 +709,10 @@
     }
 
     // -- Bills & Payments --
+    var globalBills = [];
     function loadBills() {
       callServer('adminGetBills', [AA.token, {}], function(bills) {
+        globalBills = bills; // Cache for use in savePayment
         buildTable('billsTable', [
           {key:'studentName', render:function(r){return '<a href="#" class="fw-600 text-navy" style="text-decoration:none;" onclick="event.preventDefault();viewLedger(\''+(r.studentID||r.studentId)+'\')">' +r.studentName+'</a>';}},
           {key:'class', render:function(r){return r.class||r.className||'';}},
@@ -766,9 +768,31 @@
       });
     }
     function savePayment() {
-      var data = getFormData('paymentForm'); data.term = currentTerm; data.session = currentSession;
+      var data = getFormData('paymentForm');
+      data.term = currentTerm;
+      data.session = currentSession;
+
+      // Enrich with student name and class from globalStudents
+      var studentId = data.studentId || data.studentID;
+      var student = (globalStudents || []).find(function(s) { return s.id === studentId || s.iD === studentId; });
+      if (student) {
+        data.studentName = student.fullName;
+        data.className = student.className || student.class || '';
+      }
+
+      // Calculate remaining balance from globalBills if available
+      var bills = typeof globalBills !== 'undefined' ? globalBills : [];
+      var bill = bills.find(function(b) { return (b.studentId || b.studentID) === studentId; });
+      if (bill) {
+        var prevPaid = Number(bill.totalPaid || 0);
+        var newPaid = prevPaid + Number(data.amount || 0);
+        var billed = Number(bill.totalBilled || 0);
+        data.balanceAfterPayment = Math.max(0, billed - newPaid);
+      }
+
       callServer('adminRecordPayment', [AA.token, data], function(res) {
-        showToast(res.message, res.success?'success':'error'); if(res.success){closeModal('paymentModal');loadBills();loadDashboard();}
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) { closeModal('paymentModal'); loadBills(); loadDashboard(); }
       }, null, true);
     }
     function viewLedger(sid) {

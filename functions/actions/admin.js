@@ -1217,10 +1217,12 @@ module.exports = function(db, notificationsActions) {
                         <table style="width:100%;border-collapse:collapse;">
                           <tr><td style="padding:8px 0;color:#64748b;width:40%;">Receipt No:</td><td style="font-weight:bold;color:#0f172a;">${receiptNo}</td></tr>
                           <tr><td style="padding:8px 0;color:#64748b;">Student:</td><td style="font-weight:bold;color:#0f172a;">${data.studentName || '-'}</td></tr>
+                          <tr><td style="padding:8px 0;color:#64748b;">Class:</td><td style="font-weight:bold;color:#0f172a;">${data.className || '-'}</td></tr>
                           <tr><td style="padding:8px 0;color:#64748b;">Amount Paid:</td><td style="font-weight:bold;color:#10b981;font-size:16px;">\u20a6${Number(data.amount).toLocaleString()}</td></tr>
                           <tr><td style="padding:8px 0;color:#64748b;">Term/Session:</td><td style="font-weight:bold;color:#0f172a;">${data.term || '-'}, ${data.session || '-'}</td></tr>
                           <tr><td style="padding:8px 0;color:#64748b;">Method:</td><td style="font-weight:bold;color:#0f172a;">${data.method || 'Bank Transfer'}</td></tr>
                           <tr><td style="padding:8px 0;color:#64748b;">Date:</td><td style="font-weight:bold;color:#0f172a;">${new Date().toLocaleDateString()}</td></tr>
+                          ${data.balanceAfterPayment !== undefined ? `<tr><td style="padding:8px 0;color:#64748b;">Remaining Balance:</td><td style="font-weight:bold;color:${data.balanceAfterPayment > 0 ? '#dc2626' : '#10b981'};">\u20a6${Number(data.balanceAfterPayment).toLocaleString()}</td></tr>` : ''}
                         </table>
                       </div>
                       <p>Thank you for your prompt payment!</p>
@@ -1304,6 +1306,7 @@ module.exports = function(db, notificationsActions) {
             <tr><td>Payment Method</td><td>${p.method || 'Bank Transfer'}</td></tr>
             <tr><td>Date</td><td>${new Date(p.paymentDate || p.date || Date.now()).toLocaleDateString()}</td></tr>
             <tr class="total-row"><td>Amount Paid</td><td style="color:#16a34a;font-size:16px;">\u20a6${Number(p.amount || 0).toLocaleString()}</td></tr>
+            ${p.balanceAfterPayment !== undefined ? `<tr><td>Balance Remaining</td><td style="font-weight:bold;color:${Number(p.balanceAfterPayment) > 0 ? '#dc2626' : '#16a34a'};">\u20a6${Number(p.balanceAfterPayment).toLocaleString()}</td></tr>` : ''}
           </table>
           ${p.receiptRef ? `<p style="font-size:11px;"><strong>Reference:</strong> ${p.receiptRef}</p>` : ''}
           <p style="margin-top:20px;">This receipt confirms that the above payment has been received and approved by the accounts office.</p>
