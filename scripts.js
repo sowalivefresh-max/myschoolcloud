@@ -376,6 +376,42 @@ function filterTable(inputId, tableId) {
   });
 }
 
+function sortTable(tableId, colIndex) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById(tableId);
+  if (!table) return;
+  switching = true;
+  dir = "asc"; 
+  while (switching) {
+    switching = false;
+    rows = table.rows;
+    for (i = 1; i < (rows.length - 1); i++) {
+      shouldSwitch = false;
+      x = rows[i].getElementsByTagName("TD")[colIndex];
+      y = rows[i + 1].getElementsByTagName("TD")[colIndex];
+      if (x && y) {
+        var xContent = x.innerText.toLowerCase();
+        var yContent = y.innerText.toLowerCase();
+        if (dir == "asc") {
+          if (xContent > yContent) { shouldSwitch = true; break; }
+        } else if (dir == "desc") {
+          if (xContent < yContent) { shouldSwitch = true; break; }
+        }
+      }
+    }
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      switchcount ++;
+    } else {
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+}
+
 // --- Formatting Utilities ------------------------------------
 
 function safeFloat(val, def) {
