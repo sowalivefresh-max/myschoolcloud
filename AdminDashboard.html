@@ -242,7 +242,16 @@
             <div class="aa-card-body" style="padding:0;">
               <div class="aa-table-wrap">
                 <table class="aa-table" id="studentsTable">
-                  <thead><tr><th>Adm. No</th><th>Name</th><th>Class</th><th>Gender</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th style="cursor:pointer" onclick="sortTable('studentsTable', 0)">Adm. No <i class="fa fa-sort" style="color:#aaa; margin-left:4px;"></i></th>
+                      <th style="cursor:pointer" onclick="sortTable('studentsTable', 1)">Name <i class="fa fa-sort" style="color:#aaa; margin-left:4px;"></i></th>
+                      <th style="cursor:pointer" onclick="sortTable('studentsTable', 2)">Class <i class="fa fa-sort" style="color:#aaa; margin-left:4px;"></i></th>
+                      <th>Gender</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
                   <tbody></tbody>
                 </table>
               </div>
