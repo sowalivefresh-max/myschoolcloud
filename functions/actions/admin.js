@@ -563,8 +563,9 @@ module.exports = function(db, notificationsActions) {
         const serialStr = String(newSerial).padStart(4, '0');
         data.admissionNumber = `${prefix}/${year}/${serialStr}`;
 
+        data.status = "active";
         const docRef = db.collection("students").doc();
-        await docRef.set({ status: "active", ...data, createdAt: new Date().toISOString() });
+        await docRef.set({ ...data, createdAt: new Date().toISOString() });
         return res.json({ success: true, message: "Student created successfully." });
       } catch (err) {
         return res.json({ success: false, message: "Error creating student: " + err.message });
@@ -1764,8 +1765,9 @@ module.exports = function(db, notificationsActions) {
               const serialStr = String(currentSerial++).padStart(4, '0');
               st.admissionNumber = `${prefix}/${year}/${serialStr}`;
             }
+            st.status = "active";
             const docRef = db.collection("students").doc();
-            batch.set(docRef, { status: "active", ...st, createdAt });
+            batch.set(docRef, { ...st, createdAt });
           }
           await batch.commit();
         }
