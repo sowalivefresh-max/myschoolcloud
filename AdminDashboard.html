@@ -330,9 +330,9 @@
                <div class="aa-stat-label">Total Expenses</div>
              </div>
              <div class="aa-stat-card">
-               <div class="aa-stat-icon bg-warning"><i class="fa fa-exclamation-circle"></i></div>
+               <div class="aa-stat-icon bg-warning"><i class="fa fa-clock"></i></div>
                <div class="aa-stat-value" id="fin-debtors">0</div>
-               <div class="aa-stat-label">Active Debtors</div>
+               <div class="aa-stat-label">Pending Approvals</div>
              </div>
           </div>
           
@@ -1761,7 +1761,8 @@
 
           document.getElementById('fin-income').textContent = formatNaira(totalInc);
           document.getElementById('fin-expense').textContent = formatNaira(totalExp);
-          document.getElementById('fin-debtors').textContent = pending.length > 0 ? pending.length + ' pending' : 0;
+          // Show pending approval count separately
+          document.getElementById('fin-debtors').textContent = pending.length > 0 ? pending.length : 0;
 
           if(document.getElementById('finTxTable')) {
             buildTable('finTxTable', [

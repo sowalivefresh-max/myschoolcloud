@@ -237,9 +237,36 @@ module.exports = function(db) {
       const session = req.session;
       try {
         if (!data || !data.studentId) throw new Error("Student ID missing.");
+        if (!data.amount || Number(data.amount) <= 0) throw new Error("Please enter a valid amount.");
+        if (!data.proofOfPayment) throw new Error("Proof of payment is required.");
+
+        // Verify parent is linked to this student
         await verifyParentChild(session.userId, data.studentId);
-        // Stub: Just pretend it was submitted for approval
-        return res.json({ success: true, message: "Payment submitted for approval." });
+
+        // Fetch student name and class to store with payment
+        const studentDoc = await db.collection("students").doc(data.studentId).get();
+        if (!studentDoc.exists) throw new Error("Student not found.");
+        const student = studentDoc.data();
+
+        const paymentData = {
+          studentId: data.studentId,
+          studentName: student.fullName || (student.firstName + ' ' + student.lastName),
+          className: student.className || student.class || '',
+          amount: Number(data.amount),
+          method: data.method || 'Bank Transfer',
+          proofOfPayment: data.proofOfPayment,
+          term: data.term,
+          session: data.session,
+          status: "Pending",  // Needs approval from accounts
+          submittedBy: session.userId,
+          submittedByRole: "parent",
+          paymentDate: new Date().toISOString(),
+          date: new Date().toISOString()
+        };
+
+        await db.collection("payments").add(paymentData);
+
+        return res.json({ success: true, message: "Payment submitted successfully. It will appear on your ledger once approved by the accounts office." });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
@@ -248,7 +275,54 @@ module.exports = function(db) {
     parentDownloadReceipt: async (req, res) => {
       const { paymentId } = req.body;
       try {
-        return res.json({ success: true, previewUrl: "", downloadUrl: "" });
+        if (!paymentId) return res.json({ success: false, message: "Payment ID required." });
+        const payDoc = await db.collection("payments").doc(paymentId).get();
+        if (!payDoc.exists) return res.json({ success: false, message: "Payment not found." });
+        const p = payDoc.data();
+        if (p.status !== "Approved") return res.json({ success: false, message: "Receipt is only available for approved payments." });
+
+        const settingsDoc = await db.collection("settings").doc("global").get();
+        const settings = settingsDoc.data() || {};
+        const receiptNo = payDoc.id.slice(-8).toUpperCase();
+
+        let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+          <style>
+            body{font-family:"Times New Roman",serif;margin:0;padding:20px;color:#1a1a1a;}
+            .wrap{max-width:700px;margin:0 auto;border:3px double #0d1b2a;padding:20px;}
+            .hdr{display:flex;align-items:center;border-bottom:2px solid #0d1b2a;padding-bottom:12px;margin-bottom:16px;}
+            .school-name{font-size:20px;font-weight:bold;text-transform:uppercase;color:#0d1b2a;}
+            .title-badge{background:#0d1b2a;color:#f0a500;padding:4px 16px;font-size:13px;font-weight:bold;text-transform:uppercase;display:inline-block;margin-top:8px;}
+            table{width:100%;border-collapse:collapse;margin:16px 0;}
+            th{background:#0d1b2a;color:#f0a500;padding:6px 10px;border:1px solid #0d1b2a;}
+            td{padding:6px 10px;border:1px solid #ccc;}
+            tr:nth-child(even){background:#f8f8f8;}
+            .total-row td{font-weight:bold;font-size:14px;background:#e8f5e9;}
+            .footer{text-align:center;margin-top:20px;font-size:10px;color:#888;border-top:1px solid #e0e0e0;padding-top:10px;}
+          </style>
+        </head><body><div class="wrap">
+          <div class="hdr">
+            <div style="width:60px;height:60px;background:#0d1b2a;display:flex;align-items:center;justify-content:center;color:#f0a500;font-weight:bold;font-size:14px;margin-right:15px;">Logo</div>
+            <div>
+              <div class="school-name">${settings.school_name || 'MySchool Portal'}</div>
+              <div class="title-badge">Official Payment Receipt</div>
+            </div>
+          </div>
+          <table>
+            <tr><th colspan="2" style="text-align:left;">Receipt Details</th></tr>
+            <tr><td>Receipt No</td><td><strong>${receiptNo}</strong></td></tr>
+            <tr><td>Student Name</td><td>${p.studentName || '-'}</td></tr>
+            <tr><td>Class</td><td>${p.className || '-'}</td></tr>
+            <tr><td>Term / Session</td><td>${p.term || '-'} / ${p.session || '-'}</td></tr>
+            <tr><td>Payment Method</td><td>${p.method || 'Bank Transfer'}</td></tr>
+            <tr><td>Date Approved</td><td>${new Date(p.approvedAt || p.date || Date.now()).toLocaleDateString()}</td></tr>
+            <tr class="total-row"><td>Amount Paid</td><td style="color:#16a34a;font-size:16px;">\u20a6${Number(p.amount || 0).toLocaleString()}</td></tr>
+          </table>
+          <p style="margin-top:20px;">This receipt confirms that the above payment has been received and approved by the accounts office.</p>
+          <div class="footer">Generated on ${new Date().toLocaleString()} &mdash; ${settings.school_name || 'MySchool Portal'}</div>
+        </div></body></html>`;
+
+        const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        return res.json({ success: true, previewUrl: dataUri });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }

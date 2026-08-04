@@ -541,9 +541,8 @@
     }
 
     function _openReviewModal(p) {
-      var s = globalStudents.find(function(st){ return String(st.id||st.iD) === String(p.studentID||p.studentId); });
       document.getElementById('revPayId').value = p.id || p.iD;
-      document.getElementById('revPayStudent').value = s ? s.fullName : (p.studentID||p.studentId||'Unknown');
+      document.getElementById('revPayStudent').value = p.studentName || (globalStudents.find(function(st){ return String(st.id||st.iD) === String(p.studentID||p.studentId); }) || {}).fullName || (p.studentID||p.studentId||'Unknown');
       document.getElementById('revPayAmount').value = formatNaira(p.amount);
       document.getElementById('revPayMethod').value = p.method || '';
       
