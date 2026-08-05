@@ -536,8 +536,8 @@
       // Set today's date on the attendance date picker
       var attDateEl = document.getElementById('classAttDate');
       if (attDateEl && !attDateEl.value) attDateEl.valueAsDate = new Date();
-      callServer('principalGetAllStudents', [AA.token], function(data) {
-        myClassStudents = data.filter(function(s) { return String(s.class || s.className) === String(cls); });
+      callServer('teacherGetClassStudents', [AA.token, cls], function(data) {
+        myClassStudents = data;
         document.getElementById('stat-myclass-students').textContent = myClassStudents.length;
         document.getElementById('stat-students').textContent = myClassStudents.length;
         buildTable('myClassTable', [
