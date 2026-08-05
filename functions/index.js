@@ -176,7 +176,7 @@ app.post("/api", async (req, res) => {
         
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
         if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
-        if (action === "teacherGetScores") { req.body.className = args[1]; req.body.subject = args[2]; req.body.term = args[3]; req.body.session = args[4]; }
+        if (action === "teacherGetScores") { req.body.filters = args[1]; }
         if (action === "teacherSaveScore") { req.body.scoreId = args[1]; req.body.studentId = args[2]; req.body.className = args[3]; req.body.subject = args[4]; req.body.term = args[5]; req.body.session = args[6]; req.body.ca1 = args[7]; req.body.ca2 = args[8]; req.body.exam = args[9]; }
         if (action === "teacherBulkSaveScores") { req.body.data = args[1]; } // fixed mapping
         

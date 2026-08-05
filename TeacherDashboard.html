@@ -546,7 +546,6 @@
       callServer('teacherGetClassStudents', [AA.token, cls], function(data) {
         myClassStudents = data;
         document.getElementById('stat-myclass-students').textContent = myClassStudents.length;
-        document.getElementById('stat-students').textContent = myClassStudents.length;
         buildTable('myClassTable', [
           { key: 'admissionNumber' },
           { key: 'fullName' },
@@ -647,7 +646,7 @@
         });
         
         if (classes.length > 0) {
-          classSelect.innerHTML = '<option value="">-- All Classes --</option>';
+          classSelect.innerHTML = '<option value="">-- Select Class --</option>';
           classes.sort().forEach(function(c) {
             classSelect.innerHTML += '<option value="'+AA.escapeHTML(c)+'">'+AA.escapeHTML(c)+'</option>';
           });
@@ -667,7 +666,9 @@
       document.getElementById('scoresCard').style.display='block';
       var clsFilter = document.getElementById('scoreClassSelect').value;
       var students = currentScoreStudents;
-      if (clsFilter) {
+      if (!clsFilter && document.getElementById('scoreClassSelect').style.display !== 'none') {
+        students = [];
+      } else if (clsFilter) {
         students = students.filter(function(st) { return st.className === clsFilter; });
       }
 
