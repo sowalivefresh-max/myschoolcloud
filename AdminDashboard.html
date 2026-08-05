@@ -266,6 +266,7 @@
             <div class="aa-card-header">
               <h3 class="aa-card-title">Classes</h3>
               <div class="d-flex gap-2">
+                <button class="aa-btn aa-btn-info" id="btnPublishResults" onclick="togglePublishResults()"><i class="fa fa-bullhorn"></i> Publish Results</button>
                 <button class="aa-btn aa-btn-secondary" onclick="openBroadsheetModal()"><i class="fa fa-file-excel"></i> Broadsheet</button>
                 <button class="aa-btn aa-btn-outline" onclick="openBulkModal('classes')"><i class="fa fa-upload"></i> Bulk Import</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('classModal');resetForm('classForm');document.getElementById('classId').value=''"><i class="fa fa-plus"></i> Add Class</button>
@@ -583,14 +584,6 @@
                       </div>
                       <small class="text-muted" style="font-size:11px;display:block;margin-top:4px;">Generate an App Password from your Google Account Security settings.</small>
                     </div>
-                  </div>
-                </div>
-                
-                <div class="aa-form-group">
-                  <label class="aa-label">Publish Results for Current Term</label>
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <input type="checkbox" name="results_published" id="resultsPublishedCheck" style="width:16px;height:16px;">
-                    <span class="fs-13 text-muted">If checked, parents will be able to view report cards for the current term and session. Uncheck to hide them.</span>
                   </div>
                 </div>
 
@@ -2166,7 +2159,20 @@
     // --- SETTINGS ---
     function loadSettings() {
       callServer('adminGetSettings', [AA.token], function(s) {
+        window.globalSettingsData = s || {};
         setFormData('settingsForm', s);
+        
+        var btn = document.getElementById('btnPublishResults');
+        if (btn) {
+          if (s.results_published) {
+            btn.className = 'aa-btn aa-btn-danger';
+            btn.innerHTML = '<i class="fa fa-eye-slash"></i> Unpublish Results';
+          } else {
+            btn.className = 'aa-btn aa-btn-info';
+            btn.innerHTML = '<i class="fa fa-bullhorn"></i> Publish Results';
+          }
+        }
+
         if (s.school_logo_url) document.getElementById('settingsLogoPreview').innerHTML = '<img src="'+s.school_logo_url+'" style="width:100%;height:100%;object-fit:contain;">';
         if (s.principal_signature) document.getElementById('prinSigPreview').innerHTML = '<img src="'+s.principal_signature+'" style="width:100%;height:100%;object-fit:contain;">';
         if (s.head_teacher_signature) document.getElementById('htSigPreview').innerHTML = '<img src="'+s.head_teacher_signature+'" style="width:100%;height:100%;object-fit:contain;">';
@@ -2175,10 +2181,34 @@
     }
     function saveSettings() {
       var data = getFormData('settingsForm');
+      if (window.globalSettingsData && window.globalSettingsData.results_published !== undefined) {
+        data.results_published = window.globalSettingsData.results_published;
+      }
       callServer('adminUpdateSettings', [AA.token, data], function(res) {
         showToast(res.message, res.success ? 'success' : 'error');
         if(res.success) { AA.loadSettings(); loadDashboard(); }
       }, null, true);
+    }
+
+    function togglePublishResults() {
+      var s = window.globalSettingsData || {};
+      var isCurrentlyPublished = !!s.results_published;
+      var msg = isCurrentlyPublished ? 
+        'Are you sure you want to UNPUBLISH the results? Parents will no longer be able to see them.' : 
+        'Are you sure you want to PUBLISH the results for the current term? Parents will instantly get access.';
+        
+      aaConfirm(msg, function() {
+        var data = getFormData('settingsForm');
+        // Merge with globalData just in case form is out of sync, but we rely on form mostly + our toggle
+        data.results_published = !isCurrentlyPublished;
+        callServer('adminUpdateSettings', [AA.token, data], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+          if(res.success) { 
+            s.results_published = data.results_published;
+            loadSettings(); 
+          }
+        }, null, true);
+      });
     }
 
     // --- Utilities ---
