@@ -412,6 +412,30 @@
         <button class="aa-btn aa-btn-primary" onclick="saveThenSubmitPlan()" id="btnSaveSubmit"><i class="fa fa-paper-plane" style="margin-right:6px;"></i>Save &amp; Submit</button>
       </div>
     </div>
+    </div>
+  </div>
+
+  <!-- ENROLLMENT MODAL -->
+  <div class="aa-modal-backdrop" id="enrollmentModal">
+    <div class="aa-modal" style="max-width:500px;">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title">Manage Student Subjects</h5>
+        <button class="aa-modal-close" onclick="closeModal('enrollmentModal')"><i class='fa fa-times'></i></button>
+      </div>
+      <div class="aa-modal-body">
+        <p class="fs-13 text-muted mb-3" id="enrollment-student-info"></p>
+        <div class="row">
+          <div class="col-md-6">
+            <h6 class="mb-2">Available Subjects</h6>
+            <div id="available-subjects" class="aa-card p-2" style="max-height:300px;overflow-y:auto;"></div>
+          </div>
+          <div class="col-md-6">
+            <h6 class="mb-2">Enrolled Subjects</h6>
+            <div id="enrolled-subjects" class="aa-card p-2" style="max-height:300px;overflow-y:auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="api.js?v=3"></script>
@@ -447,7 +471,10 @@
         document.getElementById('stat-students').textContent = data.length;
         buildTable('rosterTable', [
           {key:'admissionNumber'},{key:'fullName'},{key:'gender'},{key:'status', render:function(r){return formatStatus(r.status);}}
-        ], data);
+        ], data, function(r) {
+          return '<button class="aa-btn aa-btn-success aa-btn-xs" title="Subjects" onclick="manageEnrollment(\'' + (r.id||r.iD) + '\', \'' + (r.fullName||'').replace(/'/g, "\\'") + '\')">' +
+                 '<i class="fa fa-book"></i> Subjects</button>';
+        });
       }, null, true);
 
       callServer('teacherGetMySubjects', [AA.token], function(data) {
@@ -767,6 +794,71 @@
       callServer('teacherGenerateLessonPlanPDF', [AA.token, id], function(res){
         if(res.success) openPDFViewer(res.previewUrl, res.downloadUrl, 'Lesson Plan'); else showToast(res.message, 'error');
       }, null, true);
+    }
+
+    // --- SUBJECT ENROLLMENT ---
+    function manageEnrollment(studentId, studentName) {
+      document.getElementById('enrollment-student-info').textContent = 'Managing Subjects for: ' + studentName;
+      loadEnrollmentData(studentId);
+      openModal('enrollmentModal');
+    }
+    var currentEnrollment = { enrolled: [], available: [] };
+    function loadEnrollmentData(sid, showLoader) {
+      if (showLoader === undefined) showLoader = true;
+      callServer('teacherGetStudentSubjects', [AA.token, sid], function(data) {
+        currentEnrollment.enrolled = data.enrolled || [];
+        currentEnrollment.available = data.available || [];
+        renderEnrollmentLists(sid);
+      }, null, showLoader);
+    }
+    function renderEnrollmentLists(sid) {
+      var availHtml = '';
+      currentEnrollment.available.forEach(function(s) {
+        var subId = s.id || s.iD;
+        var sectionLabel = s.section === 'primary' ? 'Primary' : 'High';
+        var classLabel = s.class || s.className || 'All';
+        availHtml += '<div class="d-flex justify-content-between align-items-center mb-1 fs-12 p-1 border-bottom">' +
+                     '<span>'+s.subjectName+' <span class="aa-badge aa-badge-'+(s.section==='primary'?'info':'navy')+'" style="font-size:9px;">'+sectionLabel+'</span> ('+classLabel+')</span>' +
+                     '<button class="aa-btn aa-btn-success aa-btn-xs" onclick="enrollSubject(\''+sid+'\', \''+subId+'\')">Add</button></div>';
+      });
+      document.getElementById('available-subjects').innerHTML = availHtml || 'No more subjects available';
+
+      var enrolHtml = '';
+      currentEnrollment.enrolled.forEach(function(s) {
+        var subId = s.id || s.iD;
+        enrolHtml += '<div class="d-flex justify-content-between align-items-center mb-1 fs-12 p-1 border-bottom">' +
+                     '<span>'+s.subjectName+'</span>' +
+                     '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="unenrollSubject(\''+sid+'\', \''+subId+'\')">Remove</button></div>';
+      });
+      document.getElementById('enrolled-subjects').innerHTML = enrolHtml || 'No subjects enrolled';
+    }
+    function enrollSubject(sid, subid) {
+      var idx = currentEnrollment.available.findIndex(function(s) { return String(s.id || s.iD) === String(subid); });
+      if (idx !== -1) {
+        var subject = currentEnrollment.available.splice(idx, 1)[0];
+        currentEnrollment.enrolled.push(subject);
+        renderEnrollmentLists(sid);
+      }
+      callServer('teacherEnrollStudent', [AA.token, sid, subid, AA.settings.current_session, AA.settings.current_term], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if(!res.success) loadEnrollmentData(sid, false);
+      }, function() {
+        loadEnrollmentData(sid, false);
+      }, false);
+    }
+    function unenrollSubject(sid, subid) {
+      var idx = currentEnrollment.enrolled.findIndex(function(s) { return String(s.id || s.iD) === String(subid); });
+      if (idx !== -1) {
+        var subject = currentEnrollment.enrolled.splice(idx, 1)[0];
+        currentEnrollment.available.push(subject);
+        renderEnrollmentLists(sid);
+      }
+      callServer('teacherUnenrollStudent', [AA.token, sid, subid], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if(!res.success) loadEnrollmentData(sid, false);
+      }, function() {
+        loadEnrollmentData(sid, false);
+      }, false);
     }
   </script>
 </body>

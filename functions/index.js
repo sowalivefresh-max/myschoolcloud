@@ -163,6 +163,11 @@ app.post("/api", async (req, res) => {
         if (action === "adminRecordPayment") { req.body.data = args[1]; }
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
+        
+        // Teacher Subject Assignment Mappings
+        if (action === "teacherGetStudentSubjects") { req.body.studentId = args[1]; }
+        if (action === "teacherEnrollStudent") { req.body.studentId = args[1]; req.body.subjectId = args[2]; req.body.session = args[3]; req.body.term = args[4]; }
+        if (action === "teacherUnenrollStudent") { req.body.studentId = args[1]; req.body.subjectId = args[2]; }
         if (action === "adminRecordExpense") { req.body.data = args[1]; }
         if (action === "adminDeleteExpense") { req.body.expenseId = args[1]; }
         if (action === "adminDeleteBill") { req.body.billId = args[1]; }
@@ -350,6 +355,10 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => teacherActions.teacherGetScores(req, res));
       case "teacherSaveScore":
         return requireRole(req, res, () => teacherActions.teacherSaveScore(req, res));
+      case "teacherUpdateTrait": return requireRole(req, res, () => teacherActions.teacherUpdateTrait(req, res));
+      case "teacherGetStudentSubjects": return requireRole(req, res, () => teacherActions.teacherGetStudentSubjects(req, res));
+      case "teacherEnrollStudent": return requireRole(req, res, () => teacherActions.teacherEnrollStudent(req, res));
+      case "teacherUnenrollStudent": return requireRole(req, res, () => teacherActions.teacherUnenrollStudent(req, res));
       case "teacherBulkSaveScores":
         return requireRole(req, res, () => teacherActions.teacherBulkSaveScores(req, res));
       case "teacherGetLessonPlans":

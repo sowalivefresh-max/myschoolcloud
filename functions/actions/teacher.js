@@ -69,6 +69,84 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    teacherGetStudentSubjects: async (req, res) => {
+      try {
+        const sid = req.body.studentId;
+        if (!sid) return res.json({ success: false, message: "Student ID required" });
+        
+        const teacherDoc = await db.collection("users").doc(req.session.userId).get();
+        const teacherClass = teacherDoc.data().classAssigned;
+        if (!teacherClass) return res.json({ success: false, message: "You are not assigned as a class teacher." });
+        
+        const studentDoc = await db.collection("students").doc(sid).get();
+        if (!studentDoc.exists || studentDoc.data().className !== teacherClass) {
+          return res.json({ success: false, message: "Student not found in your assigned class." });
+        }
+        
+        const subjectsSnap = await db.collection("subjects").get();
+        const allSubjects = subjectsSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        
+        const enrollSnap = await db.collection("student_subjects").where("studentId", "==", sid).get();
+        const enrolledIds = enrollSnap.docs.map(d => d.data().subjectId);
+        
+        const enrolled = allSubjects.filter(s => enrolledIds.includes(s.id));
+        const available = allSubjects.filter(s => !enrolledIds.includes(s.id));
+        
+        return res.json({ success: true, data: { enrolled, available } });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    teacherEnrollStudent: async (req, res) => { 
+      try {
+        const { studentId, subjectId, session, term } = req.body;
+        if (!studentId || !subjectId) return res.json({ success: false, message: "Student and Subject ID required" });
+        
+        const teacherDoc = await db.collection("users").doc(req.session.userId).get();
+        const teacherClass = teacherDoc.data().classAssigned;
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        if (!studentDoc.exists || studentDoc.data().className !== teacherClass) {
+          return res.json({ success: false, message: "Student not found in your assigned class." });
+        }
+        
+        const existing = await db.collection("student_subjects")
+          .where("studentId", "==", studentId)
+          .where("subjectId", "==", subjectId).get();
+          
+        if (!existing.empty) return res.json({ success: false, message: "Student already enrolled in this subject" });
+        
+        await db.collection("student_subjects").add({
+          studentId, subjectId, session, term, enrolledAt: new Date().toISOString()
+        });
+        return res.json({ success: true, message: "Student enrolled successfully." });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    teacherUnenrollStudent: async (req, res) => { 
+      try {
+        const { studentId, subjectId } = req.body;
+        if (!studentId || !subjectId) return res.json({ success: false, message: "Student and Subject ID required" });
+        
+        const teacherDoc = await db.collection("users").doc(req.session.userId).get();
+        const teacherClass = teacherDoc.data().classAssigned;
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        if (!studentDoc.exists || studentDoc.data().className !== teacherClass) {
+          return res.json({ success: false, message: "Student not found in your assigned class." });
+        }
+        
+        const existing = await db.collection("student_subjects")
+          .where("studentId", "==", studentId)
+          .where("subjectId", "==", subjectId).get();
+          
+        if (existing.empty) return res.json({ success: false, message: "Enrollment not found" });
+        
+        const batch = db.batch();
+        existing.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        
+        return res.json({ success: true, message: "Student unenrolled successfully." });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
+
     teacherGetScores: async (req, res) => {
       const filters = req.body.filters || {};
       const session = req.session;
