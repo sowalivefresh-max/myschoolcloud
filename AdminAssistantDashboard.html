@@ -134,7 +134,7 @@
                   <button class="aa-btn aa-btn-outline w-100" onclick="openModal('userModal');resetForm('userForm');applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add User</button>
                   <button class="aa-btn aa-btn-outline w-100" onclick="openModal('studentModal');resetForm('studentForm');document.getElementById('studentPhotoPreview').innerHTML='<i class=\'fa fa-user\' style=\'color:#aaa;\'></i>';document.getElementById('studentPhotoBase64').value='';applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add Student</button>
                   <button class="aa-btn aa-btn-outline w-100" onclick="openModal('classModal');resetForm('classForm')"><i class="fa fa-plus"></i> Add Class</button>
-                  <button class="aa-btn aa-btn-outline w-100" onclick="openModal('subjectModal');resetForm('subjectForm')"><i class="fa fa-plus"></i> Add Subject</button>
+                  <button class="aa-btn aa-btn-outline w-100" onclick="openAddSubjectModal()"><i class="fa fa-plus"></i> Add Subject</button>
                 </div>
               </div>
             </div>
@@ -278,7 +278,7 @@
                   <input type="text" id="search-subjects" class="aa-input" placeholder="Search subjects..." onkeyup="filterTable('search-subjects', 'subjectsTable')">
                 </div>
                 <button class="aa-btn aa-btn-outline" onclick="openBulkModal('subjects')"><i class="fa fa-upload"></i> Bulk Import</button>
-                <button class="aa-btn aa-btn-primary" onclick="openModal('subjectModal');resetForm('subjectForm');document.getElementById('subjectId').value=''"><i class="fa fa-plus"></i> Add Subject</button>
+                <button class="aa-btn aa-btn-primary" onclick="openAddSubjectModal()"><i class="fa fa-plus"></i> Add Subject</button>
               </div>
             </div>
             <div class="aa-card-body" style="padding:0;">
@@ -816,7 +816,7 @@
           </div>
           <div class="aa-form-group">
             <label class="aa-label">Section</label>
-            <select name="section" class="aa-select" required>
+            <select name="section" id="subjectSectionSelect" class="aa-select" required onchange="filterSubjectClassesBySection(this.value)">
               <option value="high">High School</option>
               <option value="primary">Primary School</option>
             </select>
@@ -2010,8 +2010,29 @@
     }
     function editSubject(id, name, sec, cls) {
       document.getElementById('subjectId').value = id;
+      filterSubjectClassesBySection(sec);
       setFormData('subjectForm', {subjectName:name, section:sec, className:cls});
       openModal('subjectModal');
+    }
+
+    function openAddSubjectModal() {
+      resetForm('subjectForm');
+      document.getElementById('subjectId').value = '';
+      var defaultSec = document.getElementById('subjectSectionSelect').value;
+      filterSubjectClassesBySection(defaultSec);
+      openModal('subjectModal');
+    }
+
+    function filterSubjectClassesBySection(section) {
+      var sec = normalizeSection(section);
+      var filteredClasses = globalClasses.filter(function(c) {
+        var cSec = normalizeSection(c.section);
+        return cSec === sec || !cSec;
+      });
+      filteredClasses.sort(function(a, b) { return (a.className || '').localeCompare(b.className || '', undefined, {numeric: true, sensitivity: 'base'}); });
+      var options = '<option value="">All Classes</option>';
+      filteredClasses.forEach(function(c){ options += '<option value="'+c.className+'">'+c.className+'</option>'; });
+      document.getElementById('subjectClassSelect').innerHTML = options;
     }
     function saveSubject() {
       var data = getFormData('subjectForm');
