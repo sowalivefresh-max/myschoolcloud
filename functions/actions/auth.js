@@ -97,6 +97,7 @@ module.exports = function(db) {
         const classesSnap = await db.collection("classes").where("classTeacherId", "==", uDoc.id).get();
         if (!classesSnap.empty) {
           userData.classAssigned = classesSnap.docs[0].data().className;
+          userData.isClassTeacher = true;
         }
       }
       
