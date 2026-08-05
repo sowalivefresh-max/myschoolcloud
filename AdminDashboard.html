@@ -235,6 +235,7 @@
                   <i class="fa fa-search"></i>
                   <input type="text" id="search-students" class="aa-input" placeholder="Search students..." onkeyup="filterTable('search-students', 'studentsTable')">
                 </div>
+                <button class="aa-btn aa-btn-outline" onclick="openPromotionWizard()"><i class="fa fa-level-up-alt"></i> Promote Students</button>
                 <button class="aa-btn aa-btn-outline" onclick="openBulkModal('students')"><i class="fa fa-upload"></i> Bulk Import</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('studentModal');resetForm('studentForm');document.getElementById('studentId').value='';applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add Student</button>
               </div>
@@ -1113,6 +1114,66 @@
         <div class="d-flex gap-2 mt-3">
           <button class="aa-btn aa-btn-danger w-100" onclick="rejectPayment()"><i class="fa fa-times"></i> Reject</button>
           <button class="aa-btn aa-btn-success w-100" onclick="approvePayment()"><i class="fa fa-check"></i> Approve</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Promotion Wizard Modal -->
+  <div class="aa-modal-overlay" id="promotionWizardModal" onclick="if(event.target===this)closeModal('promotionWizardModal')">
+    <div class="aa-modal" style="max-width: 800px;">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title"><i class="fa fa-level-up-alt"></i> Bulk Promotion Wizard</h5>
+        <button class="aa-modal-close" onclick="closeModal('promotionWizardModal')"><i class='fa fa-times'></i></button>
+      </div>
+      <div class="aa-modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <!-- Phase 1: Class Mapping -->
+        <div id="pw-phase1">
+          <p>Map your current classes to their destination class for the new session.</p>
+          <div class="aa-table-wrap">
+            <table class="aa-table">
+              <thead>
+                <tr>
+                  <th>Current Class</th>
+                  <th>Destination Class / Action</th>
+                </tr>
+              </thead>
+              <tbody id="pw-class-mapping-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <label class="aa-label" style="display:inline-block; margin-right:10px;">Update System Session to:</label>
+              <input type="text" id="pw-new-session" class="aa-input" style="width:120px; display:inline-block;" placeholder="e.g. 2024/2025">
+            </div>
+            <button class="aa-btn aa-btn-primary" onclick="pwGeneratePreview()">Generate Preview <i class="fa fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Phase 2: Student Preview -->
+        <div id="pw-phase2" style="display: none;">
+          <p>Review and adjust individual student promotions. You can mark students to repeat or withdraw.</p>
+          <div class="aa-table-wrap">
+            <table class="aa-table">
+              <thead>
+                <tr>
+                  <th>Adm No</th>
+                  <th>Student Name</th>
+                  <th>Current Class</th>
+                  <th>Proposed Class</th>
+                </tr>
+              </thead>
+              <tbody id="pw-student-preview-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4" style="display:flex; justify-content:space-between;">
+            <button class="aa-btn aa-btn-outline" onclick="pwBackToPhase1()"><i class="fa fa-arrow-left"></i> Back</button>
+            <button class="aa-btn aa-btn-success" onclick="pwExecutePromotion()">Confirm & Execute <i class="fa fa-check"></i></button>
+          </div>
         </div>
       </div>
     </div>
@@ -2363,6 +2424,148 @@
         callServer('adminRevokeParentInvite', [AA.token, token], function(res) {
           showToast(res.message, res.success ? 'success' : 'error');
           if (res.success) loadInviteHistory();
+        }, null, true);
+      });
+    }
+
+    // --- BULK PROMOTION WIZARD ---
+    function openPromotionWizard() {
+      document.getElementById('pw-phase1').style.display = 'block';
+      document.getElementById('pw-phase2').style.display = 'none';
+      
+      // Auto-fill new session suggestion
+      var parts = currentSession.split('/');
+      if(parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        document.getElementById('pw-new-session').value = (parseInt(parts[0])+1) + '/' + (parseInt(parts[1])+1);
+      } else {
+        document.getElementById('pw-new-session').value = '';
+      }
+
+      // Populate classes
+      var tbody = document.getElementById('pw-class-mapping-tbody');
+      var html = '';
+      
+      var classNames = [];
+      globalClasses.forEach(function(c) { if(!classNames.includes(c.className)) classNames.push(c.className); });
+      globalStudents.forEach(function(s) {
+        if((s.status === 'active' || !s.status) && s.className && !classNames.includes(s.className)) {
+          classNames.push(s.className);
+        }
+      });
+      // Sort using a simple string compare since frontend doesn't have getClassSortWeight
+      classNames.sort();
+
+      classNames.forEach(function(cName) {
+        var options = '<option value="' + cName + '">Stay in ' + cName + '</option>';
+        classNames.forEach(function(opt) {
+          if (opt !== cName) options += '<option value="' + opt + '">' + opt + '</option>';
+        });
+        options += '<option value="Graduated">Graduated (Inactive)</option>';
+        options += '<option value="Withdrawn">Withdrawn (Inactive)</option>';
+        
+        html += '<tr><td>' + cName + '</td><td><select class="aa-select pw-mapping-select" data-current="' + cName + '">' + options + '</select></td></tr>';
+      });
+      tbody.innerHTML = html;
+      
+      // Pre-select smart destinations (next in sorted list)
+      var selects = document.querySelectorAll('.pw-mapping-select');
+      selects.forEach(function(s) {
+        var current = s.getAttribute('data-current');
+        var cIdx = classNames.indexOf(current);
+        if(cIdx >= 0 && cIdx < classNames.length - 1) {
+          s.value = classNames[cIdx + 1];
+        }
+      });
+      
+      openModal('promotionWizardModal');
+    }
+
+    function pwGeneratePreview() {
+      var mappings = {};
+      document.querySelectorAll('.pw-mapping-select').forEach(function(sel) {
+        mappings[sel.getAttribute('data-current')] = sel.value;
+      });
+      
+      var tbody = document.getElementById('pw-student-preview-tbody');
+      var html = '';
+      
+      var classOptionsHtml = '';
+      var classNames = [];
+      globalClasses.forEach(function(c) { if(!classNames.includes(c.className)) classNames.push(c.className); });
+      globalStudents.forEach(function(s) {
+        if((s.status === 'active' || !s.status) && s.className && !classNames.includes(s.className)) classNames.push(s.className);
+      });
+      classNames.sort();
+      classNames.forEach(function(cName) { classOptionsHtml += '<option value="'+cName+'">'+cName+'</option>'; });
+      classOptionsHtml += '<option value="Graduated">Graduated (Inactive)</option>';
+      classOptionsHtml += '<option value="Withdrawn">Withdrawn (Inactive)</option>';
+      
+      var activeCount = 0;
+      globalStudents.forEach(function(s) {
+        if (s.status && s.status !== 'active') return; // only promote active students
+        activeCount++;
+        var proposed = mappings[s.className] || s.className;
+        var selectId = 'pw_stu_' + s.id;
+        html += '<tr>' +
+          '<td>' + (s.admNo || 'N/A') + '</td>' +
+          '<td>' + (s.fullName || '') + '</td>' +
+          '<td>' + (s.className || '') + '</td>' +
+          '<td><select id="'+selectId+'" class="aa-select pw-student-dest" data-sid="'+s.id+'" data-current-class="'+(s.className||'')+'">' + classOptionsHtml + '</select></td>' +
+        '</tr>';
+      });
+      
+      if(activeCount === 0) {
+        html = '<tr><td colspan="4" class="text-center">No active students found to promote.</td></tr>';
+      }
+      
+      tbody.innerHTML = html;
+      
+      // Set proposed values
+      globalStudents.forEach(function(s) {
+        if (s.status && s.status !== 'active') return;
+        var proposed = mappings[s.className] || s.className;
+        var sel = document.getElementById('pw_stu_' + s.id);
+        if(sel) sel.value = proposed;
+      });
+      
+      document.getElementById('pw-phase1').style.display = 'none';
+      document.getElementById('pw-phase2').style.display = 'block';
+    }
+
+    function pwBackToPhase1() {
+      document.getElementById('pw-phase1').style.display = 'block';
+      document.getElementById('pw-phase2').style.display = 'none';
+    }
+
+    function pwExecutePromotion() {
+      var promotions = [];
+      document.querySelectorAll('.pw-student-dest').forEach(function(sel) {
+        var sid = sel.getAttribute('data-sid');
+        var dest = sel.value;
+        var oldClass = sel.getAttribute('data-current-class');
+        var status = (dest === 'Graduated' || dest === 'Withdrawn') ? dest : 'active';
+        var cName = (dest === 'Graduated' || dest === 'Withdrawn') ? oldClass : dest;
+        promotions.push({ id: sid, className: cName, status: status });
+      });
+      
+      if(promotions.length === 0) return showToast('No students to promote.', 'error');
+      
+      var newSession = document.getElementById('pw-new-session').value.trim();
+      
+      aaConfirm('Are you sure you want to promote ' + promotions.length + ' students? This action will update their class and status.', function() {
+        var payload = { promotions: promotions };
+        if(newSession && newSession !== currentSession) {
+          payload.newSession = newSession;
+          payload.newTerm = 'First Term';
+        }
+        
+        callServer('adminPromoteStudents', [AA.token, payload], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+          if(res.success) {
+            closeModal('promotionWizardModal');
+            loadSettings();
+            loadStudents();
+          }
         }, null, true);
       });
     }

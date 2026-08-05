@@ -754,6 +754,45 @@ module.exports = function(db, notificationsActions) {
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
 
+    adminPromoteStudents: async (req, res) => {
+      try {
+        const { promotions, newSession, newTerm } = req.body;
+        if (!Array.isArray(promotions)) return res.json({ success: false, message: "Promotions array required" });
+        
+        const batch = db.batch();
+        let promotedCount = 0;
+        
+        for (const p of promotions) {
+          if (!p.id || !p.status || !p.className) continue;
+          
+          const studentRef = db.collection("students").doc(p.id);
+          // If status is graduated/withdrawn, mark as inactive but preserve history
+          const updates = { 
+            className: p.className, 
+            status: p.status === 'active' ? 'active' : 'inactive',
+            inactiveReason: p.status !== 'active' ? p.status : null 
+          };
+          batch.update(studentRef, updates);
+          promotedCount++;
+        }
+        
+        if (promotedCount > 0) {
+          await batch.commit();
+        }
+        
+        if (newSession && newTerm) {
+          await db.collection("settings").doc("global").update({
+            current_session: newSession,
+            current_term: newTerm
+          });
+        }
+        
+        return res.json({ success: true, message: `Successfully updated ${promotedCount} students.` });
+      } catch (err) {
+        return res.json({ success: false, message: "Promotion failed: " + err.message });
+      }
+    },
+
     // --- SECONDARY ACTION ENDPOINTS ---
     adminProcessPasswordReset: async (req, res) => { 
       try {
