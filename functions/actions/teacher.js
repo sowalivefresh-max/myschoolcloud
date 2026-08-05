@@ -365,9 +365,18 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSaveAttendance: async (req, res) => {
-      const records = req.body.data;
+      const records = req.body.records || req.body.data;
       if (!records || !Array.isArray(records)) {
         return res.json({ success: false, message: "Invalid attendance data." });
+      }
+
+      const date = req.body.date;
+      const className = req.body.className;
+      const term = req.body.term || "";
+      const session = req.body.session || "";
+
+      if (!date || !className) {
+        return res.json({ success: false, message: "Date and class name are required." });
       }
 
       try {
@@ -375,29 +384,27 @@ module.exports = function(db, notificationsActions) {
         let count = 0;
         
         for (let record of records) {
-          if (!record.studentId || !record.date) continue;
+          if (!record.studentId) continue;
           
-          if (record.id) {
-            batch.update(db.collection("attendance").doc(record.id), record);
-          } else {
-            const existingSnap = await db.collection("attendance")
-              .where("studentId", "==", record.studentId)
-              .where("date", "==", record.date)
-              .get();
-              
-            if (!existingSnap.empty) {
-              batch.update(db.collection("attendance").doc(existingSnap.docs[0].id), record);
-            } else {
-              const newRef = db.collection("attendance").doc();
-              record.id = newRef.id;
-              batch.set(newRef, record);
-            }
-          }
+          // Generate deterministic ID so we can blindly update without querying
+          const docId = record.studentId + "_" + date.replace(/\//g, "-");
+          const ref = db.collection("attendance").doc(docId);
+          
+          batch.set(ref, {
+            studentId: record.studentId,
+            className: className,
+            date: date,
+            status: record.status,
+            term: term,
+            session: session,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          
           count++;
         }
         
-        if (count > 0) await batch.commit();
-        return res.json({ success: true, message: `Attendance saved for ${count} students.` });
+        await batch.commit();
+        return res.json({ success: true, message: `Saved attendance for ${count} students.` });
       } catch (err) {
         return res.json({ success: false, message: "Error saving attendance: " + err.message });
       }
