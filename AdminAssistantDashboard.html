@@ -32,12 +32,7 @@
         <button class="aa-nav-item" id="nav-users" onclick="switchTab('admin-tabs', 'tab-users'); setActiveNav('nav-users')">
           <i class="fa fa-users-cog"></i> Staff & Users
         </button>
-        <button class="aa-nav-item" id="nav-requests" onclick="switchTab('admin-tabs', 'tab-requests'); setActiveNav('nav-requests')">
-          <i class="fa fa-key"></i> Pwd Requests
-        </button>
-        <button class="aa-nav-item" id="nav-approvals" onclick="switchTab('admin-tabs', 'tab-approvals'); setActiveNav('nav-approvals')">
-          <i class="fa fa-tasks"></i> Approvals
-        </button>
+
         <button class="aa-nav-item" id="nav-students" onclick="switchTab('admin-tabs', 'tab-students'); setActiveNav('nav-students')">
           <i class="fa fa-user-graduate"></i> Student Manager
         </button>
@@ -54,20 +49,10 @@
         </button>
         
         <div class="aa-nav-section">Operations</div>
-        <button class="aa-nav-item" id="nav-finance" onclick="switchTab('admin-tabs', 'tab-finance'); setActiveNav('nav-finance')">
-          <i class="fa fa-wallet"></i> Finance
-        </button>
         <button class="aa-nav-item" id="nav-reports" onclick="switchTab('admin-tabs', 'tab-reports'); setActiveNav('nav-reports')">
           <i class="fa fa-file-contract"></i> Reports
         </button>
         
-        <div class="aa-nav-section">System</div>
-        <button class="aa-nav-item" id="nav-audit" style="display: flex !important; visibility: visible !important;" onclick="switchTab('admin-tabs', 'tab-audit'); setActiveNav('nav-audit')">
-          <i class="fa fa-history"></i> Audit Logs
-        </button>
-        <button class="aa-nav-item" id="nav-settings" onclick="switchTab('admin-tabs', 'tab-settings'); setActiveNav('nav-settings')">
-          <i class="fa fa-cogs"></i> Settings
-        </button>
         <button class="aa-nav-item text-danger" onclick="AA.logout()">
           <i class="fa fa-sign-out-alt"></i> Logout
         </button>
@@ -88,7 +73,7 @@
       <header class="aa-topbar">
         <button class="aa-menu-toggle" id="aa-menu-toggle"><i class="fa fa-bars"></i></button>
         <div class="aa-topbar-left">
-          <div class="aa-topbar-title">Admin Dashboard</div>
+          <div class="aa-topbar-title">Admin Assistant Dashboard</div>
           <div class="aa-topbar-subtitle" id="currentTermText">Loading session...</div>
         </div>
         <div class="aa-topbar-right">
@@ -1576,8 +1561,11 @@
       }
     }
     function deleteStudent(id) {
-      aaConfirm('Are you sure you want to delete this student?', function() {
-        callServer('adminDeleteStudent', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success)loadStudents(); }, null, true);
+      aaConfirm('Request permission to delete this student?', function() {
+        var payload = { actionType: 'delete_student', title: 'Delete Student ' + id, payload: { studentId: id } };
+        callServer('adminRequestApproval', [AA.token, payload], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+        }, null, true);
       });
     }
 
@@ -1621,8 +1609,11 @@
       }
     }
     function deleteClass(id) {
-      aaConfirm('Delete this class? This may affect student records.', function() {
-        callServer('adminDeleteClass', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success)loadClasses(); }, null, true);
+      aaConfirm('Request permission to delete this class? This may affect student records.', function() {
+        var payload = { actionType: 'delete_class', title: 'Delete Class', payload: { classId: id } };
+        callServer('adminRequestApproval', [AA.token, payload], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+        }, null, true);
       });
     }
     function generateBulkClassResult(className) {
@@ -1655,7 +1646,13 @@
     }
     function saveGrade() {
       var data = getFormData('gradingForm');
-      callServer('adminSaveGradeRule', [AA.token, data], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){closeModal('gradingModal');loadGrading();} }, null, true);
+      aaConfirm('Request permission to save these grading changes?', function() {
+        var payload = { actionType: 'update_grading', title: 'Update Grading Rules', payload: { data: data } };
+        callServer('adminRequestApproval', [AA.token, payload], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+          if(res.success) { closeModal('gradingModal'); }
+        }, null, true);
+      });
     }
 
     function downloadFinancialReport() {
@@ -2026,8 +2023,11 @@
       }
     }
     function deleteSubject(id) {
-      aaConfirm('Delete this subject?', function() {
-        callServer('adminDeleteSubject', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success)loadSubjects(); }, null, true);
+      aaConfirm('Request permission to delete this subject?', function() {
+        var payload = { actionType: 'delete_subject', title: 'Delete Subject', payload: { subjectId: id } };
+        callServer('adminRequestApproval', [AA.token, payload], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+        }, null, true);
       });
     }
 

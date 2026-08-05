@@ -942,13 +942,45 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, message: "Payment rejected successfully." });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
+    adminRequestApproval: async (req, res) => {
+      try {
+        const { actionType, title, payload } = req.body;
+        if (!actionType) return res.json({ success: false, message: "Action type required" });
+        await db.collection("approvals").add({
+          title: title || "Pending Action",
+          actionType,
+          payload,
+          requestedBy: req.session.userId,
+          requestedAt: new Date().toISOString(),
+          status: "pending"
+        });
+        return res.json({ success: true, message: "Approval requested successfully." });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
     adminApproveTask: async (req, res) => { 
       try {
         const taskId = req.body.taskId;
         if (!taskId) return res.json({ success: false, message: "Task ID required" });
         const ref = db.collection("approvals").doc(taskId);
+        const snap = await ref.get();
+        if (!snap.exists) return res.json({ success: false, message: "Task not found." });
+        
+        const task = snap.data();
+        if (task.status !== "pending") return res.json({ success: false, message: "Task already processed." });
+        
+        // Execute the underlying task based on actionType
+        if (task.actionType === "delete_student") {
+          await db.collection("students").doc(task.payload.studentId).delete();
+        } else if (task.actionType === "delete_class") {
+          await db.collection("classes").doc(task.payload.classId).delete();
+        } else if (task.actionType === "delete_subject") {
+          await db.collection("subjects").doc(task.payload.subjectId).delete();
+        } else if (task.actionType === "update_grading") {
+          await db.collection("settings").doc("grading").set(task.payload.data, { merge: true });
+        }
+        
         await ref.update({ status: "Approved", approvedAt: new Date().toISOString(), approvedBy: req.session.userId });
-        return res.json({ success: true, message: "Task approved successfully." });
+        return res.json({ success: true, message: "Task approved and executed successfully." });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
     adminRejectTask: async (req, res) => { 
