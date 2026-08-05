@@ -669,8 +669,10 @@
     }
 
     function saveAllScores() {
-      var subId = document.getElementById('scoreSubjectSelect').value;
+      var subSel = document.getElementById('scoreSubjectSelect');
+      var subId = subSel.value;
       if(!subId) return;
+      var subName = subSel.options[subSel.selectedIndex].text;
       var payload = [];
       var tbody = document.querySelector('#scoresTable tbody');
       var inputs = tbody.querySelectorAll('input[id^="ca1_"]');
@@ -678,7 +680,7 @@
         if(!ca1Input.disabled) {
           var sid = ca1Input.id.split('_')[1];
           payload.push({
-            studentId: sid, subjectId: subId, term: currentTerm, session: currentSession,
+            studentId: sid, subjectId: subId, subjectName: subName, term: currentTerm, session: currentSession,
             ca1: ca1Input.value||0, ca2: document.getElementById('ca2_'+sid).value||0,
             ca3: document.getElementById('ca3_'+sid).value||0, exam: document.getElementById('exam_'+sid).value||0
           });
@@ -741,8 +743,10 @@
     function processBulkScores() {
       var file = document.getElementById('bulkScoreFile').files[0];
       if(!file) return showToast('Please select a file', 'error');
-      var subjectId = document.getElementById('scoreSubjectSelect').value;
+      var subSel = document.getElementById('scoreSubjectSelect');
+      var subjectId = subSel.value;
       if(!subjectId) return showToast('Please select a subject first', 'error');
+      var subjectName = subSel.options[subSel.selectedIndex].text;
       
       var reader = new FileReader();
       reader.onload = function(e) {
@@ -753,6 +757,7 @@
             payload.push({
               studentId: row.StudentID,
               subjectId: subjectId,
+              subjectName: subjectName,
               className: '',
               term: currentTerm,
               session: currentSession,
