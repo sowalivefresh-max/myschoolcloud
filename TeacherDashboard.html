@@ -180,8 +180,11 @@
           <div class="aa-card mb-4">
             <div class="aa-card-body">
               <div class="d-flex gap-3 align-items-center">
-                <select id="scoreSubjectSelect" class="aa-select" style="max-width:250px;" onchange="loadStudentsForScoring(this.value)">
-                  <option value="">-- Select Subject/Class --</option>
+                <select id="scoreSubjectSelect" class="aa-select" style="max-width:250px;" onchange="loadStudentsForScoring()">
+                  <option value="">-- Select Subject --</option>
+                </select>
+                <select id="scoreClassSelect" class="aa-select" style="max-width:150px; display:none;" onchange="renderScoreStudents()">
+                  <option value="">-- All Classes --</option>
                 </select>
                 <button class="aa-btn aa-btn-primary" onclick="loadStudentsForScoring()"><i class="fa fa-sync-alt"></i> Load</button>
                 <div class="flex-1 text-end">
@@ -498,7 +501,11 @@
     });
 
     function loadDashboard() {
-      if (!AA.user.isClassTeacher) document.getElementById('stat-students').textContent = 'N/A';
+      if (!AA.user.isClassTeacher) {
+        callServer('teacherGetStudentCount', [AA.token], function(count) {
+          document.getElementById('stat-students').textContent = count || 0;
+        });
+      }
       callServer('teacherGetMySubjects', [AA.token], function(data) {
         mySubjects = data;
         document.getElementById('stat-subjects').textContent = data.length;
@@ -624,48 +631,76 @@
       }, null, true);
     }
 
+    var currentScores = [];
+
     function loadStudentsForScoring() {
       var subId = document.getElementById('scoreSubjectSelect').value;
-      if(!subId) { document.getElementById('scoresCard').style.display='none'; return; }
+      if(!subId) { document.getElementById('scoresCard').style.display='none'; document.getElementById('scoreClassSelect').style.display='none'; return; }
       
       callServer('teacherGetSubjectStudents', [AA.token, subId, currentSession], function(students) {
         currentScoreStudents = students;
-        callServer('teacherGetScores', [AA.token, {subjectId: subId, term: currentTerm, session: currentSession}], function(scores) {
-          document.getElementById('scoresCard').style.display='block';
-          
-          var tbody = document.querySelector('#scoresTable tbody');
-          tbody.innerHTML = '';
-          var allLocked = students.length>0; var anyScores=false;
-
-          students.forEach(function(st) {
-            var sc = scores.find(function(x){ return String(x.studentID||x.studentId) === String(st.id||st.iD); }) || {};
-            var sid = st.id||st.iD;
-            var locked = String(sc.locked) === 'true' || String(sc.submitted) === 'true';
-            if(!locked) allLocked = false;
-            if(sc.id||sc.iD) anyScores = true;
-
-            var tr = document.createElement('tr');
-            tr.innerHTML = '<td>'+AA.escapeHTML(st.admissionNumber||'')+'</td><td>'+AA.escapeHTML(st.fullName)+'</td>'+
-              '<td><input type="number" id="ca1_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca1||sc.cA1||0)+'" '+(locked?'disabled':'')+'></td>'+
-              '<td><input type="number" id="ca2_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca2||sc.cA2||0)+'" '+(locked?'disabled':'')+'></td>'+
-              '<td><input type="number" id="ca3_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca3||sc.cA3||0)+'" '+(locked?'disabled':'')+'></td>'+
-              '<td><input type="number" id="exam_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.exam||sc.Exam||0)+'" '+(locked?'disabled':'')+'></td>'+
-              '<td><strong>'+(sc.total||0)+'</strong></td>'+
-              '<td>'+formatGrade(sc.grade||'')+'</td>';
-            tbody.appendChild(tr);
+        
+        var classSelect = document.getElementById('scoreClassSelect');
+        var classes = [];
+        students.forEach(function(st) {
+          if (st.className && classes.indexOf(st.className) === -1) classes.push(st.className);
+        });
+        
+        if (classes.length > 0) {
+          classSelect.innerHTML = '<option value="">-- All Classes --</option>';
+          classes.sort().forEach(function(c) {
+            classSelect.innerHTML += '<option value="'+AA.escapeHTML(c)+'">'+AA.escapeHTML(c)+'</option>';
           });
+          classSelect.style.display = 'inline-block';
+        } else {
+          classSelect.style.display = 'none';
+        }
 
-          if(students.length===0) tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No students enrolled in this subject yet.</td></tr>';
-          
-          var canSubmit = students.length > 0 && !allLocked && anyScores;
-          var canSave = students.length > 0 && !allLocked;
-          document.getElementById('btnSaveAllScores').style.display = canSave ? 'inline-block' : 'none';
-          document.getElementById('btnSubmitScores').style.display = canSubmit ? 'inline-block' : 'none';
-          document.getElementById('btnDownloadTemplate').style.display = 'inline-block';
-          document.getElementById('btnBulkUpload').style.display = 'inline-block';
-
+        callServer('teacherGetScores', [AA.token, {subjectId: subId, term: currentTerm, session: currentSession}], function(scores) {
+          currentScores = scores;
+          renderScoreStudents();
         }, null, true);
       }, null, true);
+    }
+
+    function renderScoreStudents() {
+      document.getElementById('scoresCard').style.display='block';
+      var clsFilter = document.getElementById('scoreClassSelect').value;
+      var students = currentScoreStudents;
+      if (clsFilter) {
+        students = students.filter(function(st) { return st.className === clsFilter; });
+      }
+
+      var tbody = document.querySelector('#scoresTable tbody');
+      tbody.innerHTML = '';
+      var allLocked = students.length>0; var anyScores=false;
+
+      students.forEach(function(st) {
+        var sc = currentScores.find(function(x){ return String(x.studentID||x.studentId) === String(st.id||st.iD); }) || {};
+        var sid = st.id||st.iD;
+        var locked = String(sc.locked) === 'true' || String(sc.submitted) === 'true';
+        if(!locked) allLocked = false;
+        if(sc.id||sc.iD) anyScores = true;
+
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+AA.escapeHTML(st.admissionNumber||'')+'</td><td>'+AA.escapeHTML(st.fullName)+'</td>'+
+          '<td><input type="number" id="ca1_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca1||sc.cA1||0)+'" '+(locked?'disabled':'')+'></td>'+
+          '<td><input type="number" id="ca2_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca2||sc.cA2||0)+'" '+(locked?'disabled':'')+'></td>'+
+          '<td><input type="number" id="ca3_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca3||sc.cA3||0)+'" '+(locked?'disabled':'')+'></td>'+
+          '<td><input type="number" id="exam_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.exam||sc.Exam||0)+'" '+(locked?'disabled':'')+'></td>'+
+          '<td><strong>'+(sc.total||0)+'</strong></td>'+
+          '<td>'+formatGrade(sc.grade||'')+'</td>';
+        tbody.appendChild(tr);
+      });
+
+      if(students.length===0) tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No students enrolled in this subject/class yet.</td></tr>';
+      
+      var canSubmit = students.length > 0 && !allLocked && anyScores;
+      var canSave = students.length > 0 && !allLocked;
+      document.getElementById('btnSaveAllScores').style.display = canSave ? 'inline-block' : 'none';
+      document.getElementById('btnSubmitScores').style.display = canSubmit ? 'inline-block' : 'none';
+      document.getElementById('btnDownloadTemplate').style.display = 'inline-block';
+      document.getElementById('btnBulkUpload').style.display = 'inline-block';
     }
 
     function saveAllScores() {

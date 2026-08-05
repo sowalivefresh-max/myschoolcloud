@@ -356,6 +356,7 @@ app.post("/api", async (req, res) => {
       case "teacherSaveScore":
         return requireRole(req, res, () => teacherActions.teacherSaveScore(req, res));
       case "teacherUpdateTrait": return requireRole(req, res, () => teacherActions.teacherUpdateTrait(req, res));
+      case "teacherGetStudentCount": return requireRole(req, res, () => teacherActions.teacherGetStudentCount(req, res));
       case "teacherGetStudentSubjects": return requireRole(req, res, () => teacherActions.teacherGetStudentSubjects(req, res));
       case "teacherEnrollStudent": return requireRole(req, res, () => teacherActions.teacherEnrollStudent(req, res));
       case "teacherUnenrollStudent": return requireRole(req, res, () => teacherActions.teacherUnenrollStudent(req, res));

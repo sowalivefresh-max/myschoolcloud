@@ -55,6 +55,37 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    teacherGetStudentCount: async (req, res) => {
+      const userId = req.session.userId;
+      const role = req.session.role;
+      try {
+        let studentCount = 0;
+        if (role === 'primary_teacher') {
+          const myClass = await getTeacherClass(userId);
+          if (myClass) {
+            const snap = await db.collection("students").where("className", "==", myClass).count().get();
+            studentCount = snap.data().count;
+          }
+        } else {
+          const subSnap = await db.collection("subjects").where("assignedTeacherId", "==", String(userId)).get();
+          if (!subSnap.empty) {
+            const subjectIds = [];
+            subSnap.forEach(d => subjectIds.push(d.id));
+            let uniqueStudents = new Set();
+            for (let i = 0; i < subjectIds.length; i += 30) {
+              const chunk = subjectIds.slice(i, i + 30);
+              const enrollSnap = await db.collection("student_subjects").where("subjectId", "in", chunk).get();
+              enrollSnap.forEach(doc => uniqueStudents.add(doc.data().studentId));
+            }
+            studentCount = uniqueStudents.size;
+          }
+        }
+        return res.json({ success: true, data: studentCount });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
     teacherGetClassStudents: async (req, res) => {
       const className = req.body.className;
       if (!className) return res.json({ success: false, message: "Class name required." });
