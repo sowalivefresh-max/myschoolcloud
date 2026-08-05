@@ -501,11 +501,9 @@
     });
 
     function loadDashboard() {
-      if (!AA.user.isClassTeacher) {
-        callServer('teacherGetStudentCount', [AA.token], function(count) {
-          document.getElementById('stat-students').textContent = count || 0;
-        });
-      }
+      callServer('teacherGetStudentCount', [AA.token], function(count) {
+        document.getElementById('stat-students').textContent = count || 0;
+      });
       callServer('teacherGetMySubjects', [AA.token], function(data) {
         mySubjects = data;
         document.getElementById('stat-subjects').textContent = data.length;
