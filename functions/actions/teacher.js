@@ -137,6 +137,37 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, data: { enrolled, available } });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
+    teacherGetSubjectStudents: async (req, res) => {
+      try {
+        const { subjectId, session, term } = req.body;
+        if (!subjectId) return res.json({ success: false, message: "Subject ID required" });
+
+        // 1. Get enrollments for this subject
+        let query = db.collection("student_subjects").where("subjectId", "==", subjectId);
+        if (session) query = query.where("session", "==", session);
+        if (term) query = query.where("term", "==", term);
+
+        const enrollSnap = await query.get();
+        if (enrollSnap.empty) return res.json({ success: true, data: [] });
+        
+        const studentIds = enrollSnap.docs.map(d => d.data().studentId);
+        
+        // 2. Fetch the student details for these IDs
+        const studentsSnap = await db.collection("students").where("status", "==", "active").get();
+        const students = [];
+        studentsSnap.forEach(doc => {
+          if (studentIds.includes(doc.id)) {
+            let st = doc.data();
+            st.id = doc.id;
+            students.push(st);
+          }
+        });
+        
+        return res.json({ success: true, data: students });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
 
     teacherEnrollStudent: async (req, res) => { 
       try {

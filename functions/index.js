@@ -393,9 +393,7 @@ app.post("/api", async (req, res) => {
         // Mock success for submit scores button
         return res.json({ success: true, message: "Scores submitted successfully." });
       case "teacherGetSubjectStudents":
-        // Fallback to fetch all students for now, frontend will filter if needed, 
-        // or we return empty and it skips. Actually let's return all students.
-        return requireRole(req, res, () => adminActions.adminGetStudents(req, res));
+        return requireRole(req, res, () => teacherActions.teacherGetSubjectStudents(req, res));
       case "principalGetAllStudents":
         return requireRole(req, res, () => adminActions.adminGetStudents(req, res));
       case "adminGenerateBulkResult":

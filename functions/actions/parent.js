@@ -209,8 +209,9 @@ module.exports = function(db) {
 
         const pdfGenerator = require("./pdf");
         const html = pdfGenerator.generateStudentReportHTML(report, cfg);
+        const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
         
-        return res.json({ success: true, previewUrl: "https://example.com/report.pdf", downloadUrl: "https://example.com/report.pdf" });
+        return res.json({ success: true, previewUrl: dataUri, downloadUrl: dataUri });
       } catch (err) {
         return res.json({ success: false, message: "Error downloading report: " + err.message });
       }
