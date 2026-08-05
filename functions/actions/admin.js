@@ -3,6 +3,20 @@ const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
 module.exports = function(db, notificationsActions) {
+  const classOrderMap = {
+    "creche": 10, "playgroup": 20, "pre-nursery": 30, "nursery 1": 40, "nursery 2": 50, "nursery 3": 60,
+    "primary 1": 70, "primary 2": 80, "primary 3": 90, "primary 4": 100, "primary 5": 110, "primary 6": 120,
+    "jss 1": 130, "jss 2": 140, "jss 3": 150, "ss 1": 160, "ss 2": 170, "ss 3": 180,
+    "sss 1": 160, "sss 2": 170, "sss 3": 180, "year 1": 70, "year 2": 80, "year 3": 90, "year 4": 100, "year 5": 110, "year 6": 120
+  };
+  function getClassSortWeight(className) {
+    if (!className) return 999;
+    let normalized = className.toLowerCase().trim();
+    for (let key in classOrderMap) {
+      if (normalized.startsWith(key)) return classOrderMap[key];
+    }
+    return 999;
+  }
   return {
     adminGetStats: async (req, res) => {
       // Middleware ensures req.session exists and role is admin/admin_assistant
@@ -206,6 +220,11 @@ module.exports = function(db, notificationsActions) {
           data.id = doc.id;
           students.push(data);
         });
+        students.sort((a, b) => {
+          let diff = getClassSortWeight(a.className) - getClassSortWeight(b.className);
+          if (diff !== 0) return diff;
+          return (a.fullName || "").localeCompare(b.fullName || "");
+        });
         return res.json({ success: true, data: students });
       } catch (err) {
         return res.json({ success: false, message: "Error fetching students: " + err.message });
@@ -254,6 +273,11 @@ module.exports = function(db, notificationsActions) {
           }
           data.id = doc.id;
           classes.push(data);
+        });
+        classes.sort((a, b) => {
+          let diff = getClassSortWeight(a.className) - getClassSortWeight(b.className);
+          if (diff !== 0) return diff;
+          return (a.className || "").localeCompare(b.className || "");
         });
         return res.json({ success: true, data: classes });
       } catch (err) {
@@ -1164,6 +1188,11 @@ module.exports = function(db, notificationsActions) {
           }
         }
         
+        debtors.sort((a, b) => {
+          let diff = getClassSortWeight(a.class) - getClassSortWeight(b.class);
+          if (diff !== 0) return diff;
+          return (a.studentName || "").localeCompare(b.studentName || "");
+        });
         return res.json({ success: true, data: debtors });
       } catch (err) {
         return res.json({ success: false, message: err.message });
@@ -1202,6 +1231,11 @@ module.exports = function(db, notificationsActions) {
           return { ...b, totalPaid, balance, status };
         });
 
+        enriched.sort((a, b) => {
+          let diff = getClassSortWeight(a.className) - getClassSortWeight(b.className);
+          if (diff !== 0) return diff;
+          return (a.studentName || "").localeCompare(b.studentName || "");
+        });
         return res.json({ success: true, data: enriched });
       } catch (err) {
         return res.json({ success: false, message: err.message });
