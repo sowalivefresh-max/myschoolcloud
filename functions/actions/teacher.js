@@ -397,7 +397,7 @@ module.exports = function(db, notificationsActions) {
             status: record.status,
             term: term,
             session: session,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: new Date().toISOString()
           }, { merge: true });
           
           count++;
