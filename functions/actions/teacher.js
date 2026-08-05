@@ -91,7 +91,10 @@ module.exports = function(db, notificationsActions) {
           return res.json({ success: false, message: "Student not found in your assigned class." });
         }
         
-        const subjectsSnap = await db.collection("subjects").get();
+        const role = req.session.role;
+        const targetSection = role === 'primary_teacher' ? 'primary' : 'high';
+        
+        const subjectsSnap = await db.collection("subjects").where("section", "==", targetSection).get();
         const allSubjects = subjectsSnap.docs.map(d => ({id: d.id, ...d.data()}));
         
         const enrollSnap = await db.collection("student_subjects").where("studentId", "==", sid).get();
