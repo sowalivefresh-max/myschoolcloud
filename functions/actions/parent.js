@@ -216,9 +216,6 @@ module.exports = function(db) {
           reportType: reportType
         };
         
-        const cfgDoc = await db.collection("settings").doc("global").get();
-        const cfg = cfgDoc.exists ? cfgDoc.data() : { schoolName: "MySchool Portal" };
-
         const pdfGenerator = require("./pdf");
         const html = pdfGenerator.generateStudentReportHTML(report, cfg);
         const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
