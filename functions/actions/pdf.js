@@ -60,7 +60,9 @@ module.exports = {
     html += '<div style="font-size:11px;color:#555;margin:2px 0;">Academic Report Card</div>';
     html += '<div class="rpt-title">' + term + ' Report - ' + session + '</div>';
     html += '</div>';
-    html += '<div class="logo-ph" style="margin-right:0; margin-left:15px; background:#f5f5f5; color:#888; border:1px solid #ccc; font-size:10px; text-align:center; line-height:1.2;">Passport<br>Photo</div>';
+    
+    let photoUrl = s.photoUrl || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(s.fullName || 'S') + '&background=f0a500&color=fff&size=300');
+    html += '<img src="' + photoUrl + '" style="width:70px; height:85px; object-fit:cover; margin-right:0; margin-left:15px; border:1px solid #ccc; border-radius:4px;" alt="Photo">';
     html += '</div>';
 
     // Biodata
