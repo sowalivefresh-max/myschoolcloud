@@ -447,6 +447,19 @@ function formatDateTime(dateStr) {
   return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear() + ', ' + timeStr;
 }
 
+function calculateGrade(total) {
+  var t = parseFloat(total) || 0;
+  if (t >= 75) return 'A1';
+  if (t >= 70) return 'B2';
+  if (t >= 65) return 'B3';
+  if (t >= 60) return 'C4';
+  if (t >= 55) return 'C5';
+  if (t >= 50) return 'C6';
+  if (t >= 45) return 'D7';
+  if (t >= 40) return 'E8';
+  return 'F9';
+}
+
 function formatGrade(grade) {
   var cls = { 'A1':'grade-a1','B2':'grade-b2','B3':'grade-b3',
     'C4':'grade-c4','C5':'grade-c5','C6':'grade-c6','D7':'grade-d7','E8':'grade-e8','F9':'grade-f9' };

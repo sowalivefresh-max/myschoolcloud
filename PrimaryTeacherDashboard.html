@@ -577,10 +577,16 @@
         var sid = st.id || st.iD;
         var ca1 = document.getElementById('ca1_'+sid);
         if(ca1 && !ca1.disabled) {
+          var c1 = parseFloat(ca1.value)||0;
+          var c2 = parseFloat(document.getElementById('ca2_'+sid).value)||0;
+          var c3 = parseFloat(document.getElementById('ca3_'+sid).value)||0;
+          var ex = parseFloat(document.getElementById('exam_'+sid).value)||0;
+          var tot = c1 + c2 + c3 + ex;
+          var grd = typeof calculateGrade === 'function' ? calculateGrade(tot) : '';
           payload.push({
             studentId: sid, subjectId: subId, subjectName: subName, className: myClass, term: currentTerm, session: currentSession,
-            ca1: ca1.value||0, ca2: document.getElementById('ca2_'+sid).value||0,
-            ca3: document.getElementById('ca3_'+sid).value||0, exam: document.getElementById('exam_'+sid).value||0
+            ca1: c1, ca2: c2, ca3: c3, exam: ex,
+            total: tot, termTotal: tot, grade: grd, termGrade: grd
           });
         }
       });

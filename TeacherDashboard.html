@@ -640,6 +640,7 @@
         currentScoreStudents = students;
         
         var classSelect = document.getElementById('scoreClassSelect');
+        var prevClass = classSelect.value;
         var classes = [];
         students.forEach(function(st) {
           if (st.className && classes.indexOf(st.className) === -1) classes.push(st.className);
@@ -650,6 +651,7 @@
           classes.sort().forEach(function(c) {
             classSelect.innerHTML += '<option value="'+AA.escapeHTML(c)+'">'+AA.escapeHTML(c)+'</option>';
           });
+          classSelect.value = prevClass || "";
           classSelect.style.display = 'inline-block';
         } else {
           classSelect.style.display = 'none';
@@ -715,10 +717,16 @@
       inputs.forEach(function(ca1Input) {
         if(!ca1Input.disabled) {
           var sid = ca1Input.id.split('_')[1];
+          var c1 = parseFloat(ca1Input.value) || 0;
+          var c2 = parseFloat(document.getElementById('ca2_'+sid).value) || 0;
+          var c3 = parseFloat(document.getElementById('ca3_'+sid).value) || 0;
+          var ex = parseFloat(document.getElementById('exam_'+sid).value) || 0;
+          var tot = c1 + c2 + c3 + ex;
+          var grd = typeof calculateGrade === 'function' ? calculateGrade(tot) : '';
           payload.push({
             studentId: sid, subjectId: subId, subjectName: subName, term: currentTerm, session: currentSession,
-            ca1: ca1Input.value||0, ca2: document.getElementById('ca2_'+sid).value||0,
-            ca3: document.getElementById('ca3_'+sid).value||0, exam: document.getElementById('exam_'+sid).value||0
+            ca1: c1, ca2: c2, ca3: c3, exam: ex,
+            total: tot, termTotal: tot, grade: grd, termGrade: grd
           });
         }
       });
