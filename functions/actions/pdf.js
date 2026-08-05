@@ -58,7 +58,8 @@ module.exports = {
     html += '<div class="school-name">' + (cfg.schoolName || "MySchool Portal") + '</div>';
     if (cfg.schoolMotto) html += '<div class="school-motto">"' + cfg.schoolMotto + '"</div>';
     html += '<div style="font-size:11px;color:#555;margin:2px 0;">Academic Report Card</div>';
-    html += '<div class="rpt-title">' + term + ' Report - ' + session + '</div>';
+    let titleTerm = report.reportType === 'half' ? term + ' Half-Term' : term;
+    html += '<div class="rpt-title">' + titleTerm + ' Report - ' + session + '</div>';
     html += '</div>';
     
     let photoUrl = s.photoUrl || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(s.fullName || 'S') + '&background=f0a500&color=fff&size=300');
@@ -77,14 +78,20 @@ module.exports = {
     // Summary
     html += '<div class="summary-grid">';
     html += '<div class="sum-box"><div class="sum-val">' + scores.length + '</div><div class="sum-lbl">Subjects</div></div>';
-    html += '<div class="sum-box"><div class="sum-val">' + (summary.average || 0) + '%</div><div class="sum-lbl">Average</div></div>';
-    html += '<div class="sum-box"><div class="sum-val">' + (summary.overallGrade || 'N/A') + '</div><div class="sum-lbl">Overall Grade</div></div>';
+    if (report.reportType !== 'half') {
+      html += '<div class="sum-box"><div class="sum-val">' + (summary.average || 0) + '%</div><div class="sum-lbl">Average</div></div>';
+      html += '<div class="sum-box"><div class="sum-val">' + (summary.overallGrade || 'N/A') + '</div><div class="sum-lbl">Overall Grade</div></div>';
+    }
     html += '<div class="sum-box"><div class="sum-val">' + (att.percentage || 0) + '%</div><div class="sum-lbl">Attendance</div></div>';
     html += '</div>';
 
     // Scores Table
     html += '<div class="sec-title">Academic Performance</div>';
-    html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th><th>CA3</th><th>Exam</th><th>Total</th><th>Grade</th></tr>';
+    if (report.reportType === 'half') {
+      html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th></tr>';
+    } else {
+      html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th><th>CA3</th><th>Exam</th><th>Total</th><th>Grade</th></tr>';
+    }
 
     for (let i = 0; i < scores.length; i++) {
       let sc = scores[i];
@@ -93,10 +100,14 @@ module.exports = {
       
       html += '<tr><td>' + (i + 1) + '</td>';
       html += '<td style="text-align:left;padding-left:6px;">' + (sc.subjectName || '') + '</td>';
-      html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td><td>' + (sc.cA3 || sc.ca3 || 0) + '</td>';
-      html += '<td>' + (sc.exam || sc.Exam || 0) + '</td>';
-      html += '<td><strong>' + (sc.total || sc.termTotal || 0) + '</strong></td>';
-      html += '<td class="' + gcls + '">' + g + '</td></tr>';
+      if (report.reportType === 'half') {
+        html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td></tr>';
+      } else {
+        html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td><td>' + (sc.cA3 || sc.ca3 || 0) + '</td>';
+        html += '<td>' + (sc.exam || sc.Exam || 0) + '</td>';
+        html += '<td><strong>' + (sc.total || sc.termTotal || 0) + '</strong></td>';
+        html += '<td class="' + gcls + '">' + g + '</td></tr>';
+      }
     }
     html += '</table>';
 

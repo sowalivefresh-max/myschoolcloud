@@ -59,6 +59,12 @@ module.exports = function(db) {
         
         let student = studentDoc.data();
         student.id = studentDoc.id;
+
+        const settingsSnap = await db.collection("settings").doc("global").get();
+        const cfg = settingsSnap.exists ? settingsSnap.data() : {};
+        if (term === cfg.current_term && academicSession === cfg.current_session && !cfg.results_published) {
+          return res.json({ success: false, message: "Results for the current term have not been published yet." });
+        }
         
         const scoresSnap = await db.collection("assessments")
           .where("studentId", "==", studentId)
@@ -168,6 +174,12 @@ module.exports = function(db) {
         if (!studentDoc.exists) return res.json({ success: false, message: "Student not found." });
         let student = studentDoc.data();
         student.id = studentDoc.id;
+        
+        const settingsSnap = await db.collection("settings").doc("global").get();
+        const cfg = settingsSnap.exists ? settingsSnap.data() : {};
+        if (term === cfg.current_term && academicSession === cfg.current_session && !cfg.results_published) {
+          return res.json({ success: false, message: "Results for the current term have not been published yet." });
+        }
         
         const scoresSnap = await db.collection("assessments")
           .where("studentId", "==", studentId)

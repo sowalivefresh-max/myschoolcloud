@@ -1,0 +1,23 @@
+[debug] [2026-08-05T23:07:41.117Z] ----------------------------------------------------------------------
+[debug] [2026-08-05T23:07:41.142Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions
+[debug] [2026-08-05T23:07:41.144Z] CLI Version:   15.24.0
+[debug] [2026-08-05T23:07:41.144Z] Platform:      win32
+[debug] [2026-08-05T23:07:41.145Z] Node Version:  v24.18.0
+[debug] [2026-08-05T23:07:41.145Z] Detected Agent: antigravity
+[debug] [2026-08-05T23:07:41.145Z] Time:          Thu Aug 06 2026 00:07:41 GMT+0100 (West Africa Time)
+[debug] [2026-08-05T23:07:41.146Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-05T23:07:46.339Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-05T23:07:46.339Z] > authorizing via signed-in user (faith4grtns@gmail.com)
+[debug] [2026-08-05T23:07:46.340Z] [iam] checking project cloudschool-3c1d4 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-08-05T23:07:46.394Z] Checked if tokens are valid: true, expires at: 1785972803010
+[debug] [2026-08-05T23:07:46.395Z] Checked if tokens are valid: true, expires at: 1785972803010
+[debug] [2026-08-05T23:07:46.398Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions [none]
+[debug] [2026-08-05T23:07:46.398Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions  x-goog-user-project=cloudschool-3c1d4
+[debug] [2026-08-05T23:07:46.399Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-08-05T23:07:47.320Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions 200
+[debug] [2026-08-05T23:07:47.321Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-08-05T23:07:47.322Z] Checked if tokens are valid: true, expires at: 1785972803010
+[debug] [2026-08-05T23:07:47.322Z] Checked if tokens are valid: true, expires at: 1785972803010
+[debug] [2026-08-05T23:07:47.323Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/cloudschool-3c1d4/serviceAccounts/cloudschool-3c1d4@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-08-05T23:07:47.323Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/cloudschool-3c1d4/serviceAccounts/cloudschool-3c1d4@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}

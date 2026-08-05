@@ -336,6 +336,8 @@ function setFormData(formId, data) {
         for(var i = 0; i < el.options.length; i++) {
           el.options[i].selected = vals.indexOf(el.options[i].value) !== -1;
         }
+      } else if (el.type === 'checkbox') {
+        el.checked = !!data[k];
       } else {
         el.value = data[k] !== null && data[k] !== undefined ? data[k] : '';
       }
