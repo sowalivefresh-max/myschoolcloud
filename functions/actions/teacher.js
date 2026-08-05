@@ -1,4 +1,14 @@
 module.exports = function(db, notificationsActions) {
+  async function getTeacherClass(userId) {
+    const userDoc = await db.collection("users").doc(userId).get();
+    let cls = userDoc.exists ? userDoc.data().classAssigned : null;
+    if (!cls) {
+      const snap = await db.collection("classes").where("classTeacherId", "==", userId).get();
+      if (!snap.empty) cls = snap.docs[0].data().className;
+    }
+    return cls;
+  }
+
   return {
     teacherGetMySubjects: async (req, res) => {
       // Session attached by middleware
@@ -9,8 +19,7 @@ module.exports = function(db, notificationsActions) {
       try {
         if (role === 'primary_teacher') {
           // Fetch the user to get their assigned class
-          const userDoc = await db.collection("users").doc(userId).get();
-          const myClass = userDoc.data().classAssigned || "";
+          const myClass = (await getTeacherClass(userId)) || "";
           
           const subjectsSnap = await db.collection("subjects").get();
           const subjects = [];
@@ -74,8 +83,7 @@ module.exports = function(db, notificationsActions) {
         const sid = req.body.studentId;
         if (!sid) return res.json({ success: false, message: "Student ID required" });
         
-        const teacherDoc = await db.collection("users").doc(req.session.userId).get();
-        const teacherClass = teacherDoc.data().classAssigned;
+        const teacherClass = await getTeacherClass(req.session.userId);
         if (!teacherClass) return res.json({ success: false, message: "You are not assigned as a class teacher." });
         
         const studentDoc = await db.collection("students").doc(sid).get();
@@ -101,8 +109,7 @@ module.exports = function(db, notificationsActions) {
         const { studentId, subjectId, session, term } = req.body;
         if (!studentId || !subjectId) return res.json({ success: false, message: "Student and Subject ID required" });
         
-        const teacherDoc = await db.collection("users").doc(req.session.userId).get();
-        const teacherClass = teacherDoc.data().classAssigned;
+        const teacherClass = await getTeacherClass(req.session.userId);
         const studentDoc = await db.collection("students").doc(studentId).get();
         if (!studentDoc.exists || studentDoc.data().className !== teacherClass) {
           return res.json({ success: false, message: "Student not found in your assigned class." });
@@ -126,8 +133,7 @@ module.exports = function(db, notificationsActions) {
         const { studentId, subjectId } = req.body;
         if (!studentId || !subjectId) return res.json({ success: false, message: "Student and Subject ID required" });
         
-        const teacherDoc = await db.collection("users").doc(req.session.userId).get();
-        const teacherClass = teacherDoc.data().classAssigned;
+        const teacherClass = await getTeacherClass(req.session.userId);
         const studentDoc = await db.collection("students").doc(studentId).get();
         if (!studentDoc.exists || studentDoc.data().className !== teacherClass) {
           return res.json({ success: false, message: "Student not found in your assigned class." });
