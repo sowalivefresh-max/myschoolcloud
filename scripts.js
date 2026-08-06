@@ -801,7 +801,9 @@ function openBroadsheetModal() {
         <div class="aa-modal-body">
           <div class="aa-form-group">
             <label class="aa-label">Class</label>
-            <input type="text" id="bsClass" class="aa-input" placeholder="e.g. JSS 1" />
+            <select id="bsClass" class="aa-input">
+              <option value="">Loading classes...</option>
+            </select>
           </div>
           <div class="aa-form-group">
             <label class="aa-label">Term</label>
@@ -833,6 +835,21 @@ function openBroadsheetModal() {
   
   if (AA.settings.current_session) document.getElementById('bsSession').value = AA.settings.current_session;
   if (AA.settings.current_term) document.getElementById('bsTerm').value = AA.settings.current_term;
+  
+  // Fetch classes
+  callServer('adminGetClasses', [AA.token, ''], function(res) {
+    var sel = document.getElementById('bsClass');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">-- Select Class --</option>';
+    if (res && res.length) { // API returns an array directly for adminGetClasses in scripts.js wrapper?
+      // Wait, let's check how callServer passes data. The callback receives `res.data` if success, or `res` if it's the raw payload. 
+      // Most places use data.forEach where callback argument is `data`.
+      var list = Array.isArray(res) ? res : (res.data || []);
+      list.forEach(function(c) {
+        sel.innerHTML += '<option value="'+c.className+'">'+c.className+' ('+(c.section || 'N/A')+')</option>';
+      });
+    }
+  }, null, true);
 }
 
 function generateBroadsheet() {

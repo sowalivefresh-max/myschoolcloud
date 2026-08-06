@@ -159,6 +159,7 @@ app.post("/api", async (req, res) => {
         // Additional Accounts Mappings
         if (action === "adminGetFinancialStats") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGetDebtors") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminGetBroadsheetData") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
         if (action === "adminGetBills") { req.body.filters = args[1]; }
         if (action === "adminRecordPayment") { req.body.data = args[1]; }
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
