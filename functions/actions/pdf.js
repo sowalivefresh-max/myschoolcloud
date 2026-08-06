@@ -58,7 +58,8 @@ module.exports = {
     html += '<div class="school-name">' + (cfg.schoolName || "MySchool Portal") + '</div>';
     if (cfg.schoolMotto) html += '<div class="school-motto">"' + cfg.schoolMotto + '"</div>';
     html += '<div style="font-size:11px;color:#555;margin:2px 0;">Academic Report Card</div>';
-    let titleTerm = report.reportType === 'half' ? term + ' Half-Term' : term;
+    let isHalfTerm = report.reportType && report.reportType.toLowerCase().includes('half');
+    let titleTerm = isHalfTerm ? term + ' Half-Term' : term;
     html += '<div class="rpt-title">' + titleTerm + ' Report - ' + session + '</div>';
     html += '</div>';
     
@@ -78,7 +79,7 @@ module.exports = {
     // Summary
     html += '<div class="summary-grid">';
     html += '<div class="sum-box"><div class="sum-val">' + scores.length + '</div><div class="sum-lbl">Subjects</div></div>';
-    if (report.reportType !== 'half') {
+    if (!isHalfTerm) {
       html += '<div class="sum-box"><div class="sum-val">' + (summary.average || 0) + '%</div><div class="sum-lbl">Average</div></div>';
       html += '<div class="sum-box"><div class="sum-val">' + (summary.overallGrade || 'N/A') + '</div><div class="sum-lbl">Overall Grade</div></div>';
     }
@@ -87,7 +88,7 @@ module.exports = {
 
     // Scores Table
     html += '<div class="sec-title">Academic Performance</div>';
-    if (report.reportType === 'half') {
+    if (isHalfTerm) {
       html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th></tr>';
     } else {
       html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th><th>CA3</th><th>Exam</th><th>Total</th><th>Grade</th></tr>';
@@ -100,7 +101,7 @@ module.exports = {
       
       html += '<tr><td>' + (i + 1) + '</td>';
       html += '<td style="text-align:left;padding-left:6px;">' + (sc.subjectName || '') + '</td>';
-      if (report.reportType === 'half') {
+      if (isHalfTerm) {
         html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td></tr>';
       } else {
         html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td><td>' + (sc.cA3 || sc.ca3 || 0) + '</td>';
