@@ -869,11 +869,13 @@ function generateBroadsheet() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa fa-download"></i> Download';
     
-    if (!res.success) return showToast(res.message, 'error');
-    if (!res.data || res.data.students.length === 0) return showToast('No data found for this class.', 'warning');
+    if (res.success === false) return showToast(res.message || 'An error occurred.', 'error');
     
-    var subjects = res.data.subjects;
-    var students = res.data.students;
+    var payload = res.success !== undefined ? res.data : res;
+    if (!payload || !payload.students || payload.students.length === 0) return showToast('No data found for this class.', 'warning');
+    
+    var subjects = payload.subjects;
+    var students = payload.students;
     var schoolName = AA.settings.school_name || 'School';
     
     if (format === 'csv') {
