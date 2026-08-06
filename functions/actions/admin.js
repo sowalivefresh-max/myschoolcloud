@@ -201,10 +201,10 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: false, message: "Error fetching compliance: " + err.message });
       }
     },
-    adminGetSchoolPerformance: async (req, res) => {
+    adminGetSchoolPerformanceAnalytics: async (req, res) => {
       try {
         const { term, session } = req.body;
-        if (!term || !session) return res.json({ success: true, overallAverage: 0, bestClass: "N/A" });
+        if (!term || !session) return res.json({ success: true, overallAverage: 0, bestClass: "N/A", bestSubject: "N/A" });
         
         // 1. Get all students to map studentId -> className
         const studentsSnap = await db.collection("students").get();
@@ -221,35 +221,111 @@ module.exports = function(db, notificationsActions) {
           
         let totalScoreSum = 0;
         let totalScoreCount = 0;
-        const classScores = {}; // { className: { sum: 0, count: 0 } }
+        const classScores = {}; // { className: { sum: 0, count: 0, studentScores: {} } }
+        const subjectScores = {}; // { subject: { sum: 0, count: 0, maxScore: 0 } }
+        const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
         
+        const getGrade = (score) => {
+          if (score >= 75) return 'A';
+          if (score >= 65) return 'B';
+          if (score >= 50) return 'C';
+          if (score >= 45) return 'D';
+          if (score >= 40) return 'E';
+          return 'F';
+        };
+
         assSnap.forEach(doc => {
           const data = doc.data();
           const total = Number(data.total) || 0;
           totalScoreSum += total;
           totalScoreCount++;
           
+          // Grade
+          const grade = getGrade(total);
+          gradeDistribution[grade]++;
+
+          // Class
           const className = studentClassMap[data.studentId] || data.className || "Unknown";
-          if (!classScores[className]) classScores[className] = { sum: 0, count: 0 };
+          if (!classScores[className]) classScores[className] = { sum: 0, count: 0, studentScores: {} };
           classScores[className].sum += total;
           classScores[className].count++;
+          
+          if (!classScores[className].studentScores[data.studentId]) {
+             classScores[className].studentScores[data.studentId] = { sum: 0, count: 0 };
+          }
+          classScores[className].studentScores[data.studentId].sum += total;
+          classScores[className].studentScores[data.studentId].count++;
+
+          // Subject
+          const subject = data.subject || "Unknown";
+          if (!subjectScores[subject]) subjectScores[subject] = { sum: 0, count: 0, maxScore: 0 };
+          subjectScores[subject].sum += total;
+          subjectScores[subject].count++;
+          if (total > subjectScores[subject].maxScore) subjectScores[subject].maxScore = total;
         });
         
         const overallAverage = totalScoreCount > 0 ? Math.round(totalScoreSum / totalScoreCount) : 0;
         
         let bestClass = "N/A";
         let bestClassAvg = -1;
+        const classPerformance = [];
         
         for (const [cName, stats] of Object.entries(classScores)) {
           if (cName === "Unknown") continue;
-          const avg = stats.sum / stats.count;
+          const avg = Math.round(stats.sum / stats.count);
+          const totalStudents = Object.keys(stats.studentScores).length;
+          
+          let topStudentScore = -1;
+          for (const sId in stats.studentScores) {
+             const sAvg = stats.studentScores[sId].sum / stats.studentScores[sId].count;
+             if (sAvg > topStudentScore) topStudentScore = sAvg;
+          }
+
+          classPerformance.push({
+             className: cName,
+             average: avg,
+             totalStudents: totalStudents,
+             topStudentAverage: Math.round(topStudentScore)
+          });
+          
           if (avg > bestClassAvg) {
             bestClassAvg = avg;
             bestClass = cName;
           }
         }
         
-        return res.json({ success: true, overallAverage, bestClass });
+        classPerformance.sort((a, b) => b.average - a.average);
+
+        let bestSubject = "N/A";
+        let bestSubjectAvg = -1;
+        const subjectPerformance = [];
+
+        for (const [sub, stats] of Object.entries(subjectScores)) {
+          if (sub === "Unknown") continue;
+          const avg = Math.round(stats.sum / stats.count);
+          subjectPerformance.push({
+             subject: sub,
+             average: avg,
+             highestScore: stats.maxScore
+          });
+
+          if (avg > bestSubjectAvg) {
+             bestSubjectAvg = avg;
+             bestSubject = sub;
+          }
+        }
+        
+        subjectPerformance.sort((a, b) => b.average - a.average);
+
+        return res.json({ 
+          success: true, 
+          overallAverage, 
+          bestClass, 
+          bestSubject,
+          classPerformance,
+          subjectPerformance,
+          gradeDistribution 
+        });
       } catch (err) {
         return res.json({ success: false, message: "Error fetching performance: " + err.message });
       }

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="aa-layout">
@@ -33,6 +34,9 @@
           <i class="fa fa-chart-bar"></i> Performance
         </button>
         <div class="aa-nav-section">Staff</div>
+        <button class="aa-nav-item" id="nav-compliance" onclick="switchTab('prin-tabs', 'tab-compliance'); setActiveNav('nav-compliance')">
+          <i class="fa fa-user-check"></i> Compliance
+        </button>
         <button class="aa-nav-item" id="nav-lessonplans" onclick="switchTab('prin-tabs', 'tab-lessonplans'); setActiveNav('nav-lessonplans')">
           <i class="fa fa-book-open"></i> Lesson Plans
         </button>
@@ -67,6 +71,7 @@
           <div class="aa-tab active" data-tab="tab-dashboard" data-onload="loadDashboard"></div>
           <div class="aa-tab" data-tab="tab-reports" data-onload="loadClassesForReports"></div>
           <div class="aa-tab" data-tab="tab-analytics" data-onload="loadAnalytics"></div>
+          <div class="aa-tab" data-tab="tab-compliance" data-onload="loadCompliance"></div>
           <div class="aa-tab" data-tab="tab-lessonplans" data-onload="loadLessonPlans"></div>
         </div>
 
@@ -92,13 +97,11 @@
           
           <div class="aa-card">
             <div class="aa-card-header"><h3 class="aa-card-title">School Performance Overview</h3></div>
-            <div class="aa-card-body" style="padding:0;">
-              <div class="aa-table-wrap">
-                <table class="aa-table" id="schoolPerfTable">
-                  <thead><tr><th>Class</th><th>Section</th><th>Total Students</th><th>Class Average</th></tr></thead>
-                  <tbody></tbody>
-                </table>
-              </div>
+            <div class="aa-card-body" id="performance-summary">
+              <p class="text-muted">Loading performance data...</p>
+            </div>
+            <div class="aa-card-body" style="border-top: 1px solid var(--aa-gray-100); padding-top: 15px;">
+              <button class="aa-btn aa-btn-primary w-100" style="width:100%;" onclick="switchTab('prin-tabs', 'tab-analytics'); setActiveNav('nav-analytics')">View Full Analytics</button>
             </div>
           </div>
         </div>
@@ -145,6 +148,56 @@
 
         <!-- TAB: Analytics -->
         <div class="aa-tab-content" data-group="prin-tabs" data-id="tab-analytics">
+          <div class="d-flex justify-content-between align-items-center mb-4" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h2>School Performance Analytics</h2>
+            <button class="aa-btn aa-btn-outline" onclick="loadAnalytics()"><i class="fa fa-sync"></i> Refresh</button>
+          </div>
+          
+          <div class="aa-grid-3 mb-4" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-bottom:1.5rem;">
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-success"><i class="fa fa-percentage"></i></div>
+              <div class="aa-stat-value" id="analytics-overall">-</div>
+              <div class="aa-stat-label">Overall Average</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-navy"><i class="fa fa-trophy"></i></div>
+              <div class="aa-stat-value" id="analytics-best-class">-</div>
+              <div class="aa-stat-label">Top Performing Class</div>
+            </div>
+            <div class="aa-stat-card">
+              <div class="aa-stat-icon bg-info"><i class="fa fa-book-open"></i></div>
+              <div class="aa-stat-value" id="analytics-best-subject">-</div>
+              <div class="aa-stat-label">Top Subject</div>
+            </div>
+          </div>
+
+          <div class="aa-grid-2 mb-4" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(400px, 1fr)); gap:20px; margin-bottom:1.5rem;">
+            <div class="aa-card">
+              <div class="aa-card-header"><h3 class="aa-card-title">Class Performance Comparison</h3></div>
+              <div class="aa-card-body">
+                <canvas id="chartClassPerformance" style="max-height: 300px; width:100%;"></canvas>
+              </div>
+            </div>
+            <div class="aa-card">
+              <div class="aa-card-header"><h3 class="aa-card-title">Subject Average Scores</h3></div>
+              <div class="aa-card-body">
+                <canvas id="chartSubjectPerformance" style="max-height: 300px; width:100%;"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="aa-card">
+            <div class="aa-card-header"><h3 class="aa-card-title">Overall Grade Distribution</h3></div>
+            <div class="aa-card-body">
+              <div style="max-width: 400px; margin: 0 auto;">
+                <canvas id="chartGradeDistribution" style="max-height: 300px; width:100%;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Compliance -->
+        <div class="aa-tab-content" data-group="prin-tabs" data-id="tab-compliance">
           <div class="aa-card">
             <div class="aa-card-header"><h3 class="aa-card-title">Teacher Compliance Summary</h3></div>
             <div class="aa-card-body" id="compliance-summary">
@@ -248,12 +301,13 @@
         document.getElementById('stat-plans').textContent = p.length;
       });
 
-      callServer('principalGetSchoolPerformance', [AA.token, currentTerm, currentSession], function(data) {
-        buildTable('schoolPerfTable', [
-          { key:'className' }, { key:'section' }, { key:'totalStudents' },
-          { key:'classAverage', render: function(r){ return '<strong class="text-navy">'+r.classAverage+'%</strong>'; } }
-        ], data);
-      });
+      callServer('adminGetSchoolPerformanceAnalytics', [AA.token, currentTerm, currentSession], function(res) {
+        var html = '<div class="aa-stat-card"><h6>Overall Performance</h6><div class="mt-2">';
+        html += '<p class="fs-12">Average Score: <b>'+(res.overallAverage||0)+'%</b></p>';
+        html += '<p class="fs-12">Best Performing Class: <b>'+(res.bestClass||'N/A')+'</b></p>';
+        html += '<p class="fs-12">Top Subject: <b>'+(res.bestSubject||'N/A')+'</b></p></div></div>';
+        document.getElementById('performance-summary').innerHTML = html;
+      }, null, true);
     }
 
     // -- Reports --
@@ -339,7 +393,54 @@
       }, null, true);
     }
 
+    // --- ANALYTICS MODULE ---
+    var chartInstances = {};
     function loadAnalytics() {
+      callServer('adminGetSchoolPerformanceAnalytics', [AA.token, currentTerm, currentSession], function(res) {
+        document.getElementById('analytics-overall').textContent = (res.overallAverage || 0) + '%';
+        document.getElementById('analytics-best-class').textContent = res.bestClass || 'N/A';
+        document.getElementById('analytics-best-subject').textContent = res.bestSubject || 'N/A';
+
+        if (chartInstances.classPerf) chartInstances.classPerf.destroy();
+        var classCtx = document.getElementById('chartClassPerformance');
+        if (classCtx && res.classPerformance) {
+          var classLabels = res.classPerformance.map(function(c) { return c.className; });
+          var classAvgs = res.classPerformance.map(function(c) { return c.average; });
+          chartInstances.classPerf = new Chart(classCtx, {
+            type: 'bar',
+            data: { labels: classLabels, datasets: [{ label: 'Class Average (%)', data: classAvgs, backgroundColor: 'rgba(30, 58, 95, 0.8)', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+          });
+        }
+
+        if (chartInstances.subjectPerf) chartInstances.subjectPerf.destroy();
+        var subjectCtx = document.getElementById('chartSubjectPerformance');
+        if (subjectCtx && res.subjectPerformance) {
+          var subLabels = res.subjectPerformance.map(function(s) { return s.subject; });
+          var subAvgs = res.subjectPerformance.map(function(s) { return s.average; });
+          chartInstances.subjectPerf = new Chart(subjectCtx, {
+            type: 'bar',
+            data: { labels: subLabels, datasets: [{ label: 'Subject Average (%)', data: subAvgs, backgroundColor: 'rgba(240, 165, 0, 0.8)', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+          });
+        }
+
+        if (chartInstances.gradeDist) chartInstances.gradeDist.destroy();
+        var gradeCtx = document.getElementById('chartGradeDistribution');
+        if (gradeCtx && res.gradeDistribution) {
+          chartInstances.gradeDist = new Chart(gradeCtx, {
+            type: 'doughnut',
+            data: {
+              labels: ['A', 'B', 'C', 'D', 'E', 'F'],
+              datasets: [{ data: [ res.gradeDistribution.A || 0, res.gradeDistribution.B || 0, res.gradeDistribution.C || 0, res.gradeDistribution.D || 0, res.gradeDistribution.E || 0, res.gradeDistribution.F || 0 ], backgroundColor: [ '#16a34a', '#0284c7', '#1e3a5f', '#f0a500', '#d97706', '#dc2626' ] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+        }
+      }, null, true);
+    }
+
+    function loadCompliance() {
       callServer('adminGetComplianceSummary', [AA.token, currentTerm, currentSession, 'high'], function(res) {
         var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
         
