@@ -1282,7 +1282,7 @@
       }, null, true);
       
       callServer('adminGetSettings', [AA.token], function(res) {
-        var s = (res && res.data) ? res.data : {};
+        var s = (res && res.data !== undefined) ? res.data : (res || {});
         currentTerm = s.current_term || '';
         currentSession = s.current_session || '';
         document.getElementById('currentTermText').textContent = currentTerm + ' ' + currentSession;
@@ -2160,7 +2160,7 @@
     // --- SETTINGS ---
     function loadSettings() {
       callServer('adminGetSettings', [AA.token], function(res) {
-        var s = (res && res.data) ? res.data : {};
+        var s = (res && res.data !== undefined) ? res.data : (res || {});
         window.globalSettingsData = s;
         setFormData('settingsForm', s);
         
