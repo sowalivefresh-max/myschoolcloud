@@ -1281,7 +1281,8 @@
         document.getElementById('stat-subjects').textContent = res.subjects;
       }, null, true);
       
-      callServer('adminGetSettings', [AA.token], function(s) {
+      callServer('adminGetSettings', [AA.token], function(res) {
+        var s = (res && res.data) ? res.data : {};
         currentTerm = s.current_term || '';
         currentSession = s.current_session || '';
         document.getElementById('currentTermText').textContent = currentTerm + ' ' + currentSession;
@@ -2158,8 +2159,9 @@
     
     // --- SETTINGS ---
     function loadSettings() {
-      callServer('adminGetSettings', [AA.token], function(s) {
-        window.globalSettingsData = s || {};
+      callServer('adminGetSettings', [AA.token], function(res) {
+        var s = (res && res.data) ? res.data : {};
+        window.globalSettingsData = s;
         setFormData('settingsForm', s);
         
         var btn = document.getElementById('btnPublishResults');
@@ -2198,9 +2200,7 @@
         'Are you sure you want to PUBLISH the results for the current term? Parents will instantly get access.';
         
       aaConfirm(msg, function() {
-        var data = getFormData('settingsForm');
-        // Merge with globalData just in case form is out of sync, but we rely on form mostly + our toggle
-        data.results_published = !isCurrentlyPublished;
+        var data = { results_published: !isCurrentlyPublished };
         callServer('adminUpdateSettings', [AA.token, data], function(res) {
           showToast(res.message, res.success ? 'success' : 'error');
           if(res.success) { 

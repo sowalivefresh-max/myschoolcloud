@@ -1265,7 +1265,8 @@
         document.getElementById('stat-subjects').textContent = res.subjects;
       }, null, true);
       
-      callServer('adminGetSettings', [AA.token], function(s) {
+      callServer('adminGetSettings', [AA.token], function(res) {
+        var s = (res && res.data) ? res.data : {};
         currentTerm = s.current_term || '';
         currentSession = s.current_session || '';
         document.getElementById('currentTermText').textContent = currentTerm + ' ' + currentSession;
@@ -2157,7 +2158,9 @@
     
     // --- SETTINGS ---
     function loadSettings() {
-      callServer('adminGetSettings', [AA.token], function(s) {
+      callServer('adminGetSettings', [AA.token], function(res) {
+        var s = (res && res.data) ? res.data : {};
+        window.globalSettingsData = s;
         setFormData('settingsForm', s);
         if (s.school_logo_url) document.getElementById('settingsLogoPreview').innerHTML = '<img src="'+s.school_logo_url+'" style="width:100%;height:100%;object-fit:contain;">';
         if (s.principal_signature) document.getElementById('prinSigPreview').innerHTML = '<img src="'+s.principal_signature+'" style="width:100%;height:100%;object-fit:contain;">';

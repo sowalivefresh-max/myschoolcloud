@@ -133,22 +133,24 @@ module.exports = function(db, notificationsActions) {
             if (sec !== section && sec !== "both") return;
           }
           
-          teachers.push({ id: doc.id, fullName: d.fullName, role: d.role });
+          teachers.push({ id: doc.id, fullName: d.fullName, role: d.role, classAssigned: d.classAssigned });
         });
         
         // 2. Attendance Compliance (Today)
         const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
         const attendanceSnap = await db.collection("attendance").where("date", "==", todayStr).get();
         const attendanceTeacherIds = new Set();
+        const attendanceClasses = new Set();
         attendanceSnap.forEach(doc => {
           const d = doc.data();
           if (d.teacherId) attendanceTeacherIds.add(d.teacherId);
+          if (d.className) attendanceClasses.add(d.className);
         });
         
         let attendanceCompliant = [];
         let attendanceDefaulted = [];
         teachers.forEach(t => {
-          if (attendanceTeacherIds.has(t.id)) {
+          if (attendanceTeacherIds.has(t.id) || (t.classAssigned && attendanceClasses.has(t.classAssigned))) {
             attendanceCompliant.push(t);
           } else {
             attendanceDefaulted.push(t);
@@ -201,7 +203,53 @@ module.exports = function(db, notificationsActions) {
     },
     adminGetSchoolPerformance: async (req, res) => {
       try {
-        return res.json({ success: true, overallAverage: 0, bestClass: "N/A" });
+        const { term, session } = req.body;
+        if (!term || !session) return res.json({ success: true, overallAverage: 0, bestClass: "N/A" });
+        
+        // 1. Get all students to map studentId -> className
+        const studentsSnap = await db.collection("students").get();
+        const studentClassMap = {};
+        studentsSnap.forEach(doc => {
+          studentClassMap[doc.id] = doc.data().className;
+        });
+        
+        // 2. Get all assessments for term/session
+        const assSnap = await db.collection("assessments")
+          .where("term", "==", term)
+          .where("session", "==", session)
+          .get();
+          
+        let totalScoreSum = 0;
+        let totalScoreCount = 0;
+        const classScores = {}; // { className: { sum: 0, count: 0 } }
+        
+        assSnap.forEach(doc => {
+          const data = doc.data();
+          const total = Number(data.total) || 0;
+          totalScoreSum += total;
+          totalScoreCount++;
+          
+          const className = studentClassMap[data.studentId] || data.className || "Unknown";
+          if (!classScores[className]) classScores[className] = { sum: 0, count: 0 };
+          classScores[className].sum += total;
+          classScores[className].count++;
+        });
+        
+        const overallAverage = totalScoreCount > 0 ? Math.round(totalScoreSum / totalScoreCount) : 0;
+        
+        let bestClass = "N/A";
+        let bestClassAvg = -1;
+        
+        for (const [cName, stats] of Object.entries(classScores)) {
+          if (cName === "Unknown") continue;
+          const avg = stats.sum / stats.count;
+          if (avg > bestClassAvg) {
+            bestClassAvg = avg;
+            bestClass = cName;
+          }
+        }
+        
+        return res.json({ success: true, overallAverage, bestClass });
       } catch (err) {
         return res.json({ success: false, message: "Error fetching performance: " + err.message });
       }
@@ -1174,22 +1222,32 @@ module.exports = function(db, notificationsActions) {
         const { className, term, session } = req.body;
         if (!className || !term || !session) return res.json({ success: false, message: "Class, term, and session required." });
         
-        const assessmentsSnap = await db.collection("assessments")
-          .where("className", "==", className)
-          .where("term", "==", term)
-          .where("session", "==", session)
-          .get();
-          
-        const assessments = assessmentsSnap.docs.map(doc => doc.data());
+        const studentsSnap = await db.collection("students").where("className", "==", className).get();
+        if (studentsSnap.empty) {
+          return res.json({ success: true, data: { subjects: [], students: [] } });
+        }
         
+        const studentIds = studentsSnap.docs.map(doc => doc.id);
         const subjectsSet = new Set();
         const studentMap = {}; 
         
-        const studentsSnap = await db.collection("students").where("className", "==", className).get();
         studentsSnap.forEach(doc => {
           const s = doc.data();
           studentMap[doc.id] = { id: doc.id, fullName: s.fullName || (s.firstName + ' ' + s.lastName), subjects: {}, totalScore: 0 };
         });
+        
+        let assessments = [];
+        const chunkArray = (arr, size) => arr.length ? [arr.slice(0, size), ...chunkArray(arr.slice(size), size)] : [];
+        const idChunks = chunkArray(studentIds, 10);
+        
+        for (const chunk of idChunks) {
+          const assSnap = await db.collection("assessments")
+            .where("studentId", "in", chunk)
+            .where("term", "==", term)
+            .where("session", "==", session)
+            .get();
+          assSnap.forEach(doc => assessments.push(doc.data()));
+        }
         
         assessments.forEach(ass => {
           if (!ass.subjectName) return; 

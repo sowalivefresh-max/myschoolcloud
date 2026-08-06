@@ -163,6 +163,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetBills") { req.body.filters = args[1]; }
         if (action === "adminRecordPayment") { req.body.data = args[1]; }
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
+        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
         
         // Teacher Subject Assignment Mappings

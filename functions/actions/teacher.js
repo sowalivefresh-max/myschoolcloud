@@ -459,6 +459,7 @@ module.exports = function(db, notificationsActions) {
             status: record.status,
             term: term,
             session: session,
+            teacherId: req.session.userId,
             updatedAt: new Date().toISOString()
           }, { merge: true });
           
