@@ -466,6 +466,48 @@ module.exports = function(db, notificationsActions) {
         }
         
         await batch.commit();
+
+        // Send Email Notifications
+        try {
+          const settingsDoc = await db.collection("settings").doc("global").get();
+          const settings = settingsDoc.data();
+          if (settings && settings.smtp_email && settings.smtp_password) {
+            const nodemailer = require("nodemailer");
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: { user: settings.smtp_email, pass: settings.smtp_password }
+            });
+            
+            const emailPromises = [];
+            
+            await Promise.allSettled(records.filter(r => r.studentId && r.status).map(async (record) => {
+              const sDoc = await db.collection("students").doc(record.studentId).get();
+              if (!sDoc.exists) return;
+              const student = sDoc.data();
+              if (!student.parentId) return;
+              
+              const pDoc = await db.collection("users").doc(student.parentId).get();
+              if (!pDoc.exists) return;
+              const parent = pDoc.data();
+              
+              if (parent.email) {
+                const mailOptions = {
+                  from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
+                  to: parent.email,
+                  subject: `Attendance Notification for ${student.firstName} ${student.lastName}`,
+                  text: `Dear ${parent.fullName || 'Parent'},\n\nPlease be informed that your ward, ${student.firstName} ${student.lastName}, was marked ${record.status} on ${date} in ${className}.\n\nThank you,\nManagement`
+                };
+                emailPromises.push(transporter.sendMail(mailOptions));
+              }
+            }));
+            
+            // Wait for all emails to be dispatched concurrently to prevent cloud function termination
+            await Promise.allSettled(emailPromises);
+          }
+        } catch(e) {
+          console.error("Attendance email error:", e);
+        }
+
         return res.json({ success: true, message: `Saved attendance for ${count} students.` });
       } catch (err) {
         return res.json({ success: false, message: "Error saving attendance: " + err.message });

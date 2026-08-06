@@ -690,7 +690,42 @@ module.exports = function(db, notificationsActions) {
       const updates = req.body.data;
       if (!updates) return res.json({ success: false, message: "Settings data required." });
       try {
+        const oldSettingsDoc = await db.collection("settings").doc("global").get();
+        const oldSettings = oldSettingsDoc.exists ? oldSettingsDoc.data() : {};
+
         await db.collection("settings").doc("global").set(updates, { merge: true });
+        
+        if (updates.results_published === true && !oldSettings.results_published) {
+          const settingsDoc = await db.collection("settings").doc("global").get();
+          const settings = settingsDoc.data();
+          
+          if (settings.smtp_email && settings.smtp_password) {
+            const nodemailer = require("nodemailer");
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: { user: settings.smtp_email, pass: settings.smtp_password }
+            });
+            
+            const parentsSnap = await db.collection("users").where("role", "==", "parent").get();
+            const emailPromises = [];
+            
+            parentsSnap.forEach(doc => {
+              const p = doc.data();
+              if (p.email) {
+                const mailOptions = {
+                  from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
+                  to: p.email,
+                  subject: `Results Published - ${settings.current_term} (${settings.current_session})`,
+                  text: `Dear ${p.fullName || 'Parent'},\n\nPlease be informed that the results for ${settings.current_term} (${settings.current_session}) have been officially published.\n\nYou can now log into the portal to view and download your child's report card.\n\nThank you,\nManagement`
+                };
+                emailPromises.push(transporter.sendMail(mailOptions));
+              }
+            });
+            
+            Promise.allSettled(emailPromises).catch(e => console.error("Email sending error:", e));
+          }
+        }
+
         return res.json({ success: true, message: "Settings updated successfully." });
       } catch (err) {
         return res.json({ success: false, message: "Error updating settings: " + err.message });
