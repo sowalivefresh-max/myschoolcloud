@@ -491,11 +491,12 @@ module.exports = function(db, notificationsActions) {
               const parent = pDoc.data();
               
               if (parent.email) {
-                const mailOptions = {
-                  from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
-                  to: parent.email,
-                  subject: `Attendance Notification for ${student.firstName} ${student.lastName}`,
-                  text: `Dear ${parent.fullName || 'Parent'},\n\nPlease be informed that your ward, ${student.firstName} ${student.lastName}, was marked ${record.status} on ${date} in ${className}.\n\nThank you,\nManagement`
+                  const studentName = student.fullName || ((student.firstName && student.lastName) ? `${student.firstName} ${student.lastName}` : 'your ward');
+                  const mailOptions = {
+                    from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
+                    to: parent.email,
+                    subject: `Attendance Notification for ${studentName}`,
+                    text: `Dear ${parent.fullName || 'Parent'},\n\nPlease be informed that your ward, ${studentName}, was marked ${record.status} on ${date} in ${className}.\n\nThank you,\nManagement`
                 };
                 emailPromises.push(transporter.sendMail(mailOptions));
               }
