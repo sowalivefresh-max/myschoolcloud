@@ -163,6 +163,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetBills") { req.body.filters = args[1]; }
         if (action === "adminRecordPayment") { req.body.data = args[1]; }
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
+        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGetSchoolPerformanceAnalytics") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
         
@@ -300,6 +301,7 @@ app.post("/api", async (req, res) => {
       case "adminGenerateBulkResult": return requireRole(req, res, () => adminActions.adminGenerateBulkResult(req, res));
       case "adminGetBroadsheetData": return requireRole(req, res, () => adminActions.adminGetBroadsheetData(req, res));
       case "adminGetComplianceSummary": return requireRole(req, res, () => adminActions.adminGetComplianceSummary(req, res));
+      case "adminGetSchoolPerformance":
       case "adminGetSchoolPerformanceAnalytics": return requireRole(req, res, () => adminActions.adminGetSchoolPerformanceAnalytics(req, res));
 
       case "adminGetFeeStructures":
