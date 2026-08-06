@@ -2188,7 +2188,7 @@
       }
       callServer('adminUpdateSettings', [AA.token, data], function(res) {
         showToast(res.message, res.success ? 'success' : 'error');
-        if(res.success) { loadSettings(); loadDashboard(); }
+        if(res.success) { loadSettings(); AA.loadSettings(); loadDashboard(); }
       }, null, true);
     }
 
