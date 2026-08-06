@@ -330,6 +330,81 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: false, message: "Error fetching performance: " + err.message });
       }
     },
+    adminGetYearGroupRanking: async (req, res) => {
+      try {
+        const { term, session, yearGroup } = req.body;
+        if (!term || !session || !yearGroup) return res.json({ success: false, message: "Missing required fields" });
+        
+        const yearGroupLower = yearGroup.toLowerCase().trim();
+
+        // 1. Get all students and filter by year group prefix
+        const studentsSnap = await db.collection("students").get();
+        const studentMap = {}; // id -> { name, className }
+        studentsSnap.forEach(doc => {
+          const data = doc.data();
+          const cName = data.className || "";
+          if (cName.toLowerCase().startsWith(yearGroupLower)) {
+            studentMap[doc.id] = {
+              name: data.name,
+              className: cName
+            };
+          }
+        });
+
+        if (Object.keys(studentMap).length === 0) {
+          return res.json({ success: true, ranking: [] });
+        }
+        
+        // 2. Get assessments for term/session
+        const assSnap = await db.collection("assessments")
+          .where("term", "==", term)
+          .where("session", "==", session)
+          .get();
+          
+        const studentScores = {}; // id -> { sum, count }
+        
+        assSnap.forEach(doc => {
+          const data = doc.data();
+          if (studentMap[data.studentId]) {
+            if (!studentScores[data.studentId]) {
+              studentScores[data.studentId] = { sum: 0, count: 0 };
+            }
+            const total = Number(data.total) || 0;
+            studentScores[data.studentId].sum += total;
+            studentScores[data.studentId].count++;
+          }
+        });
+        
+        const ranking = [];
+        
+        for (const sId in studentMap) {
+          const stats = studentScores[sId];
+          const sum = stats ? stats.sum : 0;
+          const count = stats ? stats.count : 0;
+          const avg = count > 0 ? (sum / count) : 0;
+          
+          ranking.push({
+            studentId: sId,
+            name: studentMap[sId].name,
+            className: studentMap[sId].className,
+            totalScore: sum,
+            averageScore: Math.round(avg * 10) / 10 // 1 decimal place
+          });
+        }
+        
+        // Sort descending by average
+        ranking.sort((a, b) => b.averageScore - a.averageScore);
+        
+        // Add rank number
+        ranking.forEach((student, index) => {
+          student.rank = index + 1;
+        });
+
+        return res.json({ success: true, ranking });
+      } catch (err) {
+        return res.json({ success: false, message: "Error fetching year group ranking: " + err.message });
+      }
+    },
     adminGetStudents: async (req, res) => {
       try {
         const section = req.body.section;

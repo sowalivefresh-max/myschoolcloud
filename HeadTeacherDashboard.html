@@ -191,6 +191,30 @@
                 <canvas id="chartGradeDistribution" style="max-height: 300px; width:100%;"></canvas>
               </div>
             </div>
+          <div class="aa-card mb-4" style="margin-bottom:1.5rem;">
+            <div class="aa-card-header"><h3 class="aa-card-title">Year Group Ranking</h3></div>
+            <div class="aa-card-body">
+              <div class="d-flex align-items-center mb-3" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:1rem;">
+                <input type="text" id="analytics-year-group" class="aa-input" placeholder="e.g. Primary 1, Nursery" style="max-width:250px;">
+                <button class="aa-btn aa-btn-primary" onclick="loadYearGroupRanking()">Load Ranking</button>
+              </div>
+              <div class="table-responsive" style="overflow-x:auto;">
+                <table class="aa-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Student Name</th>
+                      <th>Class</th>
+                      <th>Total Score</th>
+                      <th>Average Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analytics-ranking-tbody">
+                    <tr><td colspan="5" class="text-center text-muted">Enter a year group and click Load Ranking to see results.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -425,6 +449,36 @@
           });
         }
       }, null, true);
+    }
+    
+    function loadYearGroupRanking() {
+      var yearGroup = document.getElementById('analytics-year-group').value;
+      if (!yearGroup || yearGroup.trim() === "") {
+        AA.showToast("Please enter a year group (e.g. Primary 1)", "error");
+        return;
+      }
+      var tbody = document.getElementById('analytics-ranking-tbody');
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">Loading ranking... <i class="fa fa-spinner fa-spin"></i></td></tr>';
+      
+      callServer('adminGetYearGroupRanking', [AA.token, currentTerm, currentSession, yearGroup], function(res) {
+        if (!res.ranking || res.ranking.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No students found for this year group.</td></tr>';
+          return;
+        }
+        var html = '';
+        res.ranking.forEach(function(student) {
+          html += '<tr>' +
+            '<td><strong>' + student.rank + '</strong></td>' +
+            '<td>' + student.name + '</td>' +
+            '<td>' + student.className + '</td>' +
+            '<td>' + student.totalScore + '</td>' +
+            '<td>' + student.averageScore + '%</td>' +
+            '</tr>';
+        });
+        tbody.innerHTML = html;
+      }, function(err) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading ranking.</td></tr>';
+      }, true);
     }
 
     function loadCompliance() {

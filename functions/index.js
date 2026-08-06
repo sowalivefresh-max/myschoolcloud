@@ -165,6 +165,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
         if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
         if (action === "adminGetSchoolPerformanceAnalytics") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminGetYearGroupRanking") { req.body.term = args[1]; req.body.session = args[2]; req.body.yearGroup = args[3]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
         
         // Teacher Subject Assignment Mappings
@@ -303,6 +304,7 @@ app.post("/api", async (req, res) => {
       case "adminGetComplianceSummary": return requireRole(req, res, () => adminActions.adminGetComplianceSummary(req, res));
       case "adminGetSchoolPerformance":
       case "adminGetSchoolPerformanceAnalytics": return requireRole(req, res, () => adminActions.adminGetSchoolPerformanceAnalytics(req, res));
+      case "adminGetYearGroupRanking": return requireRole(req, res, () => adminActions.adminGetYearGroupRanking(req, res));
 
       case "adminGetFeeStructures":
         return requireRole(req, res, () => adminActions.adminGetFeeStructures(req, res));
