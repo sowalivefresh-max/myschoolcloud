@@ -2172,7 +2172,7 @@
       var data = getFormData('settingsForm');
       callServer('adminUpdateSettings', [AA.token, data], function(res) {
         showToast(res.message, res.success ? 'success' : 'error');
-        if(res.success) { AA.loadSettings(); loadDashboard(); }
+        if(res.success) { loadSettings(); loadDashboard(); }
       }, null, true);
     }
 
