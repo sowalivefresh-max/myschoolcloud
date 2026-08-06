@@ -345,7 +345,7 @@ module.exports = function(db, notificationsActions) {
           const cName = data.className || "";
           if (cName.toLowerCase().startsWith(yearGroupLower)) {
             studentMap[doc.id] = {
-              name: data.name,
+              name: data.fullName || data.name || "Unknown Student",
               className: cName
             };
           }
