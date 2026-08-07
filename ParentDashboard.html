@@ -420,8 +420,14 @@
       
       callServer('parentDownloadReceipt', [AA.token, pid], function(res) {
         if(res && res.success) {
-          if (newWin) newWin.location.href = res.previewUrl;
-          else window.open(res.previewUrl, '_blank');
+          if (newWin) {
+            var htmlStr = decodeURIComponent((res.previewUrl || '').split('utf-8,')[1] || (res.previewUrl || '').split(',')[1] || '');
+            newWin.document.open();
+            newWin.document.write(htmlStr);
+            newWin.document.close();
+          } else {
+            openPDFViewer(res.previewUrl, null, 'Payment Receipt');
+          }
         } else {
           if (newWin) newWin.close();
           showToast((res && res.message) ? res.message : 'Could not generate receipt.', 'error');
