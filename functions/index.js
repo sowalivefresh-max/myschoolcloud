@@ -184,6 +184,11 @@ app.post("/api", async (req, res) => {
         if (action === "teacherSaveScore") { req.body.scoreId = args[1]; req.body.studentId = args[2]; req.body.className = args[3]; req.body.subject = args[4]; req.body.term = args[5]; req.body.session = args[6]; req.body.ca1 = args[7]; req.body.ca2 = args[8]; req.body.exam = args[9]; }
         if (action === "teacherBulkSaveScores") { req.body.data = args[1]; } // fixed mapping
         
+        if (action === "teacherGetPsychomotor") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
+        if (action === "teacherGetAffective") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
+        if (action === "teacherSavePsychomotor") { req.body.data = args[1]; }
+        if (action === "teacherSaveAffective") { req.body.data = args[1]; }
+
         // Legacy Teacher Dashboard Aliases
         if (action === "teacherGetMyLessonPlans") { /* no args mapped to req.body needed, uses session */ }
         if (action === "principalGetAllStudents") { /* no args needed for adminGetStudents */ }

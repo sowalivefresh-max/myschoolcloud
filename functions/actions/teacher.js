@@ -28,14 +28,12 @@ module.exports = function(db, notificationsActions) {
             let sub = doc.data();
             sub.id = doc.id;
             
-            if (String(sub.assignedTeacherId) === String(userId)) {
+            if (sub.assignedTeacherId && String(sub.assignedTeacherId) === String(userId)) {
               subjects.push(sub);
-            } else if (sub.section === 'primary') {
-              if (myClass && sub.className && String(sub.className) === String(myClass)) {
-                subjects.push(sub);
-              } else if (!sub.className || String(sub.className).trim() === '') {
-                subjects.push(sub);
-              }
+            } else if (sub.section && String(sub.section).toLowerCase() === 'primary') {
+              // Primary school teachers need to see all primary subjects as they teach all subjects
+              // This avoids missing subjects if the className doesn't match perfectly.
+              subjects.push(sub);
             }
           });
           return res.json({ success: true, data: subjects });
