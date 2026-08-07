@@ -215,7 +215,9 @@ module.exports = function(db) {
           school_motto: cfg.school_motto || "Excellence in Education",
           school_logo_url: cfg.school_logo_url || "",
           current_term: cfg.current_term || "First Term",
-          current_session: cfg.current_session || "2026/2027"
+          current_session: cfg.current_session || "2026/2027",
+          theme_primary: cfg.theme_primary || "",
+          theme_secondary: cfg.theme_secondary || ""
         });
       } catch (err) {
         return res.json({ success: false, message: err.message });

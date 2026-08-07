@@ -596,30 +596,29 @@
                 </div>
 
                 <h4 style="margin:25px 0 15px 0; font-size:16px; border-bottom:1px solid #eee; padding-bottom:8px;"><i class="fa fa-palette"></i> Branding & Themes</h4>
-                <div class="aa-form-group">
-                  <label class="aa-label">Color Theme Palette</label>
-                  <input type="hidden" name="theme_name" id="theme_name" value="navy">
-                  <div class="d-flex gap-3 flex-wrap" id="theme-palette-container">
-                    <div class="theme-swatch active" data-theme="navy" style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #0d1b2a 50%, #f0a500 50%);cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 2px #0284c7;" onclick="selectTheme('navy', this)"></div>
-                    <div class="theme-swatch" data-theme="purple" style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #2e1065 50%, #c084fc 50%);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);" onclick="selectTheme('purple', this)"></div>
-                    <div class="theme-swatch" data-theme="emerald" style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #064e3b 50%, #34d399 50%);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);" onclick="selectTheme('emerald', this)"></div>
-                    <div class="theme-swatch" data-theme="crimson" style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #7f1d1d 50%, #f87171 50%);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);" onclick="selectTheme('crimson', this)"></div>
-                    <div class="theme-swatch" data-theme="ocean" style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #0c4a6e 50%, #38bdf8 50%);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);" onclick="selectTheme('ocean', this)"></div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="aa-form-group">
+                      <label class="aa-label">Primary Color</label>
+                      <input type="color" name="theme_primary" id="theme_primary" class="aa-input" value="#0d1b2a" style="height:45px;padding:4px;cursor:pointer;" onchange="previewCustomTheme()">
+                    </div>
                   </div>
-                  <small class="text-muted" style="font-size:11px;display:block;margin-top:8px;">Select a color scheme to instantly re-theme the entire portal.</small>
+                  <div class="col-md-6">
+                    <div class="aa-form-group">
+                      <label class="aa-label">Secondary Color</label>
+                      <input type="color" name="theme_secondary" id="theme_secondary" class="aa-input" value="#f0a500" style="height:45px;padding:4px;cursor:pointer;" onchange="previewCustomTheme()">
+                    </div>
+                  </div>
                 </div>
+                <small class="text-muted" style="font-size:11px;display:block;margin-top:2px;margin-bottom:15px;">Select custom primary and secondary colors to instantly re-theme the entire portal.</small>
                 
                 <script>
-                  function selectTheme(theme, el) {
-                    document.getElementById('theme_name').value = theme;
-                    var swatches = document.querySelectorAll('.theme-swatch');
-                    swatches.forEach(function(s) {
-                      s.classList.remove('active');
-                      s.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
-                    });
-                    el.classList.add('active');
-                    el.style.boxShadow = '0 0 0 2px #0284c7';
-                    if(typeof AA !== 'undefined' && typeof AA.applyThemeToDocument === 'function') AA.applyThemeToDocument(theme);
+                  function previewCustomTheme() {
+                    var p = document.getElementById('theme_primary').value;
+                    var s = document.getElementById('theme_secondary').value;
+                    if(typeof AA !== 'undefined' && typeof AA.applyThemeToDocument === 'function') {
+                      AA.applyThemeToDocument('custom', p, s);
+                    }
                   }
                 </script>
                 
@@ -2493,9 +2492,10 @@
         if (s.head_teacher_signature) document.getElementById('htSigPreview').innerHTML = '<img src="'+s.head_teacher_signature+'" style="width:100%;height:100%;object-fit:contain;">';
         if (s.class_teacher_signature) document.getElementById('ctSigPreview').innerHTML = '<img src="'+s.class_teacher_signature+'" style="width:100%;height:100%;object-fit:contain;">';
         
-        if (s.theme_name) {
-          var el = document.querySelector('.theme-swatch[data-theme="' + s.theme_name + '"]');
-          if (el) selectTheme(s.theme_name, el);
+        if (s.theme_primary && s.theme_secondary) {
+          if (typeof AA !== 'undefined' && typeof AA.applyThemeToDocument === 'function') {
+            AA.applyThemeToDocument('custom', s.theme_primary, s.theme_secondary);
+          }
         }
       }, null, true);
     }

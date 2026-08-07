@@ -67,25 +67,18 @@ var AA = {
           }
         }
         
-        if (s.theme_name) {
-          self.applyThemeToDocument(s.theme_name);
+        if (s.theme_primary && s.theme_secondary) {
+          self.applyThemeToDocument('custom', s.theme_primary, s.theme_secondary);
         }
       })
       .catch(function(e) { console.error('loadSettings error', e); });
   },
 
-  applyThemeToDocument: function(theme) {
-    var themes = {
-      navy: { p: '#0d1b2a', s: '#f0a500' },
-      purple: { p: '#2e1065', s: '#c084fc' },
-      emerald: { p: '#064e3b', s: '#34d399' },
-      crimson: { p: '#7f1d1d', s: '#f87171' },
-      ocean: { p: '#0c4a6e', s: '#38bdf8' }
-    };
-    
-    var t = themes[theme] || themes.navy;
+  applyThemeToDocument: function(theme, primary, secondary) {
+    var t = { p: primary || '#0d1b2a', s: secondary || '#f0a500' };
     
     var adjustColor = function(color, amount) {
+      if(!color || typeof color !== 'string' || !color.startsWith('#')) return color;
       return '#' + color.replace(/^#/, '').replace(/../g, function(c) {
         return ('0'+Math.min(255, Math.max(0, parseInt(c, 16) + amount)).toString(16)).substr(-2);
       });
