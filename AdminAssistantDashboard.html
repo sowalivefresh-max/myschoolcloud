@@ -159,16 +159,25 @@
               <h3 class="aa-card-title">Staff & Users</h3>
               <div class="d-flex gap-2">
                 <div class="aa-search-box">
-                  <i class="fa fa-search"></i>
-                  <input type="text" id="search-users" class="aa-input" placeholder="Search users..." onkeyup="filterTable('search-users', 'usersTable')">
+                  <input type="text" id="search-users" class="aa-input" placeholder="Search users..." onkeyup="filterTable('search-users', 'staffTable'); filterTable('search-users', 'parentsTable');">
                 </div>
                 <button class="aa-btn aa-btn-success" onclick="openParentInvites()"><i class="fa fa-link"></i> Parent Invites</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('userModal');resetForm('userForm');document.getElementById('userId').value='';document.getElementById('userSigPreview').innerHTML='<i class=\'fa fa-signature text-muted\'></i>';applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add User</button>
               </div>
             </div>
             <div class="aa-card-body" style="padding:0;">
-              <div class="aa-table-wrap">
-                <table class="aa-table" id="usersTable">
+              <div class="aa-tabs-inner" style="display:flex; border-bottom:1px solid #eee; background:#fafafa;">
+                 <button onclick="document.getElementById('staff-wrap').style.display='block'; document.getElementById('parents-wrap').style.display='none'; this.style.borderBottom='2px solid #1e3a5f'; this.style.color='#1e3a5f'; this.style.fontWeight='bold'; this.nextElementSibling.style.borderBottom='none'; this.nextElementSibling.style.color='#666'; this.nextElementSibling.style.fontWeight='normal';" style="padding:12px 20px; border:none; background:none; cursor:pointer; font-weight:bold; color:#1e3a5f; border-bottom:2px solid #1e3a5f; outline:none;">Staff</button>
+                 <button onclick="document.getElementById('parents-wrap').style.display='block'; document.getElementById('staff-wrap').style.display='none'; this.style.borderBottom='2px solid #1e3a5f'; this.style.color='#1e3a5f'; this.style.fontWeight='bold'; this.previousElementSibling.style.borderBottom='none'; this.previousElementSibling.style.color='#666'; this.previousElementSibling.style.fontWeight='normal';" style="padding:12px 20px; border:none; background:none; cursor:pointer; color:#666; border-bottom:none; outline:none;">Parents & Guardians</button>
+              </div>
+              <div id="staff-wrap" class="aa-table-wrap">
+                <table class="aa-table" id="staffTable">
+                  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="parents-wrap" class="aa-table-wrap" style="display:none;">
+                <table class="aa-table" id="parentsTable">
                   <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody></tbody>
                 </table>
@@ -1376,13 +1385,19 @@
       callServer('adminGetUsers', [AA.token], function(data) {
         globalUsers = data;
         populateTeacherDropdowns();
-        buildTable('usersTable', [
+        
+        var staffData = data.filter(function(r) { return r.role !== 'parent'; });
+        var parentData = data.filter(function(r) { return r.role === 'parent'; });
+        
+        var cols = [
           { key: 'fullName' },
           { key: 'email' },
           { key: 'role', render: function(r){ return AA.formatRole(r.role); } },
           { key: 'section', render: function(r){ var sec = normalizeSection(r.section); return sec === 'high' ? 'High' : (sec==='primary'?'Primary':'Both'); } },
           { key: 'status', render: function(r){ return formatStatus(r.status); } }
-        ], data, function(r) {
+        ];
+        
+        var renderActions = function(r) {
           var uid = r.id || r.iD;
           // Do not show Impersonate button for the current admin user to avoid self-impersonation looping
           var impersonateBtn = (String(uid) !== String(AA.user.id || AA.user.iD)) 
@@ -1393,7 +1408,10 @@
                  '<button class="aa-btn aa-btn-outline aa-btn-xs" title="Edit" onclick="editUser(\''+uid+'\')"><i class="fa fa-edit"></i></button> ' +
                  '<button class="aa-btn aa-btn-warning aa-btn-xs" title="Reset Pwd" onclick="adminResetPassword(\''+uid+'\')"><i class="fa fa-key"></i></button> ' +
                  '<button class="aa-btn aa-btn-danger aa-btn-xs" title="Delete" onclick="deleteUser(\''+uid+'\')"><i class="fa fa-trash"></i></button>';
-        });
+        };
+        
+        buildTable('staffTable', cols, staffData, renderActions);
+        buildTable('parentsTable', cols, parentData, renderActions);
       }, null, true);
     }
     
