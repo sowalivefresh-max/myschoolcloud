@@ -163,8 +163,8 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetBills") { req.body.filters = args[1]; }
         if (action === "adminRecordPayment") { req.body.data = args[1]; }
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
-        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; }
-        if (action === "adminGetSchoolPerformanceAnalytics") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
+        if (action === "adminGetSchoolPerformanceAnalytics") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
         if (action === "adminGetYearGroupRanking") { req.body.term = args[1]; req.body.session = args[2]; req.body.yearGroup = args[3]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
         
