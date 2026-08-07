@@ -333,7 +333,7 @@
       callServer('principalGetLessonPlans', [AA.token, currentTerm, currentSession, 'primary'], function(p) {
         document.getElementById('stat-plans').textContent = p.length;
       });
-      callServer('adminGetSchoolPerformanceAnalytics', [AA.token, currentTerm, currentSession], function(res) {
+      callServer('adminGetSchoolPerformanceAnalytics', [AA.token, currentTerm, currentSession, 'primary'], function(res) {
         var html = '<div class="aa-stat-card"><h6>Overall Performance</h6><div class="mt-2">';
         html += '<p class="fs-12">Average Score: <b>'+(res.overallAverage||0)+'%</b></p>';
         html += '<p class="fs-12">Best Performing Class: <b>'+(res.bestClass||'N/A')+'</b></p>';
@@ -425,7 +425,7 @@
     // --- ANALYTICS MODULE ---
     var chartInstances = {};
     function loadAnalytics() {
-      callServer('adminGetSchoolPerformanceAnalytics', [AA.token, currentTerm, currentSession], function(res) {
+      callServer('adminGetSchoolPerformanceAnalytics', [AA.token, currentTerm, currentSession, 'primary'], function(res) {
         document.getElementById('analytics-overall').textContent = (res.overallAverage || 0) + '%';
         document.getElementById('analytics-best-class').textContent = res.bestClass || 'N/A';
         document.getElementById('analytics-best-subject').textContent = res.bestSubject || 'N/A';

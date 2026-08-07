@@ -203,14 +203,17 @@ module.exports = function(db, notificationsActions) {
     },
     adminGetSchoolPerformanceAnalytics: async (req, res) => {
       try {
-        const { term, session } = req.body;
+        const { term, session, section } = req.body;
         if (!term || !session) return res.json({ success: true, overallAverage: 0, bestClass: "N/A", bestSubject: "N/A" });
         
-        // 1. Get all students to map studentId -> className
+        // 1. Get all students to map studentId -> className and section
         const studentsSnap = await db.collection("students").get();
         const studentClassMap = {};
+        const studentSectionMap = {};
         studentsSnap.forEach(doc => {
-          studentClassMap[doc.id] = doc.data().className;
+          const data = doc.data();
+          studentClassMap[doc.id] = data.className;
+          studentSectionMap[doc.id] = (data.section || "").toLowerCase();
         });
         
         // 2. Get all assessments for term/session
@@ -236,6 +239,13 @@ module.exports = function(db, notificationsActions) {
 
         assSnap.forEach(doc => {
           const data = doc.data();
+          
+          // Section Filtering
+          const studentSection = studentSectionMap[data.studentId] || (data.section || "").toLowerCase();
+          if (section && section !== "both" && studentSection !== section.toLowerCase()) {
+            return; // Skip this assessment as it doesn't belong to the requested section
+          }
+
           const total = Number(data.total) || 0;
           totalScoreSum += total;
           totalScoreCount++;
