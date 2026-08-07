@@ -66,8 +66,47 @@ var AA = {
             brandIcon.innerHTML = '<img src="' + s.school_logo_url + '" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">';
           }
         }
+        
+        if (s.theme_name) {
+          self.applyThemeToDocument(s.theme_name);
+        }
       })
       .catch(function(e) { console.error('loadSettings error', e); });
+  },
+
+  applyThemeToDocument: function(theme) {
+    var themes = {
+      navy: { p: '#0d1b2a', s: '#f0a500' },
+      purple: { p: '#2e1065', s: '#c084fc' },
+      emerald: { p: '#064e3b', s: '#34d399' },
+      crimson: { p: '#7f1d1d', s: '#f87171' },
+      ocean: { p: '#0c4a6e', s: '#38bdf8' }
+    };
+    
+    var t = themes[theme] || themes.navy;
+    
+    var adjustColor = function(color, amount) {
+      return '#' + color.replace(/^#/, '').replace(/../g, function(c) {
+        return ('0'+Math.min(255, Math.max(0, parseInt(c, 16) + amount)).toString(16)).substr(-2);
+      });
+    };
+
+    var styleId = 'aa-dynamic-theme';
+    var styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    
+    styleEl.innerHTML = ':root { ' +
+      '--aa-navy: ' + t.p + '; ' +
+      '--aa-navy-light: ' + adjustColor(t.p, 20) + '; ' +
+      '--aa-navy-mid: ' + adjustColor(t.p, 40) + '; ' +
+      '--aa-gold: ' + t.s + '; ' +
+      '--aa-gold-light: ' + adjustColor(t.s, 40) + '; ' +
+      '--aa-gold-dark: ' + adjustColor(t.s, -40) + '; ' +
+    '}';
   },
 
   renderUserInfo: function(user) {
