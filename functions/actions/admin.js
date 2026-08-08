@@ -267,7 +267,7 @@ module.exports = function(db, notificationsActions) {
           classScores[className].studentScores[data.studentId].count++;
 
           // Subject
-          const subject = data.subject || "Unknown";
+          const subject = data.subjectName || data.subject || "Unknown";
           if (!subjectScores[subject]) subjectScores[subject] = { sum: 0, count: 0, maxScore: 0 };
           subjectScores[subject].sum += total;
           subjectScores[subject].count++;
