@@ -346,6 +346,14 @@ module.exports = function(db, notificationsActions) {
         if (!term || !session || !yearGroup) return res.json({ success: false, message: "Missing required fields" });
         
         const yearGroupLower = yearGroup.toLowerCase().trim();
+        
+        // Handle interchangeable "Primary" and "Basic" prefixes
+        let alternateYearGroupLower = yearGroupLower;
+        if (yearGroupLower.startsWith("primary ")) {
+          alternateYearGroupLower = yearGroupLower.replace("primary ", "basic ");
+        } else if (yearGroupLower.startsWith("basic ")) {
+          alternateYearGroupLower = yearGroupLower.replace("basic ", "primary ");
+        }
 
         // 1. Get all students and filter by year group prefix
         const studentsSnap = await db.collection("students").get();
@@ -353,7 +361,9 @@ module.exports = function(db, notificationsActions) {
         studentsSnap.forEach(doc => {
           const data = doc.data();
           const cName = data.className || "";
-          if (cName.toLowerCase().startsWith(yearGroupLower)) {
+          const cNameLower = cName.toLowerCase();
+          
+          if (cNameLower.startsWith(yearGroupLower) || cNameLower.startsWith(alternateYearGroupLower)) {
             studentMap[doc.id] = {
               name: data.fullName || data.name || "Unknown Student",
               className: cName
