@@ -1,6 +1,3 @@
-const admin = require("firebase-admin");
-const db = admin.firestore();
-
 // Helper to calculate dynamic grades based on class/section grading systems
 const computeDynamicGrade = (score, className, section, gradingSystems) => {
   if (!gradingSystems || gradingSystems.length === 0) {
