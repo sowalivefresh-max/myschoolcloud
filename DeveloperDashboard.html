@@ -336,33 +336,10 @@
                   <tbody></tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        </div>
-
         <!-- TAB: Finance -->
         <div class="aa-tab-content" data-group="admin-tabs" data-id="tab-finance">
-          <div class="aa-grid-4 mb-4">
-            <div class="aa-stat-card">
-              <div class="aa-stat-icon bg-info"><i class="fa fa-file-invoice-dollar"></i></div>
-              <div class="aa-stat-value" id="fin-billed">...0.00</div>
-              <div class="aa-stat-label">Total Billed</div>
-            </div>
-            <div class="aa-stat-card">
-              <div class="aa-stat-icon bg-success"><i class="fa fa-wallet"></i></div>
-              <div class="aa-stat-value" id="fin-collected">...0.00</div>
-              <div class="aa-stat-label">Total Collected</div>
-            </div>
-            <div class="aa-stat-card">
-              <div class="aa-stat-icon bg-danger"><i class="fa fa-hand-holding-usd"></i></div>
-              <div class="aa-stat-value" id="fin-outstanding">...0.00</div>
-              <div class="aa-stat-label">Outstanding Balance</div>
-            </div>
-            <div class="aa-stat-card">
-              <div class="aa-stat-icon bg-warning"><i class="fa fa-receipt"></i></div>
-              <div class="aa-stat-value" id="fin-expense">...0.00</div>
-              <div class="aa-stat-label">Total Expenses</div>
-            </div>
+          <div id="finance-stats-container">
+            <!-- Dynamically populated by JS -->
           </div>
           
           <div class="aa-grid-4 mb-4">
@@ -1831,12 +1808,69 @@
       });
     }
 
+    function getFinanceHTML(prefix, title) {
+      var displayTitle = title ? '<h3 style="margin-bottom:1rem; border-bottom:2px solid var(--aa-primary); padding-bottom:5px; color:var(--aa-primary);">'+title+'</h3>' : '';
+      return `
+        ${displayTitle}
+        <div class="aa-grid-4 mb-4">
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-info"><i class="fa fa-file-invoice-dollar"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-billed">...0.00</div>
+            <div class="aa-stat-label">Total Billed</div>
+          </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-success"><i class="fa fa-wallet"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-collected">...0.00</div>
+            <div class="aa-stat-label">Total Collected</div>
+          </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-danger"><i class="fa fa-hand-holding-usd"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-outstanding">...0.00</div>
+            <div class="aa-stat-label">Outstanding Balance</div>
+          </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-warning"><i class="fa fa-receipt"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-expense">...0.00</div>
+            <div class="aa-stat-label">Total Expenses</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function fetchAndRenderFinance(prefix) {
+      var section = prefix === 'primary' ? 'primary' : 'high';
+      // Fetch matched stats from backend for current term/session
+      callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(statsRes) {
+        if(document.getElementById(prefix + '-fin-billed')) {
+          document.getElementById(prefix + '-fin-billed').textContent = formatNaira(statsRes.totalBilled);
+          document.getElementById(prefix + '-fin-collected').textContent = formatNaira(statsRes.totalCollected);
+          document.getElementById(prefix + '-fin-outstanding').textContent = formatNaira(statsRes.totalOutstanding);
+          document.getElementById(prefix + '-fin-expense').textContent = formatNaira(statsRes.totalExpenses);
+        }
+      });
+    }
+
     function loadFinance() {
       // Load all payments to split pending vs approved for display
       callServer('adminGetPayments', [AA.token], function(payments) {
         callServer('adminGetExpenses', [AA.token], function(expenses) {
           var pending = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'pending'; });
           var approved = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'approved'; });
+
+          // Render stats block
+          var container = document.getElementById('finance-stats-container');
+          var schoolType = (AA.settings && AA.settings.school_type) ? String(AA.settings.school_type).toLowerCase() : 'both';
+          
+          if(schoolType.indexOf('both') !== -1 || schoolType.indexOf('primary &') !== -1) {
+            container.innerHTML = getFinanceHTML('primary', 'Primary School Finance') + getFinanceHTML('high', 'High School Finance');
+            fetchAndRenderFinance('primary');
+            fetchAndRenderFinance('high');
+          } else {
+            // Determine default prefix based on school type
+            var prefix = schoolType.indexOf('primary') !== -1 ? 'primary' : 'high';
+            container.innerHTML = getFinanceHTML(prefix, '');
+            fetchAndRenderFinance(prefix);
+          }
 
           // Show pending payments card
           if(pending.length > 0) {
@@ -1897,20 +1931,19 @@
             return new Date(b.date) - new Date(a.date);
           });
 
-          // Fetch matched stats from backend for current term/session
-          callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession], function(statsRes) {
-            document.getElementById('fin-billed').textContent = formatNaira(statsRes.totalBilled);
-            document.getElementById('fin-collected').textContent = formatNaira(statsRes.totalCollected);
-            document.getElementById('fin-outstanding').textContent = formatNaira(statsRes.totalOutstanding);
-            document.getElementById('fin-expense').textContent = formatNaira(statsRes.totalExpenses);
-          });
+          // (Stats are now fetched dynamically via fetchAndRenderFinance)
 
           // Show pending approval count separately
           document.getElementById('fin-pending-approvals').textContent = pending.length > 0 ? pending.length : 0;
 
           // Fetch top debtors
           if(document.getElementById('finDebtorsTable')) {
-            callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(debtorsData) {
+            var schoolType = (AA.settings && AA.settings.school_type) ? String(AA.settings.school_type).toLowerCase() : 'both';
+            var s = 'both';
+            if (schoolType.indexOf('both') === -1 && schoolType.indexOf('primary &') === -1) {
+              s = schoolType.indexOf('primary') !== -1 ? 'primary' : 'high';
+            }
+            callServer('adminGetDebtors', [AA.token, currentTerm, currentSession, s], function(debtorsData) {
               var top = debtorsData.slice(0, 10);
               buildTable('finDebtorsTable', [
                 {key:'fullName'},
