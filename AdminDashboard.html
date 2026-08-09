@@ -1918,7 +1918,7 @@
     }
 
     function fetchAndRenderFinance(prefix) {
-      var section = prefix === 'primary' ? 'primary' : 'secondary';
+      var section = prefix === 'primary' ? 'primary' : 'high';
       // Fetch matched stats from backend for current term/session
       callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(statsRes) {
         if(document.getElementById(prefix + '-fin-billed')) {

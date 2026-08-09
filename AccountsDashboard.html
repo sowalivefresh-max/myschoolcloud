@@ -502,6 +502,7 @@
     // -- Dashboard --
     function loadDashboard() {
       var section = (AA.user && AA.user.institutionType) ? AA.user.institutionType : 'both';
+      if (section === 'secondary') section = 'high';
       
       callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(res) {
         document.getElementById('stat-billed').textContent = formatNaira(res.totalBilled);
