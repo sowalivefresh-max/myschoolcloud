@@ -91,6 +91,8 @@ module.exports = function(db) {
       const settings = settingsDoc.exists ? settingsDoc.data() : { currentTerm: "1", currentSession: "2026/2027" };
       
       const userData = { id: uDoc.id, ...uDoc.data() };
+      delete userData.passwordHash;
+      delete userData.salt;
 
       // Dynamically attach classAssigned if the user is a class teacher
       if (sess.role === "teacher" || sess.role === "primary_teacher") {

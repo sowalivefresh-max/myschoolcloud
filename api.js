@@ -25,11 +25,13 @@ if (window.location.hostname === "localhost" || window.location.hostname === "12
  */
 async function runBackendAction(action, args = []) {
   try {
+    const token = (typeof AA !== 'undefined' && AA.token) ? AA.token : (args[0] || "");
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify({ action: action, args: args }),
       headers: {
-        "Content-Type": "application/json" // Changed to application/json for Firebase Express Backend
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
       }
     });
 

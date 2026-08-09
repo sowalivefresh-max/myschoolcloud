@@ -2,6 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 const { getFirestore } = require("firebase-admin/firestore");
 
@@ -11,8 +12,31 @@ const db = getFirestore();
 
 // Initialize Express App
 const app = express();
-app.use(cors({ origin: true }));
+
+const allowedOrigins = [
+  "https://cloudschool-3c1d4.web.app",
+  "https://myschool.com", 
+  "http://localhost:5000",
+  "http://127.0.0.1:5000"
+];
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("CORS policy violation"), false);
+  }
+}));
+
 app.use(express.json());
+
+// Apply rate limiting to all requests
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window`
+  standardHeaders: true, 
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests, please try again later." }
+});
+app.use("/api", apiLimiter);
 
 // Import action handlers
 const notificationsActions = require("./actions/notifications")(db);
@@ -21,10 +45,11 @@ const adminActions = require("./actions/admin")(db, notificationsActions);
 const teacherActions = require("./actions/teacher")(db, notificationsActions);
 const parentActions = require("./actions/parent")(db);
 
-// --- UTILITY: Role Middleware ---
 async function requireRole(req, res, next) {
-  const token = req.body.token;
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : req.body.token;
   const action = req.body.action;
+  
   if (!token) return res.status(401).json({ success: false, message: "No token provided." });
 
   try {
@@ -39,18 +64,28 @@ async function requireRole(req, res, next) {
     
     if (action) {
       const role = session.role;
+      let isAllowed = false;
+
+      const adminRoles = ["admin", "admin_assistant", "developer", "principal", "vp", "accounts", "headteacher"];
+      const teacherRoles = ["teacher", "primary_teacher", "headteacher", "admin", "developer", "principal", "vp"];
+      const parentRoles = ["parent", "admin", "developer"];
+
       if (action.startsWith("admin")) {
-        if (!["admin", "admin_assistant", "developer", "principal", "vp", "accounts", "headteacher"].includes(role)) {
-          return res.status(403).json({ success: false, message: "Forbidden: Admin access required." });
-        }
+        isAllowed = adminRoles.includes(role);
       } else if (action.startsWith("teacher")) {
-        if (!["teacher", "primary_teacher", "headteacher", "admin", "developer", "principal", "vp"].includes(role)) {
-          return res.status(403).json({ success: false, message: "Forbidden: Teacher access required." });
-        }
+        isAllowed = teacherRoles.includes(role);
       } else if (action.startsWith("parent")) {
-        if (!["parent", "admin", "developer"].includes(role)) {
-          return res.status(403).json({ success: false, message: "Forbidden: Parent access required." });
+        isAllowed = parentRoles.includes(role);
+      } else {
+        // Explicitly allow general authenticated actions
+        const generalAuthActions = ["userUpdateProfile", "userChangePassword", "markNotificationRead"];
+        if (generalAuthActions.includes(action)) {
+          isAllowed = true;
         }
+      }
+
+      if (!isAllowed) {
+        return res.status(403).json({ success: false, message: `Forbidden: Access denied for action '${action}'.` });
       }
     }
 
