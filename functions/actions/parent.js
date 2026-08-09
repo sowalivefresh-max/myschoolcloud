@@ -1,4 +1,54 @@
-const { FieldPath } = require("firebase-admin/firestore");
+const admin = require("firebase-admin");
+const db = admin.firestore();
+
+// Helper to calculate dynamic grades based on class/section grading systems
+const computeDynamicGrade = (score, className, section, gradingSystems) => {
+  if (!gradingSystems || gradingSystems.length === 0) {
+    if (score >= 75) return { grade: 'A1', remark: 'Excellent' };
+    if (score >= 70) return { grade: 'B2', remark: 'Very Good' };
+    if (score >= 65) return { grade: 'B3', remark: 'Good' };
+    if (score >= 60) return { grade: 'C4', remark: 'Credit' };
+    if (score >= 55) return { grade: 'C5', remark: 'Credit' };
+    if (score >= 50) return { grade: 'C6', remark: 'Credit' };
+    if (score >= 45) return { grade: 'D7', remark: 'Pass' };
+    if (score >= 40) return { grade: 'E8', remark: 'Pass' };
+    return { grade: 'F9', remark: 'Fail' };
+  }
+
+  let matchedSystem = null;
+  if (className) {
+    matchedSystem = gradingSystems.find(gs => 
+      gs.targetClasses && Array.isArray(gs.targetClasses) && 
+      gs.targetClasses.some(c => c.toLowerCase().trim() === className.toLowerCase().trim())
+    );
+  }
+  if (!matchedSystem && section && section !== 'both') {
+    matchedSystem = gradingSystems.find(gs => 
+      (!gs.targetClasses || gs.targetClasses.length === 0) && 
+      gs.targetSection && gs.targetSection.toLowerCase() === section.toLowerCase()
+    );
+  }
+  if (!matchedSystem) {
+    matchedSystem = gradingSystems.find(gs => 
+      (!gs.targetClasses || gs.targetClasses.length === 0) && 
+      (!gs.targetSection || gs.targetSection.toLowerCase() === 'both' || gs.targetSection === '')
+    );
+  }
+  if (!matchedSystem) matchedSystem = gradingSystems[0];
+  
+  if (!matchedSystem.rules || !Array.isArray(matchedSystem.rules) || matchedSystem.rules.length === 0) {
+    return { grade: 'F', remark: 'Fail' };
+  }
+  
+  for (const rule of matchedSystem.rules) {
+    if (score >= Number(rule.min) && score <= Number(rule.max)) {
+      return { grade: rule.grade || 'F', remark: rule.remark || '' };
+    }
+  }
+  
+  let lowest = matchedSystem.rules[matchedSystem.rules.length - 1];
+  return { grade: lowest.grade || 'F', remark: lowest.remark || '' };
+};
 
 module.exports = function(db) {
 
@@ -13,16 +63,6 @@ module.exports = function(db) {
       throw new Error("Unauthorized access to student data.");
     }
     return true;
-  }
-
-  // Basic utility to map average score to grade (similar to Code.gs)
-  function computeGrade(avg) {
-    if (avg >= 70) return 'A';
-    if (avg >= 60) return 'B';
-    if (avg >= 50) return 'C';
-    if (avg >= 40) return 'D';
-    if (avg >= 0)  return 'F';
-    return '';
   }
 
   return {
@@ -86,6 +126,12 @@ module.exports = function(db) {
         
         const avg = scores.length > 0 ? Math.round((totalSum / scores.length) * 10) / 10 : 0;
         
+        const gradingSnap = await db.collection("gradingSystems").get();
+        const gradingSystems = gradingSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        const className = student.className || "";
+        const section = student.section || "";
+        const overallGradeObj = computeDynamicGrade(avg, className, section, gradingSystems);
+
         return res.json({ 
           success: true, 
           student: student, 
@@ -94,7 +140,7 @@ module.exports = function(db) {
             totalSubjects: scores.length, 
             totalScore: totalSum, 
             average: avg, 
-            overallGrade: computeGrade(avg) 
+            overallGrade: overallGradeObj.grade 
           } 
         });
       } catch (err) {
@@ -198,16 +244,22 @@ module.exports = function(db) {
         
         const avg = scores.length > 0 ? Math.round((totalSum / scores.length) * 10) / 10 : 0;
         
-        // Fetch behavioral traits
-        const [psySnap, affSnap] = await Promise.all([
+        // Fetch behavioral traits and grading
+        const [psySnap, affSnap, gradingSnap] = await Promise.all([
           db.collection("psychomotorRecords").where("studentId", "==", studentId).where("term", "==", term).where("session", "==", academicSession).get(),
-          db.collection("affectiveRecords").where("studentId", "==", studentId).where("term", "==", term).where("session", "==", academicSession).get()
+          db.collection("affectiveRecords").where("studentId", "==", studentId).where("term", "==", term).where("session", "==", academicSession).get(),
+          db.collection("gradingSystems").get()
         ]);
+        
+        const gradingSystems = gradingSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        const className = student.className || "";
+        const section = student.section || "";
+        const overallGradeObj = computeDynamicGrade(avg, className, section, gradingSystems);
         
         const report = {
           student: student,
           scores: scores,
-          summary: { average: avg, overallGrade: computeGrade(avg) },
+          summary: { average: avg, overallGrade: overallGradeObj.grade },
           attendance: { percentage: 95 }, // Mock for now
           psychomotor: psySnap.empty ? {} : psySnap.docs[0].data(),
           affective: affSnap.empty ? {} : affSnap.docs[0].data(),

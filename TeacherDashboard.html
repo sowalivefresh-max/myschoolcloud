@@ -720,7 +720,12 @@
           var c3 = parseFloat(document.getElementById('ca3_'+sid).value) || 0;
           var ex = parseFloat(document.getElementById('exam_'+sid).value) || 0;
           var tot = c1 + c2 + c3 + ex;
-          var grd = typeof calculateGrade === 'function' ? calculateGrade(tot) : '';
+          
+          var st = currentScoreStudents.find(function(s) { return String(s.id||s.iD) === String(sid); });
+          var clsName = st ? st.className : '';
+          var secName = st ? st.section : '';
+          var grd = typeof calculateDynamicGrade === 'function' ? calculateDynamicGrade(tot, clsName, secName) : (typeof calculateGrade === 'function' ? calculateGrade(tot) : '');
+          
           payload.push({
             studentId: sid, subjectId: subId, subjectName: subName, term: currentTerm, session: currentSession,
             ca1: c1, ca2: c2, ca3: c3, exam: ex,

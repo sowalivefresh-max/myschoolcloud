@@ -2,6 +2,55 @@ const crypto = require("crypto");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 
+// Helper to calculate dynamic grades based on class/section grading systems
+const computeDynamicGrade = (score, className, section, gradingSystems) => {
+  if (!gradingSystems || gradingSystems.length === 0) {
+    if (score >= 75) return { grade: 'A1', remark: 'Excellent' };
+    if (score >= 70) return { grade: 'B2', remark: 'Very Good' };
+    if (score >= 65) return { grade: 'B3', remark: 'Good' };
+    if (score >= 60) return { grade: 'C4', remark: 'Credit' };
+    if (score >= 55) return { grade: 'C5', remark: 'Credit' };
+    if (score >= 50) return { grade: 'C6', remark: 'Credit' };
+    if (score >= 45) return { grade: 'D7', remark: 'Pass' };
+    if (score >= 40) return { grade: 'E8', remark: 'Pass' };
+    return { grade: 'F9', remark: 'Fail' };
+  }
+
+  let matchedSystem = null;
+  if (className) {
+    matchedSystem = gradingSystems.find(gs => 
+      gs.targetClasses && Array.isArray(gs.targetClasses) && 
+      gs.targetClasses.some(c => c.toLowerCase().trim() === className.toLowerCase().trim())
+    );
+  }
+  if (!matchedSystem && section && section !== 'both') {
+    matchedSystem = gradingSystems.find(gs => 
+      (!gs.targetClasses || gs.targetClasses.length === 0) && 
+      gs.targetSection && gs.targetSection.toLowerCase() === section.toLowerCase()
+    );
+  }
+  if (!matchedSystem) {
+    matchedSystem = gradingSystems.find(gs => 
+      (!gs.targetClasses || gs.targetClasses.length === 0) && 
+      (!gs.targetSection || gs.targetSection.toLowerCase() === 'both' || gs.targetSection === '')
+    );
+  }
+  if (!matchedSystem) matchedSystem = gradingSystems[0];
+  
+  if (!matchedSystem.rules || !Array.isArray(matchedSystem.rules) || matchedSystem.rules.length === 0) {
+    return { grade: 'F', remark: 'Fail' };
+  }
+  
+  for (const rule of matchedSystem.rules) {
+    if (score >= Number(rule.min) && score <= Number(rule.max)) {
+      return { grade: rule.grade || 'F', remark: rule.remark || '' };
+    }
+  }
+  
+  let lowest = matchedSystem.rules[matchedSystem.rules.length - 1];
+  return { grade: lowest.grade || 'F', remark: lowest.remark || '' };
+};
+
 module.exports = function(db, notificationsActions) {
   const classOrderMap = {
     "creche": 10, "playgroup": 20, "pre-nursery": 30, "nursery 1": 40, "nursery 2": 50, "nursery 3": 60,
@@ -222,21 +271,16 @@ module.exports = function(db, notificationsActions) {
           .where("session", "==", session)
           .get();
           
+        // 1.5 Get all grading systems
+        const gradingSnap = await db.collection("gradingSystems").get();
+        const gradingSystems = gradingSnap.docs.map(d => ({id: d.id, ...d.data()}));
+          
         let totalScoreSum = 0;
         let totalScoreCount = 0;
         const classScores = {}; // { className: { sum: 0, count: 0, studentScores: {} } }
         const subjectScores = {}; // { subject: { sum: 0, count: 0, maxScore: 0 } }
-        const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+        const gradeDistribution = {};
         
-        const getGrade = (score) => {
-          if (score >= 75) return 'A';
-          if (score >= 65) return 'B';
-          if (score >= 50) return 'C';
-          if (score >= 45) return 'D';
-          if (score >= 40) return 'E';
-          return 'F';
-        };
-
         assSnap.forEach(doc => {
           const data = doc.data();
           
@@ -250,12 +294,14 @@ module.exports = function(db, notificationsActions) {
           totalScoreSum += total;
           totalScoreCount++;
           
+          const className = studentClassMap[data.studentId] || data.className || "Unknown";
+          
           // Grade
-          const grade = getGrade(total);
-          gradeDistribution[grade]++;
+          const gradeObj = computeDynamicGrade(total, className, studentSection, gradingSystems);
+          const grade = gradeObj.grade;
+          gradeDistribution[grade] = (gradeDistribution[grade] || 0) + 1;
 
           // Class
-          const className = studentClassMap[data.studentId] || data.className || "Unknown";
           if (!classScores[className]) classScores[className] = { sum: 0, count: 0, studentScores: {} };
           classScores[className].sum += total;
           classScores[className].count++;
@@ -982,9 +1028,9 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, data: snap.docs.map(d => ({id: d.id, ...d.data()})) });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
-    adminGetGrading: async (req, res) => {
+    adminGetGradingSystems: async (req, res) => {
       try {
-        const snap = await db.collection("grading").get();
+        const snap = await db.collection("gradingSystems").get();
         return res.json({ success: true, data: snap.docs.map(d => ({id: d.id, ...d.data()})) });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
@@ -1329,19 +1375,36 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, message: "Student unenrolled successfully." });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
-    adminSaveGradeRule: async (req, res) => { 
+    adminSaveGradingSystem: async (req, res) => { 
       try {
         const data = req.body.data;
-        if (!data) return res.json({ success: false, message: "Rule data required" });
-        await db.collection("settings").doc("grading").set(data, { merge: true });
+        if (!data) return res.json({ success: false, message: "Grading system data required" });
+        
+        let docRef;
+        if (data.id) {
+          docRef = db.collection("gradingSystems").doc(data.id);
+        } else {
+          docRef = db.collection("gradingSystems").doc();
+          data.id = docRef.id;
+        }
+        await docRef.set(data, { merge: true });
         
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: req.session.userId,
-          action: "UPDATE_GRADING",
-          details: `Updated grading rules.`
+          action: "UPDATE_GRADING_SYSTEM",
+          details: `Updated grading system: ${data.name || data.id}`
         });
-        return res.json({ success: true, message: "Grading rules saved successfully." });
+        return res.json({ success: true, message: "Grading system saved successfully." });
+      } catch (err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminDeleteGradingSystem: async (req, res) => {
+      try {
+        const systemId = req.body.systemId;
+        if (!systemId) return res.json({ success: false, message: "System ID required" });
+        await db.collection("gradingSystems").doc(systemId).delete();
+        return res.json({ success: true, message: "Grading system deleted successfully." });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
     adminGenerateBulkResult: async (req, res) => { 

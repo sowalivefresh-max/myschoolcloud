@@ -323,16 +323,16 @@
         </div>
 
         <!-- TAB: Grading -->
-        <div class="aa-tab-content" data-group="admin-tabs" data-id="tab-grading">
+                <div class="aa-tab-content" data-group="admin-tabs" data-id="tab-grading">
           <div class="aa-card">
             <div class="aa-card-header">
-              <h3 class="aa-card-title">Grading System (A1 - F9)</h3>
-              <button class="aa-btn aa-btn-primary" onclick="openModal('gradingModal')"><i class="fa fa-plus"></i> Add Grade Rule</button>
+              <h3 class="aa-card-title">Grading Systems</h3>
+              <button class="aa-btn aa-btn-primary" onclick="openGradingModal()"><i class="fa fa-plus"></i> Add Grading System</button>
             </div>
             <div class="aa-card-body" style="padding:0;">
               <div class="aa-table-wrap">
-                <table class="aa-table" id="gradingTable">
-                  <thead><tr><th>Grade</th><th>Min Score</th><th>Max Score</th><th>Remark</th><th>Actions</th></tr></thead>
+                <table class="aa-table" id="gradingSystemsTable">
+                  <thead><tr><th>Name</th><th>Target Section</th><th>Target Classes</th><th>Rules Count</th><th>Actions</th></tr></thead>
                   <tbody></tbody>
                 </table>
               </div>
@@ -905,39 +905,54 @@
     </div>
   </div>
 
-  <!-- Grading Modal -->
+    <!-- Grading Modal -->
   <div class="aa-modal-backdrop" id="gradingModal">
-    <div class="aa-modal">
+    <div class="aa-modal" style="max-width: 600px;">
       <div class="aa-modal-header">
-        <h5 class="aa-modal-title">Add/Edit Grade Rule</h5>
+        <h5 class="aa-modal-title" id="gradingModalTitle">Add/Edit Grading System</h5>
         <button class="aa-modal-close" onclick="closeModal('gradingModal')"><i class='fa fa-times'></i></button>
       </div>
       <div class="aa-modal-body">
         <form id="gradingForm">
-          <input type="hidden" name="id" id="gradeId">
+          <input type="hidden" name="id" id="gsId">
           <div class="aa-form-group">
-            <label class="aa-label">Grade (e.g. A1)</label>
-            <input type="text" name="grade" class="aa-input" required>
+            <label class="aa-label">System Name</label>
+            <input type="text" name="name" id="gsName" class="aa-input" placeholder="e.g. Senior Secondary Grading" required>
           </div>
           <div class="aa-grid-2">
             <div class="aa-form-group">
-              <label class="aa-label">Min Score</label>
-              <input type="number" name="min" class="aa-input" required>
+              <label class="aa-label">Target Section (Fallback)</label>
+              <select name="targetSection" id="gsSection" class="aa-select">
+                <option value="both">Both Sections</option>
+                <option value="primary">Primary / Basic</option>
+                <option value="high">High School</option>
+              </select>
             </div>
             <div class="aa-form-group">
-              <label class="aa-label">Max Score</label>
-              <input type="number" name="max" class="aa-input" required>
+              <label class="aa-label">Target Classes</label>
+              <select name="targetClasses" id="gsClasses" class="aa-select" multiple style="height: 80px;">
+              </select>
+              <small style="color: #666; font-size: 11px;">Hold Ctrl/Cmd to select multiple. Leave empty for section fallback.</small>
             </div>
           </div>
-          <div class="aa-form-group">
-            <label class="aa-label">Remark</label>
-            <input type="text" name="remark" class="aa-input">
+          
+          <div class="aa-form-group mt-3">
+            <label class="aa-label" style="display:flex; justify-content:space-between;">
+              <span>Grade Rules</span>
+              <button type="button" class="aa-btn aa-btn-outline aa-btn-xs" onclick="addGradeRuleRow()"><i class="fa fa-plus"></i> Add Rule</button>
+            </label>
+            <div class="aa-table-wrap">
+              <table class="aa-table" id="gradeRulesTable">
+                <thead><tr><th>Grade</th><th>Min Score</th><th>Max Score</th><th>Remark</th><th></th></tr></thead>
+                <tbody id="gradeRulesBody"></tbody>
+              </table>
+            </div>
           </div>
         </form>
       </div>
       <div class="aa-modal-footer">
         <button class="aa-btn aa-btn-outline" onclick="closeModal('gradingModal')">Cancel</button>
-        <button class="aa-btn aa-btn-primary" onclick="saveGrade()">Save Rule</button>
+        <button class="aa-btn aa-btn-primary" onclick="saveGradingSystem()">Save System</button>
       </div>
     </div>
   </div>
@@ -1648,21 +1663,144 @@
       });
     }
 
+        var currentGradingSystems = [];
     function loadGrading() {
-      callServer('adminGetGrading', [AA.token], function(data) {
-        buildTable('gradingTable', [
-          { key: 'grade' },
-          { key: 'min' },
-          { key: 'max' },
-          { key: 'remark' }
-        ], data, function(r) {
-          return '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="editGrade(\''+r.id+'\')"><i class="fa fa-edit"></i></button>';
+      callServer('getGradingSystems', [AA.token], function(data) {
+        currentGradingSystems = data;
+        var tbody = document.querySelector('#gradingSystemsTable tbody');
+        tbody.innerHTML = '';
+        if(!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="aa-text-center">No grading systems found</td></tr>';
+          return;
+        }
+        data.forEach(function(gs) {
+          var tr = document.createElement('tr');
+          var classes = (gs.targetClasses && gs.targetClasses.length > 0) ? gs.targetClasses.join(', ') : '<i>All classes in section</i>';
+          var rulesCount = (gs.rules || []).length;
+          var section = gs.targetSection ? (gs.targetSection.charAt(0).toUpperCase() + gs.targetSection.slice(1)) : 'Both';
+          
+          tr.innerHTML = '<td>' + AA.escapeHTML(gs.name || gs.id) + '</td>' +
+                         '<td>' + section + '</td>' +
+                         '<td><small>' + classes + '</small></td>' +
+                         '<td>' + rulesCount + '</td>' +
+                         '<td>' +
+                           '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="editGradingSystem(\'' + gs.id + '\')"><i class="fa fa-edit"></i></button> ' +
+                           '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="deleteGradingSystem(\'' + gs.id + '\')"><i class="fa fa-trash"></i></button>' +
+                         '</td>';
+          tbody.appendChild(tr);
         });
       }, null, true);
     }
-    function saveGrade() {
-      var data = getFormData('gradingForm');
-      callServer('adminSaveGradeRule', [AA.token, data], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success){closeModal('gradingModal');loadGrading();} }, null, true);
+    
+    function populateGradingClasses() {
+      var sel = document.getElementById('gsClasses');
+      sel.innerHTML = '';
+      if(typeof globalClasses !== 'undefined') {
+        globalClasses.forEach(function(c) {
+          var opt = document.createElement('option');
+          opt.value = c.className;
+          opt.textContent = c.className;
+          sel.appendChild(opt);
+        });
+      }
+    }
+    
+    function openGradingModal() {
+      document.getElementById('gradingForm').reset();
+      document.getElementById('gsId').value = '';
+      document.getElementById('gradingModalTitle').innerText = 'Add Grading System';
+      document.getElementById('gradeRulesBody').innerHTML = '';
+      populateGradingClasses();
+      addGradeRuleRow();
+      openModal('gradingModal');
+    }
+    
+    function addGradeRuleRow(grade, min, max, remark) {
+      grade = grade || ''; min = min !== undefined ? min : ''; max = max !== undefined ? max : ''; remark = remark || '';
+      var tbody = document.getElementById('gradeRulesBody');
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td><input type="text" class="aa-input grade-val" value="'+AA.escapeHTML(grade)+'" required style="padding:4px; width:100%;"></td>' +
+                     '<td><input type="number" class="aa-input min-val" value="'+min+'" required style="padding:4px; width:100%;"></td>' +
+                     '<td><input type="number" class="aa-input max-val" value="'+max+'" required style="padding:4px; width:100%;"></td>' +
+                     '<td><input type="text" class="aa-input remark-val" value="'+AA.escapeHTML(remark)+'" style="padding:4px; width:100%;"></td>' +
+                     '<td><button type="button" class="aa-btn aa-btn-danger aa-btn-xs" onclick="this.closest(\'tr\').remove()"><i class="fa fa-times"></i></button></td>';
+      tbody.appendChild(tr);
+    }
+    
+    function editGradingSystem(id) {
+      var gs = currentGradingSystems.find(function(x) { return x.id === id; });
+      if(!gs) return;
+      document.getElementById('gradingForm').reset();
+      document.getElementById('gsId').value = gs.id;
+      document.getElementById('gsName').value = gs.name || '';
+      document.getElementById('gsSection').value = gs.targetSection || 'both';
+      populateGradingClasses();
+      document.getElementById('gradingModalTitle').innerText = 'Edit Grading System';
+      
+      var classSel = document.getElementById('gsClasses');
+      for(var i=0; i<classSel.options.length; i++) {
+        classSel.options[i].selected = gs.targetClasses && gs.targetClasses.includes(classSel.options[i].value);
+      }
+      
+      document.getElementById('gradeRulesBody').innerHTML = '';
+      if(gs.rules && gs.rules.length > 0) {
+        gs.rules.forEach(function(r) { addGradeRuleRow(r.grade, r.min, r.max, r.remark); });
+      } else {
+        addGradeRuleRow();
+      }
+      
+      openModal('gradingModal');
+    }
+    
+    function saveGradingSystem() {
+      var id = document.getElementById('gsId').value;
+      var name = document.getElementById('gsName').value;
+      var section = document.getElementById('gsSection').value;
+      var classesSel = document.getElementById('gsClasses');
+      var targetClasses = [];
+      for(var i=0; i<classesSel.options.length; i++) {
+        if(classesSel.options[i].selected) targetClasses.push(classesSel.options[i].value);
+      }
+      
+      var rules = [];
+      var rows = document.getElementById('gradeRulesBody').querySelectorAll('tr');
+      rows.forEach(function(tr) {
+        var g = tr.querySelector('.grade-val').value;
+        var mn = tr.querySelector('.min-val').value;
+        var mx = tr.querySelector('.max-val').value;
+        var rm = tr.querySelector('.remark-val').value;
+        if(g && mn !== '' && mx !== '') {
+          rules.push({ grade: g, min: Number(mn), max: Number(mx), remark: rm });
+        }
+      });
+      
+      if(!name) return showToast('System name is required', 'error');
+      
+      var payload = {
+        name: name,
+        targetSection: section,
+        targetClasses: targetClasses,
+        rules: rules
+      };
+      if(id) payload.id = id;
+      
+      callServer('adminSaveGradingSystem', [AA.token, payload], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if(res.success) {
+          closeModal('gradingModal');
+          loadGrading();
+        }
+      }, null, true);
+    }
+    
+    function deleteGradingSystem(id) {
+      aaConfirm('Are you sure you want to delete this grading system?', function() {
+        callServer('adminDeleteGradingSystem', [AA.token, id], function(res) {
+          showToast(res.message, res.success ? 'success' : 'error');
+          if(res.success) loadGrading();
+        }, null, true);
+      });
+    } }, null, true);
     }
 
     function downloadFinancialReport() {

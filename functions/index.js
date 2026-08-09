@@ -78,7 +78,7 @@ async function requireRole(req, res, next) {
         isAllowed = parentRoles.includes(role);
       } else {
         // Explicitly allow general authenticated actions
-        const generalAuthActions = ["userUpdateProfile", "userChangePassword", "markNotificationRead"];
+        const generalAuthActions = ["userUpdateProfile", "userChangePassword", "markNotificationRead", "getGradingSystems"];
         if (generalAuthActions.includes(action)) {
           isAllowed = true;
         }
@@ -174,7 +174,8 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetStudentSubjects") { req.body.studentId = args[1]; }
         if (action === "adminEnrollStudent") { req.body.studentId = args[1]; req.body.subjectId = args[2]; req.body.session = args[3]; req.body.term = args[4]; }
         if (action === "adminUnenrollStudent") { req.body.studentId = args[1]; req.body.subjectId = args[2]; req.body.session = args[3]; }
-        if (action === "adminSaveGradeRule") { req.body.data = args[1]; }
+        if (action === "adminSaveGradingSystem") { req.body.data = args[1]; }
+        if (action === "adminDeleteGradingSystem") { req.body.systemId = args[1]; }
         if (action === "adminGenerateBulkResult") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.rptType = args[4]; }
 
         // Phase 3 Mappings
@@ -269,6 +270,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => authActions.userUpdateProfile(req, res));
       case "userChangePassword":
         return requireRole(req, res, () => authActions.userChangePassword(req, res));
+      case "getGradingSystems":
+        return requireRole(req, res, () => adminActions.adminGetGradingSystems(req, res));
 
       // --- ADMIN ACTIONS ---
       case "adminGetStats":
@@ -322,7 +325,7 @@ app.post("/api", async (req, res) => {
       case "adminGetPayments": return requireRole(req, res, () => adminActions.adminGetPayments(req, res));
       case "adminGetExpenses": return requireRole(req, res, () => adminActions.adminGetExpenses(req, res));
       case "adminGetPendingTasks": return requireRole(req, res, () => adminActions.adminGetPendingTasks(req, res));
-      case "adminGetGrading": return requireRole(req, res, () => adminActions.adminGetGrading(req, res));
+      case "adminGetGradingSystems": return requireRole(req, res, () => adminActions.adminGetGradingSystems(req, res));
       case "adminGetStudentSubjects": return requireRole(req, res, () => adminActions.adminGetStudentSubjects(req, res));
       
       case "adminProcessPasswordReset": return requireRole(req, res, () => adminActions.adminProcessPasswordReset(req, res));
@@ -338,7 +341,8 @@ app.post("/api", async (req, res) => {
       case "adminBulkCreateSubjects": return requireRole(req, res, () => adminActions.adminBulkCreateSubjects(req, res));
       case "adminEnrollStudent": return requireRole(req, res, () => adminActions.adminEnrollStudent(req, res));
       case "adminUnenrollStudent": return requireRole(req, res, () => adminActions.adminUnenrollStudent(req, res));
-      case "adminSaveGradeRule": return requireRole(req, res, () => adminActions.adminSaveGradeRule(req, res));
+      case "adminSaveGradingSystem": return requireRole(req, res, () => adminActions.adminSaveGradingSystem(req, res));
+      case "adminDeleteGradingSystem": return requireRole(req, res, () => adminActions.adminDeleteGradingSystem(req, res));
       case "adminGenerateBulkResult": return requireRole(req, res, () => adminActions.adminGenerateBulkResult(req, res));
       case "adminGetBroadsheetData": return requireRole(req, res, () => adminActions.adminGetBroadsheetData(req, res));
       case "adminGetComplianceSummary": return requireRole(req, res, () => adminActions.adminGetComplianceSummary(req, res));

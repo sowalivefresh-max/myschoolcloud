@@ -9,6 +9,7 @@ var AA = {
   token: null,
   user:  null,
   settings: {},
+  gradingSystems: [],
 
   escapeHTML: function(str) {
     if (str === null || str === undefined) return '';
@@ -32,6 +33,7 @@ var AA = {
     }
     this.loadCurrentUser();
     this.loadSettings();
+    this.loadGradingSystems();
   },
 
   loadCurrentUser: function() {
@@ -72,6 +74,15 @@ var AA = {
         }
       })
       .catch(function(e) { console.error('loadSettings error', e); });
+  },
+
+  loadGradingSystems: function() {
+    var self = this;
+    runBackendAction('getGradingSystems', [self.token])
+      .then(function(res) {
+        if (res.success) self.gradingSystems = res.data || [];
+      })
+      .catch(function(e) { console.error('loadGradingSystems error', e); });
   },
 
   applyThemeToDocument: function(theme, primary, secondary) {
@@ -481,23 +492,66 @@ function formatDateTime(dateStr) {
   return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear() + ', ' + timeStr;
 }
 
+function calculateDynamicGrade(total, className, section) {
+  var score = parseFloat(total) || 0;
+  var gradingSystems = (typeof AA !== 'undefined') ? AA.gradingSystems : [];
+  
+  if (!gradingSystems || gradingSystems.length === 0) {
+    if (score >= 75) return 'A1';
+    if (score >= 70) return 'B2';
+    if (score >= 65) return 'B3';
+    if (score >= 60) return 'C4';
+    if (score >= 55) return 'C5';
+    if (score >= 50) return 'C6';
+    if (score >= 45) return 'D7';
+    if (score >= 40) return 'E8';
+    return 'F9';
+  }
+
+  var matchedSystem = null;
+  if (className) {
+    matchedSystem = gradingSystems.find(function(gs) { 
+      return gs.targetClasses && Array.isArray(gs.targetClasses) && 
+        gs.targetClasses.some(function(c) { return c.toLowerCase().trim() === className.toLowerCase().trim(); });
+    });
+  }
+  if (!matchedSystem && section && section !== 'both') {
+    matchedSystem = gradingSystems.find(function(gs) {
+      return (!gs.targetClasses || gs.targetClasses.length === 0) && 
+        gs.targetSection && gs.targetSection.toLowerCase() === section.toLowerCase();
+    });
+  }
+  if (!matchedSystem) {
+    matchedSystem = gradingSystems.find(function(gs) {
+      return (!gs.targetClasses || gs.targetClasses.length === 0) && 
+        (!gs.targetSection || gs.targetSection.toLowerCase() === 'both' || gs.targetSection === '');
+    });
+  }
+  if (!matchedSystem) matchedSystem = gradingSystems[0];
+  
+  if (!matchedSystem.rules || !Array.isArray(matchedSystem.rules) || matchedSystem.rules.length === 0) {
+    return 'F';
+  }
+  
+  for (var i = 0; i < matchedSystem.rules.length; i++) {
+    var rule = matchedSystem.rules[i];
+    if (score >= Number(rule.min) && score <= Number(rule.max)) {
+      return rule.grade || 'F';
+    }
+  }
+  
+  var lowest = matchedSystem.rules[matchedSystem.rules.length - 1];
+  return lowest.grade || 'F';
+}
+
 function calculateGrade(total) {
-  var t = parseFloat(total) || 0;
-  if (t >= 75) return 'A1';
-  if (t >= 70) return 'B2';
-  if (t >= 65) return 'B3';
-  if (t >= 60) return 'C4';
-  if (t >= 55) return 'C5';
-  if (t >= 50) return 'C6';
-  if (t >= 45) return 'D7';
-  if (t >= 40) return 'E8';
-  return 'F9';
+  return calculateDynamicGrade(total);
 }
 
 function formatGrade(grade) {
   var cls = { 'A1':'grade-a1','B2':'grade-b2','B3':'grade-b3',
     'C4':'grade-c4','C5':'grade-c5','C6':'grade-c6','D7':'grade-d7','E8':'grade-e8','F9':'grade-f9' };
-  return '<span class="' + (cls[grade] || '') + '">' + (grade || '') + '</span>';
+  return '<span class="' + (cls[grade] || 'grade-b3') + '" style="font-weight:bold;">' + (grade || '') + '</span>';
 }
 
 function formatStatus(status) {
