@@ -1464,6 +1464,27 @@ module.exports = function(db, notificationsActions) {
           });
         }
 
+        // Fetch all approved payments and build a paid map per student
+        const paymentsSnap = await db.collection("payments").where("term", "==", term).where("session", "==", session).get();
+        let totalCollected = 0;
+        let paidMap = {};
+        paymentsSnap.forEach(doc => {
+          const d = doc.data();
+          if (section && section !== "both") {
+            const sid = d.studentId || d.studentID;
+            const studentSection = studentSectionMap[sid] || (d.section || "").toLowerCase();
+            if (studentSection !== section.toLowerCase()) return;
+          }
+          if (d.status === "Approved") {
+            const amount = Number(d.amount || 0);
+            totalCollected += amount;
+            const sid = d.studentId || d.studentID;
+            if (sid) {
+              paidMap[sid] = (paidMap[sid] || 0) + amount;
+            }
+          }
+        });
+
         // Total billed & outstanding from bills collection
         const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         let totalBilled = 0;
@@ -1475,22 +1496,9 @@ module.exports = function(db, notificationsActions) {
             if (studentSection !== section.toLowerCase()) return;
           }
           let billed = Number(data.totalBilled || 0);
-          let paid = Number(data.totalPaid || 0);
+          let paid = paidMap[data.studentId] || 0;
           totalBilled += billed;
           totalOutstanding += Math.max(0, billed - paid);
-        });
-
-        // Total collected from approved payments
-        const paymentsSnap = await db.collection("payments").where("term", "==", term).where("session", "==", session).get();
-        let totalCollected = 0;
-        paymentsSnap.forEach(doc => {
-          const d = doc.data();
-          if (section && section !== "both") {
-            const sid = d.studentId || d.studentID;
-            const studentSection = studentSectionMap[sid] || (d.section || "").toLowerCase();
-            if (studentSection !== section.toLowerCase()) return;
-          }
-          if (d.status === "Approved") totalCollected += Number(d.amount || 0);
         });
 
         // Compute outstanding (now calculated directly from bills)
