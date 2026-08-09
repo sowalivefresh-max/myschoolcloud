@@ -1814,6 +1814,9 @@
     }
 
     function loadFinance() {
+      if (!currentTerm || !currentSession) {
+        return setTimeout(loadFinance, 200);
+      }
       // Load all payments to split pending vs approved for display
       callServer('adminGetPayments', [AA.token], function(payments) {
         callServer('adminGetExpenses', [AA.token], function(expenses) {
@@ -2101,6 +2104,9 @@
     }
 
     function loadAnalytics() {
+      if (!currentTerm || !currentSession) {
+        return setTimeout(loadAnalytics, 200);
+      }
       var container = document.getElementById('analytics-dynamic-container');
       
       if (institutionType === 'both') {

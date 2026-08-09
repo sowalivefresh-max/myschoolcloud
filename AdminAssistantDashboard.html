@@ -1194,11 +1194,11 @@
           }
         }
 
-        if (AA.user.role === 'admin_assistant') {
-          document.getElementById('nav-finance').style.display = 'none';
-          document.getElementById('nav-approvals').style.display = 'none';
-          document.getElementById('nav-settings').style.display = 'none'; // Maybe?
-        }
+          if (AA.user.role === 'admin_assistant') {
+            if(document.getElementById('nav-finance')) document.getElementById('nav-finance').style.display = 'none';
+            if(document.getElementById('nav-approvals')) document.getElementById('nav-approvals').style.display = 'none';
+            if(document.getElementById('nav-settings')) document.getElementById('nav-settings').style.display = 'none';
+          }
         loadDashboard();
         refreshGlobalData();
       }
@@ -1805,6 +1805,9 @@
     }
 
     function loadFinance() {
+      if (!currentTerm || !currentSession) {
+        return setTimeout(loadFinance, 200);
+      }
       // Load all payments to split pending vs approved for display
       callServer('adminGetPayments', [AA.token], function(payments) {
         callServer('adminGetExpenses', [AA.token], function(expenses) {
@@ -1813,7 +1816,7 @@
 
           // Render stats block
           var container = document.getElementById('finance-stats-container');
-          var schoolType = (AA.settings && AA.settings.school_type) ? String(AA.settings.school_type).toLowerCase() : 'both';
+          var schoolType = (AA.settings && AA.settings.institution_type) ? String(AA.settings.institution_type).toLowerCase() : 'both';
           
           if(schoolType.indexOf('both') !== -1 || schoolType.indexOf('primary &') !== -1) {
             container.innerHTML = getFinanceHTML('primary', 'Primary School Finance') + getFinanceHTML('high', 'High School Finance');
@@ -1892,7 +1895,7 @@
 
           // Fetch top debtors
           if(document.getElementById('finDebtorsTable')) {
-            var schoolType = (AA.settings && AA.settings.school_type) ? String(AA.settings.school_type).toLowerCase() : 'both';
+            var schoolType = (AA.settings && AA.settings.institution_type) ? String(AA.settings.institution_type).toLowerCase() : 'both';
             var s = 'both';
             if (schoolType.indexOf('both') === -1 && schoolType.indexOf('primary &') === -1) {
               s = schoolType.indexOf('primary') !== -1 ? 'primary' : 'high';
