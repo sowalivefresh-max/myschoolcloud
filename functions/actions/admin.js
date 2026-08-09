@@ -1452,13 +1452,28 @@ module.exports = function(db, notificationsActions) {
     
     adminGetFinancialStats: async (req, res) => {
       try {
-        const { term, session } = req.body;
+        const { term, session, section } = req.body;
+
+        // Fetch students if section is provided to map studentId to section
+        let studentSectionMap = {};
+        if (section && section !== "both") {
+          const studentsSnap = await db.collection("students").get();
+          studentsSnap.forEach(doc => {
+            const data = doc.data();
+            studentSectionMap[doc.id] = (data.section || "").toLowerCase();
+          });
+        }
 
         // Total billed & outstanding from bills collection
         const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         let totalBilled = 0;
         billsSnap.forEach(doc => {
-          totalBilled += Number(doc.data().totalBilled || 0);
+          const data = doc.data();
+          if (section && section !== "both") {
+            const studentSection = studentSectionMap[data.studentId] || (data.section || "").toLowerCase();
+            if (studentSection !== section.toLowerCase()) return;
+          }
+          totalBilled += Number(data.totalBilled || 0);
         });
 
         // Total collected from approved payments
@@ -1466,6 +1481,11 @@ module.exports = function(db, notificationsActions) {
         let totalCollected = 0;
         paymentsSnap.forEach(doc => {
           const d = doc.data();
+          if (section && section !== "both") {
+            const sid = d.studentId || d.studentID;
+            const studentSection = studentSectionMap[sid] || (d.section || "").toLowerCase();
+            if (studentSection !== section.toLowerCase()) return;
+          }
           if (d.status === "Approved") totalCollected += Number(d.amount || 0);
         });
 
@@ -1494,23 +1514,38 @@ module.exports = function(db, notificationsActions) {
 
     adminGetDebtors: async (req, res) => {
       try {
-        const { term, session } = req.body;
+        const { term, session, section } = req.body;
         // Fetch all bills and payments
         const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         const paymentsSnap = await db.collection("payments").where("term", "==", term).where("session", "==", session).where("status", "==", "Approved").get();
         
         let studentBalances = {};
         
+        // Fetch students if section is provided to map studentId to section
+        let studentSectionMap = {};
+        if (section && section !== "both") {
+          const studentsSnap = await db.collection("students").get();
+          studentsSnap.forEach(doc => {
+            const data = doc.data();
+            studentSectionMap[doc.id] = (data.section || "").toLowerCase();
+          });
+        }
+        
         billsSnap.forEach(doc => {
           const b = doc.data();
+          if (section && section !== "both") {
+            const studentSection = studentSectionMap[b.studentId] || (b.section || "").toLowerCase();
+            if (studentSection !== section.toLowerCase()) return;
+          }
           if(!studentBalances[b.studentId]) studentBalances[b.studentId] = { studentName: b.studentName, class: b.className, totalBilled: 0, totalPaid: 0 };
           studentBalances[b.studentId].totalBilled += Number(b.totalBilled || 0);
         });
         
         paymentsSnap.forEach(doc => {
           const p = doc.data();
-          if(studentBalances[p.studentId]) {
-             studentBalances[p.studentId].totalPaid += Number(p.amount || 0);
+          const sid = p.studentId || p.studentID;
+          if(studentBalances[sid]) {
+             studentBalances[sid].totalPaid += Number(p.amount || 0);
           }
         });
         

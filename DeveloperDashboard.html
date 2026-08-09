@@ -1898,7 +1898,7 @@
           });
 
           // Fetch matched stats from backend for current term/session
-          callServer('adminGetFinancialStats', [AA.token, { term: currentTerm, session: currentSession }], function(statsRes) {
+          callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession], function(statsRes) {
             document.getElementById('fin-billed').textContent = formatNaira(statsRes.totalBilled);
             document.getElementById('fin-collected').textContent = formatNaira(statsRes.totalCollected);
             document.getElementById('fin-outstanding').textContent = formatNaira(statsRes.totalOutstanding);
