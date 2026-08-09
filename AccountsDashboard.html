@@ -501,7 +501,9 @@
 
     // -- Dashboard --
     function loadDashboard() {
-      callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession], function(res) {
+      var section = (AA.user && AA.user.institutionType) ? AA.user.institutionType : 'both';
+      
+      callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(res) {
         document.getElementById('stat-billed').textContent = formatNaira(res.totalBilled);
         document.getElementById('stat-collected').textContent = formatNaira(res.totalCollected);
         document.getElementById('stat-outstanding').textContent = formatNaira(res.totalOutstanding);
@@ -510,7 +512,7 @@
         document.getElementById('stat-net').style.color = res.netBalance >= 0 ? 'var(--aa-success)' : 'var(--aa-danger)';
       }, null, true);
 
-      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(data) {
+      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession, section], function(data) {
         var top = data.slice(0, 10); // top 10 debtors
         buildTable('debtorsTable', [
           {key:'studentName'},{key:'class', render:function(r){return r.class||r.className||'';} },

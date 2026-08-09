@@ -1467,13 +1467,17 @@ module.exports = function(db, notificationsActions) {
         // Total billed & outstanding from bills collection
         const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         let totalBilled = 0;
+        let totalOutstanding = 0;
         billsSnap.forEach(doc => {
           const data = doc.data();
           if (section && section !== "both") {
             const studentSection = studentSectionMap[data.studentId] || (data.section || "").toLowerCase();
             if (studentSection !== section.toLowerCase()) return;
           }
-          totalBilled += Number(data.totalBilled || 0);
+          let billed = Number(data.totalBilled || 0);
+          let paid = Number(data.totalPaid || 0);
+          totalBilled += billed;
+          totalOutstanding += Math.max(0, billed - paid);
         });
 
         // Total collected from approved payments
@@ -1489,8 +1493,8 @@ module.exports = function(db, notificationsActions) {
           if (d.status === "Approved") totalCollected += Number(d.amount || 0);
         });
 
-        // Compute outstanding
-        let totalOutstanding = Math.max(0, totalBilled - totalCollected);
+        // Compute outstanding (now calculated directly from bills)
+        // let totalOutstanding = Math.max(0, totalBilled - totalCollected);
 
         // Total expenses
         const expensesSnap = await db.collection("expenses").get();
