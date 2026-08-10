@@ -88,24 +88,48 @@ module.exports = {
 
     // Scores Table
     html += '<div class="sec-title">Academic Performance</div>';
-    if (isHalfTerm) {
-      html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th></tr>';
-    } else {
-      html += '<table><tr><th>S/N</th><th>Subject</th><th>CA1</th><th>CA2</th><th>CA3</th><th>Exam</th><th>Total</th><th>Grade</th></tr>';
-    }
+    
+    let format = (cfg && cfg.gradebook_format) ? cfg.gradebook_format : [
+      { id: 'ca1', title: 'CA1', max: 10 },
+      { id: 'ca2', title: 'CA2', max: 10 },
+      { id: 'ca3', title: 'CA3', max: 10 },
+      { id: 'exam', title: 'Exam', max: 70 }
+    ];
 
-    for (let i = 0; i < scores.length; i++) {
-      let sc = scores[i];
-      let g = sc.termGrade || 'F9';
-      let gcls = (g === 'A1') ? 'grade-a' : (g === 'B2' || g === 'B3') ? 'grade-b' : (g.startsWith('C')) ? 'grade-c' : 'grade-f';
+    if (isHalfTerm) {
+      let htFormat = format.slice(0, Math.min(2, format.length)); // First 2 columns for half term
+      html += '<table><tr><th>S/N</th><th>Subject</th>';
+      htFormat.forEach(col => { html += '<th>' + col.title + '</th>'; });
+      html += '</tr>';
       
-      html += '<tr><td>' + (i + 1) + '</td>';
-      html += '<td style="text-align:left;padding-left:6px;">' + (sc.subjectName || '') + '</td>';
-      if (isHalfTerm) {
-        html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td></tr>';
-      } else {
-        html += '<td>' + (sc.cA1 || sc.ca1 || 0) + '</td><td>' + (sc.cA2 || sc.ca2 || 0) + '</td><td>' + (sc.cA3 || sc.ca3 || 0) + '</td>';
-        html += '<td>' + (sc.exam || sc.Exam || 0) + '</td>';
+      for (let i = 0; i < scores.length; i++) {
+        let sc = scores[i];
+        html += '<tr><td>' + (i + 1) + '</td>';
+        html += '<td style="text-align:left;padding-left:6px;">' + (sc.subjectName || '') + '</td>';
+        htFormat.forEach(col => {
+          let val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);
+          html += '<td>' + val + '</td>';
+        });
+        html += '</tr>';
+      }
+    } else {
+      html += '<table><tr><th>S/N</th><th>Subject</th>';
+      format.forEach(col => { html += '<th>' + col.title + '</th>'; });
+      html += '<th>Total</th><th>Grade</th></tr>';
+      
+      for (let i = 0; i < scores.length; i++) {
+        let sc = scores[i];
+        let g = sc.termGrade || sc.grade || 'F9';
+        let gcls = (g === 'A1') ? 'grade-a' : (g === 'B2' || g === 'B3') ? 'grade-b' : (g.startsWith('C')) ? 'grade-c' : 'grade-f';
+        
+        html += '<tr><td>' + (i + 1) + '</td>';
+        html += '<td style="text-align:left;padding-left:6px;">' + (sc.subjectName || '') + '</td>';
+        
+        format.forEach(col => {
+          let val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);
+          html += '<td>' + val + '</td>';
+        });
+        
         html += '<td><strong>' + (sc.total || sc.termTotal || 0) + '</strong></td>';
         html += '<td class="' + gcls + '">' + g + '</td></tr>';
       }

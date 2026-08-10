@@ -200,13 +200,9 @@
             <div class="aa-card-body" style="padding:0;overflow-x:auto;">
               <table class="aa-table" id="scoresTable">
                 <thead>
-                  <tr>
+                  <tr id="scoreTableHeader">
                     <th>Adm No</th><th>Name</th>
-                    <th style="width:70px;">CA1 (10)</th>
-                    <th style="width:70px;">CA2 (10)</th>
-                    <th style="width:70px;">CA3 (10)</th>
-                    <th style="width:80px;">Exam (70)</th>
-                    <th>Total</th><th>Grade</th>
+                    <!-- Dynamic columns inserted here -->
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -672,6 +668,21 @@
         students = students.filter(function(st) { return st.className === clsFilter; });
       }
 
+      var format = (AA.settings && AA.settings.gradebook_format) ? AA.settings.gradebook_format : [
+        { id: 'ca1', title: 'CA1', max: 10 },
+        { id: 'ca2', title: 'CA2', max: 10 },
+        { id: 'ca3', title: 'CA3', max: 10 },
+        { id: 'exam', title: 'Exam', max: 70 }
+      ];
+
+      var theadTr = document.getElementById('scoreTableHeader');
+      var theadHtml = '<th>Adm No</th><th>Name</th>';
+      format.forEach(function(col) {
+        theadHtml += '<th style="width:70px;">' + AA.escapeHTML(col.title) + ' (' + col.max + ')</th>';
+      });
+      theadHtml += '<th>Total</th><th>Grade</th>';
+      theadTr.innerHTML = '<tr>' + theadHtml + '</tr>';
+
       var tbody = document.querySelector('#scoresTable tbody');
       tbody.innerHTML = '';
       var allLocked = students.length>0; var anyScores=false;
@@ -684,17 +695,21 @@
         if(sc.id||sc.iD) anyScores = true;
 
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>'+AA.escapeHTML(st.admissionNumber||'')+'</td><td>'+AA.escapeHTML(st.fullName)+'</td>'+
-          '<td><input type="number" id="ca1_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca1||sc.cA1||0)+'" '+(locked?'disabled':'')+'></td>'+
-          '<td><input type="number" id="ca2_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca2||sc.cA2||0)+'" '+(locked?'disabled':'')+'></td>'+
-          '<td><input type="number" id="ca3_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.ca3||sc.cA3||0)+'" '+(locked?'disabled':'')+'></td>'+
-          '<td><input type="number" id="exam_'+sid+'" class="aa-input" style="padding:4px;" value="'+(sc.exam||sc.Exam||0)+'" '+(locked?'disabled':'')+'></td>'+
-          '<td><strong>'+(sc.total||0)+'</strong></td>'+
+        var trHtml = '<td>'+AA.escapeHTML(st.admissionNumber||'')+'</td><td>'+AA.escapeHTML(st.fullName)+'</td>';
+        
+        format.forEach(function(col) {
+          var val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);
+          trHtml += '<td><input type="number" id="'+col.id+'_'+sid+'" class="aa-input" style="padding:4px;" value="'+val+'" max="'+col.max+'" '+(locked?'disabled':'')+'></td>';
+        });
+        
+        trHtml += '<td><strong>'+(sc.total||0)+'</strong></td>'+
           '<td>'+formatGrade(sc.grade||'')+'</td>';
+        
+        tr.innerHTML = trHtml;
         tbody.appendChild(tr);
       });
 
-      if(students.length===0) tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No students enrolled in this subject/class yet.</td></tr>';
+      if(students.length===0) tbody.innerHTML = '<tr><td colspan="'+(format.length+4)+'" class="text-center text-muted">No students enrolled in this subject/class yet.</td></tr>';
       
       var canSubmit = students.length > 0 && !allLocked && anyScores;
       var canSave = students.length > 0 && !allLocked;
@@ -710,27 +725,42 @@
       if(!subId) return;
       var subName = subSel.options[subSel.selectedIndex].text;
       var payload = [];
-      var tbody = document.querySelector('#scoresTable tbody');
-      var inputs = tbody.querySelectorAll('input[id^="ca1_"]');
-      inputs.forEach(function(ca1Input) {
-        if(!ca1Input.disabled) {
-          var sid = ca1Input.id.split('_')[1];
-          var c1 = parseFloat(ca1Input.value) || 0;
-          var c2 = parseFloat(document.getElementById('ca2_'+sid).value) || 0;
-          var c3 = parseFloat(document.getElementById('ca3_'+sid).value) || 0;
-          var ex = parseFloat(document.getElementById('exam_'+sid).value) || 0;
-          var tot = c1 + c2 + c3 + ex;
+      var format = (AA.settings && AA.settings.gradebook_format) ? AA.settings.gradebook_format : [
+        { id: 'ca1', title: 'CA1', max: 10 },
+        { id: 'ca2', title: 'CA2', max: 10 },
+        { id: 'ca3', title: 'CA3', max: 10 },
+        { id: 'exam', title: 'Exam', max: 70 }
+      ];
+
+      var firstColId = format[0].id;
+      var inputs = tbody.querySelectorAll('input[id^="'+firstColId+'_"]');
+      inputs.forEach(function(firstInput) {
+        if(!firstInput.disabled) {
+          var sid = firstInput.id.split('_')[1];
+          var tot = 0;
+          var scoreData = {
+            studentId: sid, subjectId: subId, subjectName: subName, term: currentTerm, session: currentSession
+          };
+          
+          format.forEach(function(col) {
+            var inputEl = document.getElementById(col.id+'_'+sid);
+            var val = parseFloat(inputEl ? inputEl.value : 0) || 0;
+            if (val > col.max) val = col.max; // Cap it
+            tot += val;
+            scoreData[col.id] = val;
+          });
           
           var st = currentScoreStudents.find(function(s) { return String(s.id||s.iD) === String(sid); });
           var clsName = st ? st.className : '';
           var secName = st ? st.section : '';
           var grd = typeof calculateDynamicGrade === 'function' ? calculateDynamicGrade(tot, clsName, secName) : (typeof calculateGrade === 'function' ? calculateGrade(tot) : '');
           
-          payload.push({
-            studentId: sid, subjectId: subId, subjectName: subName, term: currentTerm, session: currentSession,
-            ca1: c1, ca2: c2, ca3: c3, exam: ex,
-            total: tot, termTotal: tot, grade: grd, termGrade: grd
-          });
+          scoreData.total = tot;
+          scoreData.termTotal = tot;
+          scoreData.grade = grd;
+          scoreData.termGrade = grd;
+          
+          payload.push(scoreData);
         }
       });
       if(payload.length === 0) return showToast('No editable scores found', 'info');
@@ -761,14 +791,27 @@
     function downloadScoreTemplate() {
       var tbody = document.querySelector('#scoresTable tbody');
       var rows = tbody.querySelectorAll('tr');
-      var csv = 'StudentID,StudentName,CA1,CA2,CA3,Exam,TeacherComment\n';
+      var format = (AA.settings && AA.settings.gradebook_format) ? AA.settings.gradebook_format : [
+        { id: 'ca1', title: 'CA1', max: 10 },
+        { id: 'ca2', title: 'CA2', max: 10 },
+        { id: 'ca3', title: 'CA3', max: 10 },
+        { id: 'exam', title: 'Exam', max: 70 }
+      ];
+      
+      var csv = 'StudentID,StudentName';
+      format.forEach(function(col) { csv += ',' + col.title.replace(/,/g, ''); });
+      csv += ',TeacherComment\n';
+      
+      var firstColId = format[0].id;
       rows.forEach(function(tr) {
-        if(tr.cells.length < 5) return;
+        if(tr.cells.length < format.length + 2) return;
         var name = tr.cells[1].innerText.replace(/"/g, '""');
-        var input = tr.querySelector('input[id^="ca1_"]');
+        var input = tr.querySelector('input[id^="'+firstColId+'_"]');
         if(input) {
           var sid = input.id.split('_')[1];
-          csv += '"' + sid + '","' + name + '",,,,,\n';
+          csv += '"' + sid + '","' + name + '"';
+          format.forEach(function() { csv += ','; });
+          csv += ',\n';
         }
       });
       var subName = document.getElementById('scoreSubjectSelect').options[document.getElementById('scoreSubjectSelect').selectedIndex].text;
@@ -795,25 +838,36 @@
       if(!subjectId) return showToast('Please select a subject first', 'error');
       var subjectName = subSel.options[subSel.selectedIndex].text;
       
+      var format = (AA.settings && AA.settings.gradebook_format) ? AA.settings.gradebook_format : [
+        { id: 'ca1', title: 'CA1', max: 10 },
+        { id: 'ca2', title: 'CA2', max: 10 },
+        { id: 'ca3', title: 'CA3', max: 10 },
+        { id: 'exam', title: 'Exam', max: 70 }
+      ];
+
       var reader = new FileReader();
       reader.onload = function(e) {
         var parsed = parseCSV(e.target.result);
         var payload = [];
         parsed.forEach(function(row) {
           if(row.StudentID) {
-            payload.push({
+            var scoreData = {
               studentId: row.StudentID,
               subjectId: subjectId,
               subjectName: subjectName,
               className: '',
               term: currentTerm,
               session: currentSession,
-              ca1: row.CA1 || 0,
-              ca2: row.CA2 || 0,
-              ca3: row.CA3 || 0,
-              exam: row.Exam || 0,
               teacherComment: row.TeacherComment || ''
+            };
+            format.forEach(function(col) {
+              // Strip commas and spaces to match object keys from CSV
+              var key = col.title.replace(/,/g, '');
+              var val = parseFloat(row[key]) || 0;
+              if (val > col.max) val = col.max; // Cap it
+              scoreData[col.id] = val;
             });
+            payload.push(scoreData);
           }
         });
         if(payload.length === 0) return showToast('No valid rows found. Please use the template.', 'error');
