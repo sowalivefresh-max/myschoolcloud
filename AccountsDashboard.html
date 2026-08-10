@@ -500,9 +500,20 @@
     }
 
     // -- Dashboard --
-    function loadDashboard() {
-      var section = (AA.user && AA.user.institutionType) ? AA.user.institutionType : 'both';
-      if (section === 'secondary') section = 'high';
+    
+      function getAccountOfficerSection() {
+        var s = (AA.user && AA.user.section && AA.user.section !== 'both') ? AA.user.section : 'both';
+        if (s === 'secondary') s = 'high';
+        // Fallback to institutionType if section is not explicitly defined and we are in a single section school
+        if (s === 'both' && AA.user && AA.user.institutionType && AA.user.institutionType !== 'both') {
+            s = AA.user.institutionType;
+        }
+        if (s === 'secondary') s = 'high';
+        return s;
+      }
+
+      function loadDashboard() {
+      var section = getAccountOfficerSection();
       
       callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(res) {
         document.getElementById('stat-billed').textContent = formatNaira(res.totalBilled);
@@ -727,7 +738,16 @@
     var globalBills = [];
     function loadBills() {
       callServer('adminGetBills', [AA.token, {}], function(bills) {
-        globalBills = bills; // Cache for use in savePayment
+                  var section = getAccountOfficerSection();
+          if (section !== 'both') {
+            bills = bills.filter(function(b) {
+               var stu = globalStudents.find(function(s){ return (s.id||s.iD) == (b.studentID||b.studentId); });
+               var stuSec = stu ? (stu.section || 'high') : 'high';
+               if (stuSec === 'secondary') stuSec = 'high';
+               return stuSec.toLowerCase() === section;
+            });
+          }
+          globalBills = bills; // Cache for use in savePayment
         buildTable('billsTable', [
           {key:'studentName', render:function(r){return '<a href="#" class="fw-600 text-navy" style="text-decoration:none;" onclick="event.preventDefault();viewLedger(\''+(r.studentID||r.studentId)+'\')">' +r.studentName+'</a>';}},
           {key:'class', render:function(r){return r.class||r.className||'';}},
@@ -750,6 +770,15 @@
       // Load pending payments
       callServer('adminGetPayments', [AA.token, {status: 'Pending'}], function(payments) {
         var pending = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'pending'; });
+        var section = getAccountOfficerSection();
+        if (section !== 'both') {
+          pending = pending.filter(function(p) {
+             var stu = globalStudents.find(function(s){ return (s.id||s.iD) == (p.studentID||p.studentId); });
+             var stuSec = stu ? (stu.section || 'high') : 'high';
+             if (stuSec === 'secondary') stuSec = 'high';
+             return stuSec.toLowerCase() === section;
+          });
+        }
         if(pending.length > 0) {
           document.getElementById('pendingPaymentsCard').style.display = 'block';
           buildTable('pendingPaymentsTable', [
@@ -852,6 +881,15 @@
     // -- Expenses --
     function loadExpenses() {
       callServer('adminGetExpenses', [AA.token], function(data) {
+        var section = getAccountOfficerSection();
+        if (section !== 'both') {
+          data = data.filter(function(e) {
+             if (!e.section || e.section === 'both') return true; // Show general expenses
+             var s = e.section.toLowerCase();
+             if (s === 'secondary') s = 'high';
+             return s === section;
+          });
+        }
         buildTable('expensesTable', [
           {key:'date',render:function(r){return formatDate(r.date);}},
           {key:'category'},{key:'description'},
