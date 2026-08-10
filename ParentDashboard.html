@@ -176,14 +176,14 @@
         </div>
         <div class="aa-form-group">
           <label class="aa-label">Payment Method</label>
-          <select id="payMethod" class="aa-select">
+          <select id="payMethod" class="aa-select" onchange="document.getElementById('proofContainer').style.display = this.value === 'Cash' ? 'none' : 'block';">
             <option value="Bank Transfer">Bank Transfer</option>
             <option value="Bank Teller">Bank Teller</option>
             <option value="POS">POS</option>
             <option value="Cash">Cash</option>
           </select>
         </div>
-        <div class="aa-form-group">
+        <div class="aa-form-group" id="proofContainer">
           <label class="aa-label">Proof of Payment (Image/Screenshot)</label>
           <input type="file" id="payProofInput" class="aa-input" accept="image/*" onchange="previewReceiptPhoto(this)">
           <input type="hidden" id="payProofBase64">
@@ -367,6 +367,7 @@
       if(!sid) return showToast('Please select a child first.', 'warning');
       document.getElementById('payAmount').value = '';
       document.getElementById('payMethod').value = 'Bank Transfer';
+      document.getElementById('proofContainer').style.display = 'block';
       document.getElementById('payProofInput').value = '';
       document.getElementById('payProofBase64').value = '';
       document.getElementById('payProofPreview').style.display = 'none';
@@ -393,8 +394,8 @@
       
       console.log('Submitting payment for:', sid, amt, method);
       if(!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
-      if(!proof) return showToast('Please upload a proof of payment', 'error');
-      if(proof.length > 2500000) return showToast('Image is too large. Please upload a smaller image.', 'error');
+      if(method !== 'Cash' && !proof) return showToast('Please upload a proof of payment', 'error');
+      if(proof && proof.length > 2500000) return showToast('Image is too large. Please upload a smaller image.', 'error');
 
       callServer('parentSubmitPaymentData', [AA.token, {
         studentId: sid, term: currentTerm, session: currentSession, 

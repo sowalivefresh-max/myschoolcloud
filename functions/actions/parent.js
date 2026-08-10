@@ -319,7 +319,7 @@ module.exports = function(db) {
       try {
         if (!data || !data.studentId) throw new Error("Student ID missing.");
         if (!data.amount || Number(data.amount) <= 0) throw new Error("Please enter a valid amount.");
-        if (!data.proofOfPayment) throw new Error("Proof of payment is required.");
+        if (data.method !== 'Cash' && !data.proofOfPayment) throw new Error("Proof of payment is required.");
 
         // Verify parent is linked to this student
         await verifyParentChild(session.userId, data.studentId);
