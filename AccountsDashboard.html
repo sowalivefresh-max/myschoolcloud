@@ -443,8 +443,9 @@
           var section = getAccountOfficerSection();
           if (section !== 'both') {
             data = data.filter(function(c) {
-               var sec = String(c.section || '').toLowerCase().trim();
-               if (sec === 'secondary') sec = 'high';
+               var sec = String(c.section || 'high').toLowerCase().trim();
+               if (sec === 'secondary' || sec === 'highschool' || sec === 'high school') sec = 'high';
+               if (sec === 'primaryschool' || sec === 'primary school') sec = 'primary';
                return sec === section;
             });
           }
@@ -656,11 +657,15 @@
         var section = getAccountOfficerSection();
         if (section !== 'both') {
           filtered = filtered.filter(function(d){ 
-            var s = (d.section||'high').toLowerCase();
-            if (s === 'secondary') s = 'high';
+            var s = String(d.section || 'high').toLowerCase().trim();
+            if (s === 'secondary' || s === 'highschool' || s === 'high school') s = 'high';
+            if (s === 'primaryschool' || s === 'primary school') s = 'primary';
             return s === section; 
           });
         }
+        filtered.sort(function(a, b) {
+          return (a.className || '').localeCompare(b.className || '', undefined, {numeric: true, sensitivity: 'base'});
+        });
         buildTable('feesTable', [
           {key:'className'},
           {key:'section', render:function(r){ return r.section ? r.section.charAt(0).toUpperCase()+r.section.slice(1) : '-'; }},
