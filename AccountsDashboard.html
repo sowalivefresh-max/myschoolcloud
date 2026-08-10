@@ -440,6 +440,14 @@
         var sel = document.getElementById('feeClassName'); 
         if(sel) {
           sel.innerHTML = '<option value="">-- Select Class --</option>';
+          var section = getAccountOfficerSection();
+          if (section !== 'both') {
+            data = data.filter(function(c) {
+               var sec = String(c.section || '').toLowerCase().trim();
+               if (sec === 'secondary') sec = 'high';
+               return sec === section;
+            });
+          }
           data.sort(function(a, b) {
             return (a.className || '').localeCompare(b.className || '', undefined, {numeric: true, sensitivity: 'base'});
           }).forEach(function(c){ sel.innerHTML += '<option value="'+c.className+'">'+c.className+'</option>'; });
@@ -628,7 +636,12 @@
       feeClassSelect.multiple = true;
       feeClassSelect.style.height = '120px';
       Array.from(feeClassSelect.options).forEach(function(o){o.selected=false;});
-      document.getElementById('feeSectionSelect').value = AA.user && AA.user.section && AA.user.section !== 'both' ? AA.user.section : 'high';
+      
+      var sec = getAccountOfficerSection();
+      var feeSecSel = document.getElementById('feeSectionSelect');
+      feeSecSel.value = sec !== 'both' ? sec : 'high';
+      feeSecSel.disabled = (sec !== 'both');
+      
       document.getElementById('feeItemsList').innerHTML = '';
       // Seed with 2 default rows
       addFeeItem('Tuition Fee', '');
@@ -681,7 +694,10 @@
         feeClassSelect.multiple = false;
         feeClassSelect.style.height = 'auto';
         feeClassSelect.value = f.className || '';
-        document.getElementById('feeSectionSelect').value = f.section || 'high';
+        var sec = getAccountOfficerSection();
+        var feeSecSel = document.getElementById('feeSectionSelect');
+        feeSecSel.value = f.section || 'high';
+        feeSecSel.disabled = (sec !== 'both');
         document.getElementById('feeItemsList').innerHTML = '';
         var items = [];
         try { items = typeof f.lineItems === 'string' ? JSON.parse(f.lineItems) : (f.lineItems || []); } catch(e){}
