@@ -1943,9 +1943,9 @@
             callServer('adminGetDebtors', [AA.token, currentTerm, currentSession, s], function(debtorsData) {
               var top = debtorsData.slice(0, 10);
               buildTable('finDebtorsTable', [
-                {key:'fullName'},
-                {key:'className'},
-                {key:'outstanding', render:function(r){ return '<span class="text-danger">'+formatNaira(r.outstanding)+'</span>'; }}
+                {key:'studentName'},
+                {key:'class'},
+                {key:'amountOwed', render:function(r){ return '<span class="text-danger">'+formatNaira(r.amountOwed)+'</span>'; }}
               ], top);
             });
           }
