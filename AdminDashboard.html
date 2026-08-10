@@ -1915,7 +1915,7 @@
 
     function downloadDebtorsReport(prefix) {
       showToast('Generating debtors report...', 'info');
-      var section = prefix === 'primary' ? 'primary' : (prefix === 'high' ? 'secondary' : 'both');
+      var section = prefix === 'primary' ? 'primary' : (prefix === 'high' ? 'high' : 'both');
       callServer('adminGetDebtors', [AA.token, currentTerm, currentSession, section], function(debtorsData) {
         if (!debtorsData || debtorsData.length === 0) {
           showToast('No debtors found to export.', 'warning');

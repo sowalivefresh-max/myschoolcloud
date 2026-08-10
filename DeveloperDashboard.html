@@ -1915,7 +1915,12 @@
 
     function downloadDebtorsReport() {
       showToast('Generating debtors report...', 'info');
-      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession], function(debtorsData) {
+      var schoolType = (AA.settings && AA.settings.institution_type) ? String(AA.settings.institution_type).toLowerCase() : 'both';
+      var s = 'both';
+      if (schoolType.indexOf('both') === -1 && schoolType.indexOf('primary &') === -1) {
+        s = schoolType.indexOf('primary') !== -1 ? 'primary' : 'high';
+      }
+      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession, s], function(debtorsData) {
         if (!debtorsData || debtorsData.length === 0) {
           showToast('No debtors found to export.', 'warning');
           return;
