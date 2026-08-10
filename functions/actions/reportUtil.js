@@ -1,5 +1,4 @@
-const { db } = require("../firebase");
-
+// reportUtil.js
 const getAutoComment = (avg) => {
   if (avg >= 85) return "Excellent performance. Keep it up.";
   if (avg >= 70) return "Very good result. Keep aiming higher.";
