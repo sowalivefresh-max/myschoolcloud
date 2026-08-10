@@ -1,0 +1,22 @@
+[debug] [2026-08-10T08:01:03.767Z] ----------------------------------------------------------------------
+[debug] [2026-08-10T08:01:03.794Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions hosting
+[debug] [2026-08-10T08:01:03.795Z] CLI Version:   15.24.0
+[debug] [2026-08-10T08:01:03.795Z] Platform:      win32
+[debug] [2026-08-10T08:01:03.795Z] Node Version:  v24.18.0
+[debug] [2026-08-10T08:01:03.796Z] Detected Agent: antigravity
+[debug] [2026-08-10T08:01:03.796Z] Time:          Mon Aug 10 2026 09:01:03 GMT+0100 (West Africa Time)
+[debug] [2026-08-10T08:01:03.796Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-10T08:01:09.566Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-10T08:01:09.567Z] > authorizing via signed-in user (faith4grtns@gmail.com)
+[debug] [2026-08-10T08:01:09.567Z] [iam] checking project cloudschool-3c1d4 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-08-10T08:01:09.628Z] Checked if tokens are valid: false, expires at: 1786318225832
+[debug] [2026-08-10T08:01:09.628Z] Checked if tokens are valid: false, expires at: 1786318225832
+[debug] [2026-08-10T08:01:09.629Z] > refreshing access token with scopes: []
+[debug] [2026-08-10T08:01:09.633Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-10T08:01:09.633Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-10T08:01:10.352Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-10T08:01:10.353Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-10T08:01:10.392Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions [none]
+[debug] [2026-08-10T08:01:10.393Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions  x-goog-user-project=cloudschool-3c1d4
+[debug] [2026-08-10T08:01:10.393Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
