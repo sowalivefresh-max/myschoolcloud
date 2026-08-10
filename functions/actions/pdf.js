@@ -27,7 +27,7 @@ module.exports = {
     html += '.comment-box{border:1px solid #ccc;padding:4px;margin:4px 0;font-size:10px;}';
     html += '.sig-row{display:flex;justify-content:space-between;margin-top:10px;}';
     html += '.sig-box{text-align:center;width:30%;}';
-    html += '.sig-line{border-top:1px solid #333;margin-top:20px;padding-top:2px;font-size:9px;}';
+    html += '.sig-line{border-top:1px solid #333;margin-top:2px;padding-top:2px;font-size:9px;}';
     html += '.footer{text-align:center;margin-top:8px;font-size:8px;color:#888;border-top:1px solid #e0e0e0;padding-top:4px;}';
     html += '.grade-a{color:#16a34a;font-weight:bold;} .grade-b{color:#2563eb;font-weight:bold;} .grade-c{color:#d97706;font-weight:bold;} .grade-f{color:#dc2626;font-weight:bold;}';
     html += '.att-box{display:flex;gap:8px;margin:6px 0;}';
@@ -118,13 +118,19 @@ module.exports = {
     html += '<div style="flex:1;"><table><tr><th>Psychomotor Skill</th><th>Rating</th></tr>';
     html += '<tr><td>Handwriting</td><td>' + (psy.handwriting || '-') + '</td></tr>';
     html += '<tr><td>Sport Skills</td><td>' + (psy.sportSkills || '-') + '</td></tr>';
+    html += '<tr><td>Drawing</td><td>' + (psy.drawing || '-') + '</td></tr>';
     html += '<tr><td>Creativity</td><td>' + (psy.creativity || '-') + '</td></tr>';
+    html += '<tr><td>Speaking</td><td>' + (psy.speaking || '-') + '</td></tr>';
+    html += '<tr><td>Attentiveness</td><td>' + (psy.attentiveness || '-') + '</td></tr>';
     html += '</table></div>';
     // Affective
     html += '<div style="flex:1;"><table><tr><th>Affective Trait</th><th>Rating</th></tr>';
     html += '<tr><td>Punctuality</td><td>' + (aff.punctuality || '-') + '</td></tr>';
     html += '<tr><td>Neatness</td><td>' + (aff.neatness || '-') + '</td></tr>';
+    html += '<tr><td>Politeness</td><td>' + (aff.politeness || '-') + '</td></tr>';
     html += '<tr><td>Honesty</td><td>' + (aff.honesty || '-') + '</td></tr>';
+    html += '<tr><td>Leadership</td><td>' + (aff.leadership || '-') + '</td></tr>';
+    html += '<tr><td>Cooperation</td><td>' + (aff.cooperation || '-') + '</td></tr>';
     html += '</table></div>';
     html += '</div>';
 
