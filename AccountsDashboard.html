@@ -640,6 +640,14 @@
     function loadFeeStructures() {
       callServer('adminGetFeeStructures', [AA.token], function(data) {
         var filtered = data.filter(function(d){ return d.term===currentTerm && d.session===currentSession; });
+        var section = getAccountOfficerSection();
+        if (section !== 'both') {
+          filtered = filtered.filter(function(d){ 
+            var s = (d.section||'high').toLowerCase();
+            if (s === 'secondary') s = 'high';
+            return s === section; 
+          });
+        }
         buildTable('feesTable', [
           {key:'className'},
           {key:'section', render:function(r){ return r.section ? r.section.charAt(0).toUpperCase()+r.section.slice(1) : '-'; }},
