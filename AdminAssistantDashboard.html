@@ -52,6 +52,9 @@
         <button class="aa-nav-item" id="nav-reports" onclick="switchTab('admin-tabs', 'tab-reports'); setActiveNav('nav-reports')">
           <i class="fa fa-file-contract"></i> Reports
         </button>
+        <button class="aa-nav-item" id="nav-settings" onclick="switchTab('admin-tabs', 'tab-settings'); setActiveNav('nav-settings')">
+          <i class="fa fa-cog"></i> Settings
+        </button>
         
         <button class="aa-nav-item text-danger" onclick="AA.logout()">
           <i class="fa fa-sign-out-alt"></i> Logout
@@ -2272,6 +2275,44 @@
     }
     
     // --- SETTINGS ---
+    var currentGradebookFormat = [];
+    
+    function renderGradebookBuilder() {
+      var container = document.getElementById('gradebook-builder-container');
+      if (!container) return;
+      container.innerHTML = '';
+      var total = 0;
+      currentGradebookFormat.forEach(function(col, index) {
+        total += parseInt(col.max) || 0;
+        var html = '<div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">' +
+          '<input type="text" class="aa-input flex-1" placeholder="Title (e.g. CA1)" value="'+AA.escapeHTML(col.title)+'" onchange="updateGradebookCol('+index+', \'title\', this.value)">' +
+          '<input type="text" class="aa-input" style="width:100px;" placeholder="ID (e.g. ca1)" value="'+AA.escapeHTML(col.id)+'" onchange="updateGradebookCol('+index+', \'id\', this.value)">' +
+          '<input type="number" class="aa-input" style="width:100px;" placeholder="Max" value="'+col.max+'" onchange="updateGradebookCol('+index+', \'max\', this.value)">' +
+          '<button type="button" class="aa-btn aa-btn-sm aa-btn-danger" onclick="removeGradebookCol('+index+')"><i class="fa fa-trash"></i></button>' +
+        '</div>';
+        container.insertAdjacentHTML('beforeend', html);
+      });
+      
+      container.insertAdjacentHTML('beforeend', '<div style="text-align:right; font-weight:700; font-size:14px; margin-top:10px; color:'+(total === 100 ? 'var(--success)' : 'var(--danger)')+'">Total Marks: '+total+'/100</div>');
+      document.getElementById('gradebookFormatInput').value = JSON.stringify(currentGradebookFormat);
+    }
+    
+    window.addGradebookColumn = function() {
+      currentGradebookFormat.push({ id: '', title: '', max: 10 });
+      renderGradebookBuilder();
+    };
+    
+    window.removeGradebookCol = function(index) {
+      currentGradebookFormat.splice(index, 1);
+      renderGradebookBuilder();
+    };
+    
+    window.updateGradebookCol = function(index, field, value) {
+      if(field === 'max') value = parseInt(value) || 0;
+      currentGradebookFormat[index][field] = value;
+      renderGradebookBuilder();
+    };
+
     function loadSettings() {
       callServer('adminGetSettings', [AA.token], function(res) {
         var s = (res && res.data !== undefined) ? res.data : (res || {});

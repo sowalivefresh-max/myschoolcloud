@@ -2656,7 +2656,45 @@
     }
     
     // --- SETTINGS ---
-    function loadSettings() {
+      var currentGradebookFormat = [];
+      
+      function renderGradebookBuilder() {
+        var container = document.getElementById('gradebook-builder-container');
+        if (!container) return;
+        container.innerHTML = '';
+        var total = 0;
+        currentGradebookFormat.forEach(function(col, index) {
+          total += parseInt(col.max) || 0;
+          var html = '<div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">' +
+            '<input type="text" class="aa-input flex-1" placeholder="Title (e.g. CA1)" value="'+AA.escapeHTML(col.title)+'" onchange="updateGradebookCol('+index+', \'title\', this.value)">' +
+            '<input type="text" class="aa-input" style="width:100px;" placeholder="ID (e.g. ca1)" value="'+AA.escapeHTML(col.id)+'" onchange="updateGradebookCol('+index+', \'id\', this.value)">' +
+            '<input type="number" class="aa-input" style="width:100px;" placeholder="Max" value="'+col.max+'" onchange="updateGradebookCol('+index+', \'max\', this.value)">' +
+            '<button type="button" class="aa-btn aa-btn-sm aa-btn-danger" onclick="removeGradebookCol('+index+')"><i class="fa fa-trash"></i></button>' +
+          '</div>';
+          container.insertAdjacentHTML('beforeend', html);
+        });
+        
+        container.insertAdjacentHTML('beforeend', '<div style="text-align:right; font-weight:700; font-size:14px; margin-top:10px; color:'+(total === 100 ? 'var(--success)' : 'var(--danger)')+'">Total Marks: '+total+'/100</div>');
+        document.getElementById('gradebookFormatInput').value = JSON.stringify(currentGradebookFormat);
+      }
+      
+      window.addGradebookColumn = function() {
+        currentGradebookFormat.push({ id: '', title: '', max: 10 });
+        renderGradebookBuilder();
+      };
+      
+      window.removeGradebookCol = function(index) {
+        currentGradebookFormat.splice(index, 1);
+        renderGradebookBuilder();
+      };
+      
+      window.updateGradebookCol = function(index, field, value) {
+        if(field === 'max') value = parseInt(value) || 0;
+        currentGradebookFormat[index][field] = value;
+        renderGradebookBuilder();
+      };
+
+      function loadSettings() {
       callServer('adminGetSettings', [AA.token], function(res) {
         var s = (res && res.data !== undefined) ? res.data : (res || {});
         window.globalSettingsData = s;
@@ -2683,13 +2721,30 @@
             AA.applyThemeToDocument('custom', s.theme_primary, s.theme_secondary);
           }
         }
+        
+        currentGradebookFormat = s.gradebook_format || [
+          { id: 'ca1', title: 'CA1', max: 10 },
+          { id: 'ca2', title: 'CA2', max: 10 },
+          { id: 'ca3', title: 'CA3', max: 10 },
+          { id: 'exam', title: 'Exam', max: 70 }
+        ];
+        renderGradebookBuilder();
       }, null, true);
     }
     function saveSettings() {
       var data = getFormData('settingsForm');
+      
+      try {
+        var format = JSON.parse(data.gradebook_format);
+        var total = format.reduce(function(sum, col) { return sum + (parseInt(col.max)||0); }, 0);
+        if (total !== 100) return showToast('Gradebook format total must be exactly 100 marks.', 'error');
+        data.gradebook_format = format;
+      } catch(e) {}
+      
       if (window.globalSettingsData && window.globalSettingsData.results_published !== undefined) {
         data.results_published = window.globalSettingsData.results_published;
       }
+      
       callServer('adminUpdateSettings', [AA.token, data], function(res) {
         showToast(res.message, res.success ? 'success' : 'error');
         if(res.success) { loadSettings(); AA.loadSettings(); loadDashboard(); }
@@ -3133,75 +3188,6 @@
       });
     }
 
-    // --- Gradebook Builder Logic ---
-    let currentGradebookFormat = [
-      { id: 'ca1', title: 'CA1', max: 10 },
-      { id: 'ca2', title: 'CA2', max: 10 },
-      { id: 'ca3', title: 'CA3', max: 10 },
-      { id: 'exam', title: 'Exam', max: 70 }
-    ];
-
-    function renderGradebookBuilder() {
-      const container = document.getElementById('gradebook-builder-container');
-      if (!container) return;
-      container.innerHTML = '';
-      
-      let total = 0;
-      currentGradebookFormat.forEach((col, index) => {
-        total += parseInt(col.max) || 0;
-        
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.gap = '10px';
-        row.style.marginBottom = '10px';
-        row.style.alignItems = 'center';
-        
-        row.innerHTML = `
-          <div style="flex: 1;">
-            <input type="text" class="aa-input" placeholder="ID (e.g. ca1)" value="${AA.escapeHTML(col.id)}" onchange="updateGradebookFormat(${index}, 'id', this.value)">
-          </div>
-          <div style="flex: 2;">
-            <input type="text" class="aa-input" placeholder="Title (e.g. 1st Test)" value="${AA.escapeHTML(col.title)}" onchange="updateGradebookFormat(${index}, 'title', this.value)">
-          </div>
-          <div style="flex: 1;">
-            <input type="number" class="aa-input" placeholder="Max Score" value="${col.max}" onchange="updateGradebookFormat(${index}, 'max', this.value)">
-          </div>
-          <div>
-            <button type="button" class="aa-btn aa-btn-sm" style="background:transparent; color:#dc3545; border:none; padding:8px;" onclick="removeGradebookColumn(${index})">
-              <i class="fa fa-times"></i>
-            </button>
-          </div>
-        `;
-        container.appendChild(row);
-      });
-      
-      const summary = document.createElement('div');
-      summary.style.marginTop = '10px';
-      summary.style.fontWeight = 'bold';
-      summary.style.color = total === 100 ? '#28a745' : '#dc3545';
-      summary.innerHTML = `Total Marks: ${total} / 100`;
-      container.appendChild(summary);
-      
-      document.getElementById('gradebookFormatInput').value = JSON.stringify(currentGradebookFormat);
-    }
-
-    function updateGradebookFormat(index, field, value) {
-      if (field === 'max') value = parseInt(value) || 0;
-      if (field === 'id') value = value.toLowerCase().replace(/[^a-z0-9]/g, '');
-      currentGradebookFormat[index][field] = value;
-      renderGradebookBuilder();
-    }
-
-    function addGradebookColumn() {
-      currentGradebookFormat.push({ id: 'new_ca', title: 'New Assessment', max: 10 });
-      renderGradebookBuilder();
-    }
-
-    function removeGradebookColumn(index) {
-      if (currentGradebookFormat.length <= 1) return showToast('You must have at least one assessment column.', 'error');
-      currentGradebookFormat.splice(index, 1);
-      renderGradebookBuilder();
-    }
   </script>
 </body>
 </html>
