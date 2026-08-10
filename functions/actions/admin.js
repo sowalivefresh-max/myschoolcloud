@@ -2053,8 +2053,11 @@ module.exports = function(db, notificationsActions) {
         };
         
         const pdfGenerator = require("./pdf");
+        const { enrichReportData } = require("./reportUtil");
         const cfgDoc = await db.collection("settings").doc("global").get();
         const cfg = cfgDoc.exists ? cfgDoc.data() : { schoolName: "MySchool Portal" };
+        
+        await enrichReportData(db, reportData, cfg);
         
         const html = pdfGenerator.generateStudentReportHTML(reportData, cfg);
         const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);

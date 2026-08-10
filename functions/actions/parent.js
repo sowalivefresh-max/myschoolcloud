@@ -266,6 +266,9 @@ module.exports = function(db) {
         };
         
         const pdfGenerator = require("./pdf");
+        const { enrichReportData } = require("./reportUtil");
+        await enrichReportData(db, report, cfg);
+
         const html = pdfGenerator.generateStudentReportHTML(report, cfg);
         const dataUri = "data:text/html;charset=utf-8," + encodeURIComponent(html);
         
