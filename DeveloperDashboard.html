@@ -1922,9 +1922,9 @@
         }
         var csvContent = "data:text/csv;charset=utf-8,Student Name,Class,Outstanding Balance\n";
         debtorsData.forEach(function(r) {
-          var name = '"' + String(r.fullName).replace(/"/g, '""') + '"';
-          var cls = '"' + String(r.className).replace(/"/g, '""') + '"';
-          csvContent += name + "," + cls + "," + (r.outstanding || 0) + "\n";
+          var name = '"' + String(r.studentName).replace(/"/g, '""') + '"';
+          var cls = '"' + String(r.class).replace(/"/g, '""') + '"';
+          csvContent += name + "," + cls + "," + (r.amountOwed || 0) + "\n";
         });
         
         var encodedUri = encodeURI(csvContent);
