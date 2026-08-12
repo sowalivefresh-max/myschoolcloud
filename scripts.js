@@ -10,6 +10,8 @@ var AA = {
   user:  null,
   settings: {},
   gradingSystems: [],
+  campuses: [],        // List of campus objects from settings: [{id, name, section}]
+  activeCampusId: null, // Currently selected campus filter (null = all campuses)
 
   escapeHTML: function(str) {
     if (str === null || str === undefined) return '';
@@ -60,6 +62,7 @@ var AA = {
     runBackendAction('getPublicBranding', [])
       .then(function(s) {
         self.settings = s || {};
+        self.campuses = s.campuses || [];
         var nameEl = document.getElementById('sb-school-name');
         if (nameEl && s.school_name) nameEl.textContent = s.school_name;
         if (s.school_logo_url && (s.school_logo_url.indexOf('data:image') === 0 || s.school_logo_url.indexOf('http') === 0)) {
@@ -74,6 +77,19 @@ var AA = {
         }
       })
       .catch(function(e) { console.error('loadSettings error', e); });
+  },
+
+  // Returns the campus name for a given campusId, or 'N/A'
+  getCampusName: function(campusId) {
+    if (!campusId) return '';
+    var found = (this.campuses || []).find(function(c) { return c.id === campusId; });
+    return found ? found.name : campusId;
+  },
+
+  // Returns the campusId to use for filtering: user's own campus if set, else activeCampusId if set, else null
+  getActiveCampusId: function() {
+    if (this.user && this.user.campusId) return this.user.campusId;
+    return this.activeCampusId || null;
   },
 
   loadGradingSystems: function() {

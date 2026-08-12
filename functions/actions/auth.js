@@ -56,6 +56,7 @@ module.exports = function(db) {
         role: user.role,
         fullName: user.fullName,
         section: user.section || "both",
+        campusId: user.campusId || null,
         createdAt: new Date().toISOString()
       });
       
@@ -72,7 +73,8 @@ module.exports = function(db) {
         role: user.role,
         userName: user.fullName,
         userId: userDoc.id,
-        section: user.section
+        section: user.section,
+        campusId: user.campusId || null
       });
     },
 
@@ -219,7 +221,8 @@ module.exports = function(db) {
           current_term: cfg.current_term || "First Term",
           current_session: cfg.current_session || "2026/2027",
           theme_primary: cfg.theme_primary || "",
-          theme_secondary: cfg.theme_secondary || ""
+          theme_secondary: cfg.theme_secondary || "",
+          campuses: cfg.campuses || []
         });
       } catch (err) {
         return res.json({ success: false, message: err.message });

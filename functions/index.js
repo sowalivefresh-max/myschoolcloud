@@ -141,12 +141,13 @@ app.post("/api", async (req, res) => {
         if (action === "markNotificationRead") { req.body.notificationId = args[0]; }
         
         // Positional mappings for other routes that pass more than just token
-        if (action === "adminGetStats") { req.body.section = args[1]; }
-        if (action === "adminGetClasses") { req.body.section = args[1]; }
-        if (action === "adminGetAllStudents") { req.body.section = args[1]; }
-        if (action === "adminGetUsers") { req.body.section = args[1]; }
-        if (action === "adminGetComplianceSummary") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
-        if (action === "adminGetLessonPlans") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
+        if (action === "adminGetStats") { req.body.section = args[1]; req.body.campusId = args[2] || null; }
+        if (action === "adminGetClasses") { req.body.section = args[1]; req.body.campusId = args[2] || null; }
+        if (action === "adminGetAllStudents") { req.body.section = args[1]; req.body.campusId = args[2] || null; }
+        if (action === "adminGetUsers") { req.body.section = args[1]; req.body.campusId = args[2] || null; }
+        if (action === "adminGetSubjects") { req.body.section = args[1]; req.body.campusId = args[2] || null; }
+        if (action === "adminGetComplianceSummary") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; req.body.campusId = args[4] || null; }
+        if (action === "adminGetLessonPlans") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; req.body.campusId = args[4] || null; }
         if (action === "adminCreateUser") { req.body.data = args[1]; }
         if (action === "adminUpdateUser") { req.body.userId = args[1]; req.body.updates = args[2]; }
         if (action === "adminDeleteUser") { req.body.userId = args[1]; }
@@ -193,16 +194,17 @@ app.post("/api", async (req, res) => {
         if (action === "teacherGenerateLessonPlanPDF") { req.body.planId = args[1]; }
         
         // Additional Accounts Mappings
-        if (action === "adminGetFinancialStats") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
-        if (action === "adminGetDebtors") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
+        if (action === "adminGetFinancialStats") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; req.body.campusId = args[4] || null; }
+        if (action === "adminGetDebtors") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; req.body.campusId = args[4] || null; }
         if (action === "adminGetBroadsheetData") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; }
         if (action === "adminGetBills") { req.body.filters = args[1]; }
         if (action === "adminRecordPayment") { req.body.data = args[1]; }
         if (action === "adminGetStudentLedger") { req.body.studentId = args[1]; }
-        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
-        if (action === "adminGetSchoolPerformanceAnalytics") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; }
+        if (action === "adminGetSchoolPerformance") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; req.body.campusId = args[4] || null; }
+        if (action === "adminGetSchoolPerformanceAnalytics") { req.body.term = args[1]; req.body.session = args[2]; req.body.section = args[3]; req.body.campusId = args[4] || null; }
         if (action === "adminGetYearGroupRanking") { req.body.term = args[1]; req.body.session = args[2]; req.body.yearGroup = args[3]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
+        if (action === "adminManageCampuses") { req.body.campuses = args[1]; }
         
         // Teacher Subject Assignment Mappings
         if (action === "teacherGetStudentSubjects") { req.body.studentId = args[1]; }
@@ -300,6 +302,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetSettings(req, res));
       case "adminUpdateSettings":
         return requireRole(req, res, () => adminActions.adminUpdateSettings(req, res));
+      case "adminManageCampuses":
+        return requireRole(req, res, () => adminActions.adminManageCampuses(req, res));
 
       case "adminGetClasses":
         return requireRole(req, res, () => adminActions.adminGetClasses(req, res));

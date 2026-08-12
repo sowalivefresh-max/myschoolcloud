@@ -70,13 +70,14 @@ module.exports = function(db, notificationsActions) {
     adminGetStats: async (req, res) => {
       // Middleware ensures req.session exists and role is admin/admin_assistant
       const section = req.body.section || "both";
+      const campusId = req.body.campusId || null;
 
       try {
         let totalUsers = 0, totalStudents = 0, totalClasses = 0, totalSubjects = 0;
         let totalTeachers = 0, totalParents = 0, totalStaff = 0;
 
-        if (section === "both" || !section) {
-          // Fast path: Use aggregate queries when not filtering by section
+        if ((section === "both" || !section) && !campusId) {
+          // Fast path: Use aggregate queries when not filtering by section or campus
           const [usersSnap, studentsSnap, classesSnap, subjectsSnap, teachersSnap, parentsSnap, staffSnap] = await Promise.all([
             db.collection("users").count().get(),
             db.collection("students").where("status", "==", "active").count().get(),
@@ -103,17 +104,23 @@ module.exports = function(db, notificationsActions) {
             db.collection("subjects").get()
           ]);
 
-          const matchSection = (d) => {
-            const sec = (d.section || "").toLowerCase();
-            return sec === section || sec === "both";
+          const matchFilter = (d) => {
+            if (section && section !== "both") {
+              const sec = (d.section || "").toLowerCase();
+              if (sec !== section && sec !== "both") return false;
+            }
+            if (campusId) {
+              if ((d.campusId || null) !== campusId) return false;
+            }
+            return true;
           };
 
-          const users = usersSnap.docs.map(doc => doc.data()).filter(matchSection);
+          const users = usersSnap.docs.map(doc => doc.data()).filter(matchFilter);
           totalUsers = users.length;
           
-          totalStudents = studentsSnap.docs.map(doc => doc.data()).filter(matchSection).length;
-          totalClasses = classesSnap.docs.map(doc => doc.data()).filter(matchSection).length;
-          totalSubjects = subjectsSnap.docs.map(doc => doc.data()).filter(matchSection).length;
+          totalStudents = studentsSnap.docs.map(doc => doc.data()).filter(matchFilter).length;
+          totalClasses = classesSnap.docs.map(doc => doc.data()).filter(matchFilter).length;
+          totalSubjects = subjectsSnap.docs.map(doc => doc.data()).filter(matchFilter).length;
 
           // Breakdowns
           users.forEach(u => {
@@ -145,6 +152,7 @@ module.exports = function(db, notificationsActions) {
     adminGetUsers: async (req, res) => {
       try {
         const section = req.body.section;
+        const campusId = req.body.campusId || null;
         const usersSnap = await db.collection("users").get();
         const users = [];
         usersSnap.forEach(doc => {
@@ -155,6 +163,10 @@ module.exports = function(db, notificationsActions) {
           if (section && section !== "both") {
             const sec = (data.section || "").toLowerCase();
             if (sec !== section && sec !== "both") return;
+          }
+          // Campus filtering
+          if (campusId) {
+            if ((data.campusId || null) !== campusId) return;
           }
           data.id = doc.id; // ensure ID is attached
           delete data.passwordHash; // SECURITY: Never send hashes to frontend
@@ -170,6 +182,7 @@ module.exports = function(db, notificationsActions) {
     adminGetComplianceSummary: async (req, res) => {
       try {
         const { term, session, section } = req.body;
+        const campusId = req.body.campusId || null;
         
         // 1. Get all teachers
         const usersSnap = await db.collection("users").where("role", "in", ["teacher", "primary_teacher"]).get();
@@ -180,6 +193,10 @@ module.exports = function(db, notificationsActions) {
           if (section && section !== "both") {
             const sec = (d.section || "").toLowerCase();
             if (sec !== section && sec !== "both") return;
+          }
+          // Campus filtering
+          if (campusId) {
+            if ((d.campusId || null) !== campusId) return;
           }
           
           teachers.push({ id: doc.id, fullName: d.fullName, role: d.role, classAssigned: d.classAssigned });
@@ -474,6 +491,7 @@ module.exports = function(db, notificationsActions) {
     adminGetStudents: async (req, res) => {
       try {
         const section = req.body.section;
+        const campusId = req.body.campusId || null;
         const snap = await db.collection("students").get();
         const students = [];
         snap.forEach(doc => {
@@ -481,6 +499,10 @@ module.exports = function(db, notificationsActions) {
           if (section && section !== "both") {
             const sec = (data.section || "").toLowerCase();
             if (sec !== section && sec !== "both") return;
+          }
+          // Campus filtering
+          if (campusId) {
+            if ((data.campusId || null) !== campusId) return;
           }
           data.id = doc.id;
           students.push(data);
@@ -528,6 +550,7 @@ module.exports = function(db, notificationsActions) {
     adminGetClasses: async (req, res) => {
       try {
         const section = req.body.section;
+        const campusId = req.body.campusId || null;
         const classesSnap = await db.collection("classes").get();
         const classes = [];
         classesSnap.forEach(doc => {
@@ -535,6 +558,10 @@ module.exports = function(db, notificationsActions) {
           if (section && section !== "both") {
             const sec = (data.section || "").toLowerCase();
             if (sec !== section && sec !== "both") return;
+          }
+          // Campus filtering
+          if (campusId) {
+            if ((data.campusId || null) !== campusId) return;
           }
           data.id = doc.id;
           classes.push(data);
@@ -552,11 +579,21 @@ module.exports = function(db, notificationsActions) {
 
     adminGetSubjects: async (req, res) => {
       try {
+        const campusId = req.body.campusId || null;
+        const section = req.body.section || null;
         const subjectsSnap = await db.collection("subjects").get();
         const subjects = [];
         subjectsSnap.forEach(doc => {
           let data = doc.data();
           data.id = doc.id;
+          if (section && section !== "both") {
+            const sec = (data.section || "").toLowerCase();
+            if (sec !== section && sec !== "both") return;
+          }
+          // Campus filtering
+          if (campusId) {
+            if ((data.campusId || null) !== campusId) return;
+          }
           subjects.push(data);
         });
         return res.json({ success: true, data: subjects });
@@ -994,6 +1031,33 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: true, message: "Settings updated successfully." });
       } catch (err) {
         return res.json({ success: false, message: "Error updating settings: " + err.message });
+      }
+    },
+
+    // --- CAMPUS MANAGEMENT ---
+    adminManageCampuses: async (req, res) => {
+      const campuses = req.body.campuses;
+      if (!Array.isArray(campuses)) return res.json({ success: false, message: "Campuses must be an array." });
+      try {
+        // Validate and sanitize each campus entry
+        const sanitized = campuses.map((c, i) => ({
+          id: c.id || `campus_${Date.now()}_${i}`,
+          name: (c.name || '').trim(),
+          section: c.section || 'both'
+        })).filter(c => c.name);
+        
+        await db.collection("settings").doc("global").set({ campuses: sanitized }, { merge: true });
+        
+        await db.collection("audit_logs").add({
+          timestamp: new Date().toISOString(),
+          userId: req.session.userId,
+          action: "MANAGE_CAMPUSES",
+          details: `Campus list updated: ${sanitized.map(c => c.name).join(', ') || '(empty)'}`
+        });
+        
+        return res.json({ success: true, message: "Campuses saved successfully.", campuses: sanitized });
+      } catch (err) {
+        return res.json({ success: false, message: "Error saving campuses: " + err.message });
       }
     },
 
