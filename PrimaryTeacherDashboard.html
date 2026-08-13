@@ -258,6 +258,7 @@
       <div class="aa-modal-header"><h5 class="aa-modal-title" id="subjectAttTitle">Subject Attendance</h5><button class="aa-modal-close" onclick="closeModal('subjectAttModal')">×</button></div>
       <div class="aa-modal-body">
         <div class="d-flex gap-3 align-items-center mb-3">
+          <input type="hidden" id="subjectAttSubId">
           <input type="hidden" id="subjectAttSubjectName">
           <input type="hidden" id="subjectAttClass">
           <input type="date" id="subjectAttDate" class="aa-input" style="max-width:200px;" onchange="loadSubjectAttendance()">
@@ -898,9 +899,11 @@
       if (!subjectSel.value) return showToast('Please select a subject first.', 'warning');
       var subjectName = subjectSel.options[subjectSel.selectedIndex].text;
       var className = AA.user.classAssigned;
+      var subId = subjectSel.value;
       
+      document.getElementById('subjectAttSubId').value = subId;
       document.getElementById('subjectAttSubjectName').value = subjectName;
-      document.getElementById('subjectAttClass').value = className;
+      document.getElementById('subjectAttClass').value = className || 'All';
       document.getElementById('subjectAttTitle').textContent = subjectName + ' Attendance (' + (className || 'All') + ')';
       document.getElementById('subjectAttDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('subjectAttContainer').style.display = 'none';
@@ -912,11 +915,12 @@
       var date = document.getElementById('subjectAttDate').value;
       var className = document.getElementById('subjectAttClass').value;
       var subjectName = document.getElementById('subjectAttSubjectName').value;
-      if (!date || !className || !subjectName) return showToast('Missing information','error');
+      var subId = document.getElementById('subjectAttSubId').value;
+      if (!date || !subjectName || !subId) return showToast('Missing information','error');
       
       callServer('teacherGetSubjectAttendance', [AA.token, {className: className, subjectName: subjectName, date: date}], function(res) {
         var existing = res.success ? res.data : [];
-        callServer('teacherGetSubjectStudents', [AA.token, subjectName, className, AA.settings.current_term, AA.settings.current_session], function(studentsData) {
+        callServer('teacherGetSubjectStudents', [AA.token, subId, AA.settings.current_session, AA.settings.current_term], function(studentsData) {
           if (!studentsData || studentsData.length === 0) return showToast('No students enrolled in this subject','warning');
           
           var tbody = document.querySelector('#subjectAttTable tbody');

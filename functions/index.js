@@ -234,7 +234,9 @@ app.post("/api", async (req, res) => {
         if (action === "teacherMarkAttendance") { req.body.className = args[1]; req.body.date = args[2]; req.body.records = args[3]; req.body.term = args[4]; req.body.session = args[5]; }
         if (action === "teacherSubmitScores") { /* mock success, usually frontend expects {success:true} */ }
         if (action === "teacherSubmitLessonPlan") { req.body.planId = args[1]; req.body.status = "submitted"; }
-        if (action === "teacherGetSubjectStudents") { req.body.subjectId = args[1]; }
+        if (action === "teacherGetSubjectStudents") { req.body.subjectId = args[1]; req.body.session = args[2]; req.body.term = args[3]; }
+        if (action === "teacherGetSubjectAttendance") { Object.assign(req.body, args[1]); }
+        if (action === "teacherSaveSubjectAttendance") { req.body.data = args[1]; Object.assign(req.body, args[1]); }
         if (action === "adminGenerateBulkResult") { req.body.className = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.reportType = args[4]; }
         if (action === "principalGetStudentResultPDF") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.reportType = args[4]; }
 

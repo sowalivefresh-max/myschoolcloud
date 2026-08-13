@@ -289,6 +289,7 @@
       <div class="aa-modal-header"><h5 class="aa-modal-title" id="subjectAttTitle">Subject Attendance</h5><button class="aa-modal-close" onclick="closeModal('subjectAttModal')">×</button></div>
       <div class="aa-modal-body">
         <div class="d-flex gap-3 align-items-center mb-3">
+          <input type="hidden" id="subjectAttSubId">
           <input type="hidden" id="subjectAttSubjectName">
           <input type="hidden" id="subjectAttClass">
           <input type="date" id="subjectAttDate" class="aa-input" style="max-width:200px;" onchange="loadSubjectAttendance()">
@@ -531,7 +532,7 @@
           { key:'subjectName' }, { key:'class', render:function(r){return r.class||'All';} }, { key:'section' }
         ], data, function(r) {
           return '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="switchTab(\'tch-tabs\',\'tab-scores\'); setTimeout(function(){ document.getElementById(\'scoreSubjectSelect\').value=\''+r.id+'\'; loadStudentsForScoring(); },300);"><i class="fa fa-pen"></i> Enter Grades</button> ' +
-                 '<button class="aa-btn aa-btn-primary aa-btn-xs" style="margin-left:5px;" onclick="openSubjectAttendance(\''+(r.subjectName||'').replace(/'/g, "\\'")+'\', \''+(r.class||'').replace(/'/g, "\\'")+'\')"><i class="fa fa-calendar-check"></i> Attendance</button>';
+                 '<button class="aa-btn aa-btn-primary aa-btn-xs" style="margin-left:5px;" onclick="openSubjectAttendance(\''+r.id+'\', \''+(r.subjectName||'').replace(/'/g, "\\'")+'\', \''+(r.class||'All').replace(/'/g, "\\'")+'\')"><i class="fa fa-calendar-check"></i> Attendance</button>';
         });
 
         // Populate selects
@@ -1045,9 +1046,10 @@
     }
 
     // --- SUBJECT ATTENDANCE ---
-    function openSubjectAttendance(subjectName, className) {
+    function openSubjectAttendance(subId, subjectName, className) {
+      document.getElementById('subjectAttSubId').value = subId;
       document.getElementById('subjectAttSubjectName').value = subjectName;
-      document.getElementById('subjectAttClass').value = className;
+      document.getElementById('subjectAttClass').value = className || 'All';
       document.getElementById('subjectAttTitle').textContent = subjectName + ' Attendance (' + (className || 'All') + ')';
       document.getElementById('subjectAttDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('subjectAttContainer').style.display = 'none';
@@ -1059,11 +1061,12 @@
       var date = document.getElementById('subjectAttDate').value;
       var className = document.getElementById('subjectAttClass').value;
       var subjectName = document.getElementById('subjectAttSubjectName').value;
-      if (!date || !className || !subjectName) return showToast('Missing information','error');
+      var subId = document.getElementById('subjectAttSubId').value;
+      if (!date || !subjectName || !subId) return showToast('Missing information','error');
       
       callServer('teacherGetSubjectAttendance', [AA.token, {className: className, subjectName: subjectName, date: date}], function(res) {
         var existing = res.success ? res.data : [];
-        callServer('teacherGetSubjectStudents', [AA.token, subjectName, className, AA.settings.current_term, AA.settings.current_session], function(studentsData) {
+        callServer('teacherGetSubjectStudents', [AA.token, subId, AA.settings.current_session, AA.settings.current_term], function(studentsData) {
           if (!studentsData || studentsData.length === 0) return showToast('No students enrolled in this subject','warning');
           
           var tbody = document.querySelector('#subjectAttTable tbody');
