@@ -517,27 +517,6 @@
                   <small class="text-muted" style="font-size:11px;display:block;margin-top:4px;">This controls which sections appear in menus, forms, and lists across the portal.</small>
                 </div>
 
-                <!-- ====== CAMPUS MANAGEMENT ====== -->
-                <h4 style="margin:25px 0 15px 0; font-size:16px; border-bottom:2px solid var(--primary,#0d1b2a); padding-bottom:8px; color:var(--primary,#0d1b2a);"><i class="fa fa-building"></i> Campus Management</h4>
-                <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Configure multiple physical campuses for any section. Students, staff, classes and subjects can be assigned to a campus to keep data separated.</p>
-                <div id="campus-list-container" style="margin-bottom:12px;"></div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">
-                  <div style="flex:1;min-width:160px;">
-                    <label class="aa-label" style="font-size:12px;">Campus Name</label>
-                    <input type="text" id="newCampusName" class="aa-input" placeholder="e.g. Main Campus" style="font-size:13px;">
-                  </div>
-                  <div style="width:160px;">
-                    <label class="aa-label" style="font-size:12px;">Section</label>
-                    <select id="newCampusSection" class="aa-select" style="font-size:13px;">
-                      <option value="both">Both Sections</option>
-                      <option value="primary">Primary Only</option>
-                      <option value="high">High School Only</option>
-                    </select>
-                  </div>
-                  <button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="addNewCampus()" style="white-space:nowrap;"><i class="fa fa-plus"></i> Add Campus</button>
-                </div>
-                <button type="button" class="aa-btn aa-btn-success aa-btn-sm" onclick="saveCampuses()" style="margin-bottom:8px;"><i class="fa fa-save"></i> Save Campuses</button>
-                <!-- ====== END CAMPUS MANAGEMENT ====== -->
 
                 <div class="aa-form-group">
                   <label class="aa-label">Subscription Plan</label>
@@ -2695,61 +2674,10 @@
           { id: 'exam', title: 'Exam', max: 70 }
         ];
         renderGradebookBuilder();
-        // --- Campus: load campus list into campus management UI ---
-        currentCampusList = (s.campuses || []).map(function(c) { return Object.assign({}, c); });
+        // --- Campus: sync global state ---
         AA.campuses = s.campuses || [];
-        renderCampusList();
         populateCampusDropdowns();
         renderCampusSelectorBar();
-      }, null, true);
-    }
-
-    // ==================== CAMPUS MANAGEMENT ====================
-    var currentCampusList = [];
-
-    function renderCampusList() {
-      var container = document.getElementById('campus-list-container');
-      if (!container) return;
-      if (!currentCampusList.length) {
-        container.innerHTML = '<p style="color:#94a3b8;font-size:12px;font-style:italic;">No campuses configured. Add one below to get started.</p>';
-        return;
-      }
-      var sectionLabel = { both: 'Both Sections', primary: 'Primary', high: 'High School' };
-      var html = currentCampusList.map(function(c, i) {
-        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;">' +
-          '<i class="fa fa-building" style="color:var(--primary,#0d1b2a);"></i>' +
-          '<span style="flex:1;font-weight:600;font-size:13px;">' + AA.escapeHTML(c.name) + '</span>' +
-          '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(15,23,42,0.08);color:#475569;">' + (sectionLabel[c.section] || c.section) + '</span>' +
-          '<span style="font-size:10px;color:#94a3b8;font-family:monospace;">' + AA.escapeHTML(c.id) + '</span>' +
-          '<button type="button" class="aa-btn aa-btn-sm aa-btn-danger" onclick="deleteCampus(' + i + ')" title="Remove campus"><i class="fa fa-trash"></i></button>' +
-          '</div>';
-      }).join('');
-      container.innerHTML = html;
-    }
-
-    function addNewCampus() {
-      var name = (document.getElementById('newCampusName').value || '').trim();
-      var section = document.getElementById('newCampusSection').value || 'both';
-      if (!name) { showToast('Please enter a campus name.', 'error'); return; }
-      var id = 'campus_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now();
-      currentCampusList.push({ id: id, name: name, section: section });
-      document.getElementById('newCampusName').value = '';
-      renderCampusList();
-    }
-
-    function deleteCampus(index) {
-      currentCampusList.splice(index, 1);
-      renderCampusList();
-    }
-
-    function saveCampuses() {
-      callServer('adminManageCampuses', [AA.token, currentCampusList], function(res) {
-        showToast(res.message, res.success ? 'success' : 'error');
-        if (res.success) {
-          AA.campuses = res.campuses || currentCampusList;
-          populateCampusDropdowns();
-          renderCampusSelectorBar();
-        }
       }, null, true);
     }
 
