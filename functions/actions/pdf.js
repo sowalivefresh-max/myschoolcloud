@@ -83,8 +83,10 @@ module.exports = {
       html += '<div class="sum-box"><div class="sum-val">' + (summary.average || 0) + '%</div><div class="sum-lbl">Average</div></div>';
       html += '<div class="sum-box"><div class="sum-val">' + (summary.overallGrade || 'N/A') + '</div><div class="sum-lbl">Overall Grade</div></div>';
     }
-    html += '<div class="sum-box"><div class="sum-val">' + (att.percentage || 0) + '%</div><div class="sum-lbl">Attendance</div></div>';
-    html += '</div>';
+    html += '<div class="sum-box">';
+    html += '<div class="sum-val">' + (att.percentage || 0) + '%</div><div class="sum-lbl">Attendance</div>';
+    html += '<div style="font-size:8px;color:#444;margin-top:2px;font-weight:bold;">Pre: ' + (att.present || 0) + ' | Abs: ' + (att.absent || 0) + ' | Late: ' + (att.late || 0) + '</div>';
+    html += '</div></div>';
 
     // Scores Table
     html += '<div class="sec-title">Academic Performance</div>';
@@ -100,7 +102,7 @@ module.exports = {
       let htFormat = format.slice(0, Math.min(2, format.length)); // First 2 columns for half term
       html += '<table><tr><th>S/N</th><th>Subject</th>';
       htFormat.forEach(col => { html += '<th>' + col.title + '</th>'; });
-      html += '</tr>';
+      html += '<th>Subj. Att.</th></tr>';
       
       for (let i = 0; i < scores.length; i++) {
         let sc = scores[i];
@@ -110,12 +112,13 @@ module.exports = {
           let val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);
           html += '<td>' + val + '</td>';
         });
-        html += '</tr>';
+        let subjAttHtml = (sc.subjectAttendancePercentage !== undefined && sc.subjectAttendancePercentage !== null) ? sc.subjectAttendancePercentage + '%' : '-';
+        html += '<td>' + subjAttHtml + '</td></tr>';
       }
     } else {
       html += '<table><tr><th>S/N</th><th>Subject</th>';
       format.forEach(col => { html += '<th>' + col.title + '</th>'; });
-      html += '<th>Total</th><th>Grade</th></tr>';
+      html += '<th>Total</th><th>Grade</th><th>Subj. Att.</th></tr>';
       
       for (let i = 0; i < scores.length; i++) {
         let sc = scores[i];
@@ -131,7 +134,9 @@ module.exports = {
         });
         
         html += '<td><strong>' + (sc.total || sc.termTotal || 0) + '</strong></td>';
-        html += '<td class="' + gcls + '">' + g + '</td></tr>';
+        html += '<td class="' + gcls + '">' + g + '</td>';
+        let subjAttHtml = (sc.subjectAttendancePercentage !== undefined && sc.subjectAttendancePercentage !== null) ? sc.subjectAttendancePercentage + '%' : '-';
+        html += '<td>' + subjAttHtml + '</td></tr>';
       }
     }
     html += '</table>';

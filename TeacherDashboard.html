@@ -283,6 +283,30 @@
     </main>
   </div>
 
+  <!-- Subject Attendance Modal -->
+  <div class="aa-modal-backdrop" id="subjectAttModal">
+    <div class="aa-modal" style="max-width:700px;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title" id="subjectAttTitle">Subject Attendance</h5><button class="aa-modal-close" onclick="closeModal('subjectAttModal')">×</button></div>
+      <div class="aa-modal-body">
+        <div class="d-flex gap-3 align-items-center mb-3">
+          <input type="hidden" id="subjectAttSubjectName">
+          <input type="hidden" id="subjectAttClass">
+          <input type="date" id="subjectAttDate" class="aa-input" style="max-width:200px;" onchange="loadSubjectAttendance()">
+          <button class="aa-btn aa-btn-primary" onclick="loadSubjectAttendance()"><i class="fa fa-sync-alt"></i> Load Roll Call</button>
+          <div class="flex-1 text-end">
+            <button class="aa-btn aa-btn-success" id="btnSaveSubjectAtt" style="display:none;" onclick="saveSubjectAttendance()">Save Attendance</button>
+          </div>
+        </div>
+        <div id="subjectAttContainer" style="display:none;">
+          <table class="aa-table" id="subjectAttTable">
+            <thead><tr><th>Name</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Profile Modal -->
   <div class="aa-modal-backdrop" id="profileModal">
     <div class="aa-modal">
@@ -506,7 +530,8 @@
         buildTable('mySubjectsTable', [
           { key:'subjectName' }, { key:'class', render:function(r){return r.class||'All';} }, { key:'section' }
         ], data, function(r) {
-          return '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="switchTab(\'tch-tabs\',\'tab-scores\'); setTimeout(function(){ document.getElementById(\'scoreSubjectSelect\').value=\''+r.id+'\'; loadStudentsForScoring(); },300);"><i class="fa fa-pen"></i> Enter Grades</button>';
+          return '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="switchTab(\'tch-tabs\',\'tab-scores\'); setTimeout(function(){ document.getElementById(\'scoreSubjectSelect\').value=\''+r.id+'\'; loadStudentsForScoring(); },300);"><i class="fa fa-pen"></i> Enter Grades</button> ' +
+                 '<button class="aa-btn aa-btn-primary aa-btn-xs" style="margin-left:5px;" onclick="openSubjectAttendance(\''+(r.subjectName||'').replace(/'/g, "\\'")+'\', \''+(r.class||'').replace(/'/g, "\\'")+'\')"><i class="fa fa-calendar-check"></i> Attendance</button>';
         });
 
         // Populate selects
@@ -1017,6 +1042,80 @@
         if(res.success) openPDFViewer(res.previewUrl, res.downloadUrl, 'Lesson Plan');
         else showToast(res.message, 'error');
       }, null, true);
+    }
+
+    // --- SUBJECT ATTENDANCE ---
+    function openSubjectAttendance(subjectName, className) {
+      document.getElementById('subjectAttSubjectName').value = subjectName;
+      document.getElementById('subjectAttClass').value = className;
+      document.getElementById('subjectAttTitle').textContent = subjectName + ' Attendance (' + (className || 'All') + ')';
+      document.getElementById('subjectAttDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('subjectAttContainer').style.display = 'none';
+      document.getElementById('btnSaveSubjectAtt').style.display = 'none';
+      openModal('subjectAttModal');
+    }
+    
+    function loadSubjectAttendance() {
+      var date = document.getElementById('subjectAttDate').value;
+      var className = document.getElementById('subjectAttClass').value;
+      var subjectName = document.getElementById('subjectAttSubjectName').value;
+      if (!date || !className || !subjectName) return showToast('Missing information','error');
+      
+      callServer('teacherGetSubjectAttendance', [AA.token, {className: className, subjectName: subjectName, date: date}], function(res) {
+        var existing = res.success ? res.data : [];
+        callServer('teacherGetSubjectStudents', [AA.token, subjectName, className, AA.settings.current_term, AA.settings.current_session], function(studentsData) {
+          if (!studentsData || studentsData.length === 0) return showToast('No students enrolled in this subject','warning');
+          
+          var tbody = document.querySelector('#subjectAttTable tbody');
+          tbody.innerHTML = '';
+          studentsData.forEach(function(st) {
+             var stId = st.id || st.iD || st.studentId;
+             var stName = st.fullName || ((st.firstName||'') + ' ' + (st.lastName||''));
+             var rec = existing.find(function(x) { return String(x.studentId) === String(stId); });
+             var stat = rec ? rec.status : 'Present'; 
+             
+             var sel = '<select class="aa-select" data-studentid="'+stId+'">' +
+               '<option value="Present" '+(stat==='Present'?'selected':'')+'>Present</option>' +
+               '<option value="Absent" '+(stat==='Absent'?'selected':'')+'>Absent</option>' +
+               '<option value="Late" '+(stat==='Late'?'selected':'')+'>Late</option>' +
+               '</select>';
+             
+             tbody.innerHTML += '<tr><td>'+stName+'</td><td>'+sel+'</td></tr>';
+          });
+          document.getElementById('subjectAttContainer').style.display = 'block';
+          document.getElementById('btnSaveSubjectAtt').style.display = 'inline-block';
+        });
+      });
+    }
+
+    function saveSubjectAttendance() {
+      var date = document.getElementById('subjectAttDate').value;
+      var className = document.getElementById('subjectAttClass').value;
+      var subjectName = document.getElementById('subjectAttSubjectName').value;
+      if(!date || !className || !subjectName) return showToast('Missing information','error');
+      
+      var selects = document.querySelectorAll('#subjectAttTable tbody select');
+      var records = [];
+      selects.forEach(function(s) {
+        records.push({ studentId: s.getAttribute('data-studentid'), status: s.value });
+      });
+      
+      var data = {
+        date: date,
+        className: className,
+        subjectName: subjectName,
+        term: AA.settings.current_term,
+        session: AA.settings.current_session,
+        records: records
+      };
+      
+      var btn = document.getElementById('btnSaveSubjectAtt');
+      btn.innerHTML = 'Saving...'; btn.disabled = true;
+      callServer('teacherSaveSubjectAttendance', [AA.token, data], function(res) {
+        btn.innerHTML = 'Save Attendance'; btn.disabled = false;
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) closeModal('subjectAttModal');
+      }, function() { btn.innerHTML = 'Save Attendance'; btn.disabled = false; }, false);
     }
 
     // --- SUBJECT ENROLLMENT ---

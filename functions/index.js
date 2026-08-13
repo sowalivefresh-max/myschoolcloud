@@ -432,6 +432,10 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => teacherActions.teacherGetAffective(req, res));
       case "teacherSaveAffective":
         return requireRole(req, res, () => teacherActions.teacherSaveAffective(req, res));
+      case "teacherGetSubjectAttendance":
+        return requireRole(req, res, () => teacherActions.teacherGetSubjectAttendance(req, res));
+      case "teacherSaveSubjectAttendance":
+        return requireRole(req, res, () => teacherActions.teacherSaveSubjectAttendance(req, res));
       
       // Legacy Aliases for Teacher UI
       case "teacherGetMyLessonPlans":

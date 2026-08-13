@@ -108,6 +108,73 @@ async function enrichReportData(dbInstance, reportData, cfg) {
         cfg.principal_signature = pSnap.docs[0].data().signature;
       }
     }
+
+    // --- Resolve Student ID ---
+    let stId = student.id || student.studentId || student.studentID || reportData.studentId;
+
+    // --- Class Attendance ---
+    let present = 0, absent = 0, late = 0;
+    if (student.className && reportData.term && reportData.session && stId) {
+      const attSnap = await dbInstance.collection("attendance")
+        .where("className", "==", student.className)
+        .where("term", "==", reportData.term)
+        .where("session", "==", reportData.session)
+        .get();
+      
+      let uniqueDates = new Set();
+      attSnap.forEach(doc => {
+        let d = doc.data();
+        if (d.date) uniqueDates.add(d.date);
+        if (d.studentId === stId) {
+          if (d.status === "Present") present++;
+          else if (d.status === "Absent") absent++;
+          else if (d.status === "Late") late++;
+        }
+      });
+      
+      let totalDays = uniqueDates.size;
+      let percentage = totalDays > 0 ? Math.round(((present + late) / totalDays) * 100) : 0;
+      reportData.attendance = { present, absent, late, total: totalDays, percentage };
+    } else {
+      reportData.attendance = { present: 0, absent: 0, late: 0, total: 0, percentage: 0 };
+    }
+
+    // --- Subject Attendance ---
+    if (student.className && reportData.term && reportData.session && reportData.scores && reportData.scores.length > 0 && stId) {
+      const subjAttSnap = await dbInstance.collection("subject_attendance")
+        .where("className", "==", student.className)
+        .where("term", "==", reportData.term)
+        .where("session", "==", reportData.session)
+        .get();
+        
+      let subjectDates = {};
+      let studentSubjAtt = {};
+      
+      subjAttSnap.forEach(doc => {
+        let d = doc.data();
+        if (!d.subjectName || !d.date) return;
+        
+        if (!subjectDates[d.subjectName]) subjectDates[d.subjectName] = new Set();
+        subjectDates[d.subjectName].add(d.date);
+        
+        if (d.studentId === stId) {
+           if (!studentSubjAtt[d.subjectName]) studentSubjAtt[d.subjectName] = 0;
+           if (d.status === "Present" || d.status === "Late") studentSubjAtt[d.subjectName]++;
+        }
+      });
+      
+      reportData.scores.forEach(score => {
+         let sub = score.subjectName;
+         if (subjectDates[sub] && subjectDates[sub].size > 0) {
+           let totalD = subjectDates[sub].size;
+           let pD = studentSubjAtt[sub] || 0;
+           score.subjectAttendancePercentage = Math.round((pD / totalD) * 100);
+         } else {
+           score.subjectAttendancePercentage = null;
+         }
+      });
+    }
+
   } catch (err) {
     console.error("Error enriching report data:", err);
   }

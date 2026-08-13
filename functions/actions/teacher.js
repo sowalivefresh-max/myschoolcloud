@@ -514,6 +514,76 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    teacherGetSubjectAttendance: async (req, res) => {
+      const { className, subjectName, date } = req.body;
+      if (!className || !subjectName || !date) return res.json({ success: false, message: "Class, subject, and date required." });
+      
+      try {
+        const snap = await db.collection("subject_attendance")
+          .where("className", "==", className)
+          .where("subjectName", "==", subjectName)
+          .where("date", "==", date)
+          .get();
+          
+        const records = [];
+        snap.forEach(doc => {
+          let rec = doc.data();
+          rec.id = doc.id;
+          records.push(rec);
+        });
+        
+        return res.json({ success: true, data: records });
+      } catch (err) {
+        return res.json({ success: false, message: "Error fetching subject attendance: " + err.message });
+      }
+    },
+
+    teacherSaveSubjectAttendance: async (req, res) => {
+      const records = req.body.records || req.body.data;
+      if (!records || !Array.isArray(records)) {
+        return res.json({ success: false, message: "Invalid attendance data." });
+      }
+
+      const { date, className, subjectName, term, session } = req.body;
+
+      if (!date || !className || !subjectName) {
+        return res.json({ success: false, message: "Date, class, and subject are required." });
+      }
+
+      try {
+        const batch = db.batch();
+        let count = 0;
+        
+        for (let record of records) {
+          if (!record.studentId) continue;
+          
+          // Generate deterministic ID
+          const docId = record.studentId + "_" + subjectName.replace(/[^a-zA-Z0-9]/g, "") + "_" + date.replace(/\//g, "-");
+          const ref = db.collection("subject_attendance").doc(docId);
+          
+          batch.set(ref, {
+            studentId: record.studentId,
+            className: className,
+            subjectName: subjectName,
+            date: date,
+            status: record.status,
+            term: term || "",
+            session: session || "",
+            teacherId: req.session.userId,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          
+          count++;
+        }
+        
+        await batch.commit();
+
+        return res.json({ success: true, message: `Saved subject attendance for ${count} students.` });
+      } catch (err) {
+        return res.json({ success: false, message: "Error saving subject attendance: " + err.message });
+      }
+    },
+
     teacherGetPsychomotor: async (req, res) => {
       const { studentId, term, session } = req.body;
       if (!studentId || !term || !session) return res.json({ success: false, message: "Missing parameters." });
