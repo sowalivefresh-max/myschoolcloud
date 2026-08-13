@@ -704,6 +704,24 @@ module.exports = function(db, notificationsActions) {
         const existingBillsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         const existingBillStudentIds = new Set(existingBillsSnap.docs.map(doc => doc.data().studentId));
 
+        // Pre-fetch settings and parents for email notifications
+        const settingsDoc = await db.collection("settings").doc("global").get();
+        const settings = settingsDoc.data() || {};
+        let transporter = null;
+        if (settings.smtp_email && settings.smtp_password) {
+          const nodemailer = require("nodemailer");
+          transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: settings.smtp_email, pass: settings.smtp_password }
+          });
+        }
+        
+        const parentsSnap = await db.collection("users").where("role", "==", "parent").get();
+        const parentsMap = {};
+        parentsSnap.forEach(doc => { parentsMap[doc.id] = doc.data(); });
+
+        let emailPromises = [];
+
         let generated = 0;
         let skipped = 0;
         
@@ -782,6 +800,62 @@ module.exports = function(db, notificationsActions) {
             });
             operationCount++;
             commitBatchIfNeeded();
+            
+            // Queue email notification
+            if (transporter && parentsMap[student.parentId]) {
+              const parent = parentsMap[student.parentId];
+              if (parent.email) {
+                const parentName = parent.fullName || "Parent/Guardian";
+                const mailOptions = {
+                  from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
+                  to: parent.email,
+                  subject: `New Bill Generated: ₦${Number(total).toLocaleString()} for ${student.fullName || 'your ward'}`,
+                  html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                      <div style="text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 15px; margin-bottom: 20px;">
+                        <h2 style="color: #1e293b; margin: 0;">New Bill Generated</h2>
+                        <h4 style="color: #64748b; margin: 5px 0 0 0;">${settings.school_name || 'School Administration'}</h4>
+                      </div>
+                      
+                      <p>Dear ${parentName},</p>
+                      <p>Please be informed that a new fee bill has been generated for your ward for the current academic session.</p>
+                      
+                      <div style="background: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b; width: 40%;">Student Name:</td>
+                            <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${student.fullName || ''}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Class:</td>
+                            <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${className || ''}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Term:</td>
+                            <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${term || ''}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Session:</td>
+                            <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${session || ''}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 15px;">Total Billed:</td>
+                            <td style="padding: 8px 0; color: #1e293b; font-weight: 700; border-top: 1px dashed #cbd5e1; padding-top: 15px; font-size: 16px;">₦${Number(total).toLocaleString()}</td>
+                          </tr>
+                        </table>
+                      </div>
+                      
+                      <p>Please log in to the school portal to view the detailed breakdown and make payment.</p>
+                      <p>Thank you.</p>
+                      <p style="color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 30px;">
+                        This is an automated message from the school portal. Please do not reply directly to this email.
+                      </p>
+                    </div>
+                  `
+                };
+                emailPromises.push(transporter.sendMail(mailOptions));
+              }
+            }
           }
 
           generated++;
@@ -803,6 +877,10 @@ module.exports = function(db, notificationsActions) {
         }
         
         await Promise.all(batches);
+        
+        if (emailPromises.length > 0) {
+          Promise.allSettled(emailPromises).catch(e => console.error("Error sending bill emails:", e));
+        }
         
         return res.json({ success: true, message: `${generated} bill(s) generated. ${skipped} skipped.` });
       } catch (err) {
