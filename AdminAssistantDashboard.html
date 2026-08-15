@@ -1390,7 +1390,7 @@
         
         var cols = [
           { key: 'fullName' },
-          { key: 'email', render: function(r){ return escapeHTML(r.email || r.username || ''); } }, // For students, email might be username
+          { key: 'email', render: function(r){ return AA.escapeHTML(r.email || r.username || ''); } }, // For students, email might be username
           { key: 'role', render: function(r){ return AA.formatRole(r.role); } },
           { key: 'section', render: function(r){ var sec = normalizeSection(r.section); return sec === 'high' ? 'High' : (sec==='primary'?'Primary':'Both'); } },
           { key: 'status', render: function(r){ return formatStatus(r.status); } }
