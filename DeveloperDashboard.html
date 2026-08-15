@@ -182,7 +182,7 @@
               <h3 class="aa-card-title">Staff & Users</h3>
               <div class="d-flex gap-2">
                 <div class="aa-search-box">
-                  <input type="text" id="search-users" class="aa-input" placeholder="Search users..." onkeyup="filterTable('search-users', 'staffTable'); filterTable('search-users', 'parentsTable');">
+                  <input type="text" id="search-users" class="aa-input" placeholder="Search users..." onkeyup="filterTable('search-users', 'staffTable'); filterTable('search-users', 'parentsTable'); filterTable('search-users', 'studentsPortalTable');">
                 </div>
                 <button class="aa-btn aa-btn-success" onclick="openParentInvites()"><i class="fa fa-link"></i> Parent Invites</button>
                 <button class="aa-btn aa-btn-primary" onclick="openModal('userModal');resetForm('userForm');document.getElementById('userId').value='';document.getElementById('userSigPreview').innerHTML='<i class=\'fa fa-signature text-muted\'></i>';applyInstitutionFilter(institutionType);"><i class="fa fa-plus"></i> Add User</button>
@@ -190,21 +190,38 @@
             </div>
             <div class="aa-card-body" style="padding:0;">
               <div class="aa-tabs-inner" style="display:flex; border-bottom:1px solid #eee; background:#fafafa;">
-                 <button onclick="document.getElementById('staff-wrap').style.display='block'; document.getElementById('parents-wrap').style.display='none'; this.style.borderBottom='2px solid #1e3a5f'; this.style.color='#1e3a5f'; this.style.fontWeight='bold'; this.nextElementSibling.style.borderBottom='none'; this.nextElementSibling.style.color='#666'; this.nextElementSibling.style.fontWeight='normal';" style="padding:12px 20px; border:none; background:none; cursor:pointer; font-weight:bold; color:#1e3a5f; border-bottom:2px solid #1e3a5f; outline:none;">Staff</button>
-                 <button onclick="document.getElementById('parents-wrap').style.display='block'; document.getElementById('staff-wrap').style.display='none'; this.style.borderBottom='2px solid #1e3a5f'; this.style.color='#1e3a5f'; this.style.fontWeight='bold'; this.previousElementSibling.style.borderBottom='none'; this.previousElementSibling.style.color='#666'; this.previousElementSibling.style.fontWeight='normal';" style="padding:12px 20px; border:none; background:none; cursor:pointer; color:#666; border-bottom:none; outline:none;">Parents & Guardians</button>
+                 <button onclick="switchUserSubTab('staff-wrap', this)" style="padding:12px 20px; border:none; background:none; cursor:pointer; font-weight:bold; color:#1e3a5f; border-bottom:2px solid #1e3a5f; outline:none;" class="admin-user-subtab active">Staff</button>
+                 <button onclick="switchUserSubTab('parents-wrap', this)" style="padding:12px 20px; border:none; background:none; cursor:pointer; color:#666; border-bottom:none; outline:none;" class="admin-user-subtab">Parents & Guardians</button>
+                 <button onclick="switchUserSubTab('students-portal-wrap', this)" style="padding:12px 20px; border:none; background:none; cursor:pointer; color:#666; border-bottom:none; outline:none;" class="admin-user-subtab">Students</button>
               </div>
-              <div id="staff-wrap" class="aa-table-wrap">
+              <div id="staff-wrap" class="aa-table-wrap admin-user-wrap">
                 <table class="aa-table" id="staffTable">
                   <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody></tbody>
                 </table>
               </div>
-              <div id="parents-wrap" class="aa-table-wrap" style="display:none;">
+              <div id="parents-wrap" class="aa-table-wrap admin-user-wrap" style="display:none;">
                 <table class="aa-table" id="parentsTable">
                   <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody></tbody>
                 </table>
               </div>
+              <div id="students-portal-wrap" class="aa-table-wrap admin-user-wrap" style="display:none;">
+                <table class="aa-table" id="studentsPortalTable">
+                  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <script>
+                function switchUserSubTab(id, btn) {
+                  document.querySelectorAll('.admin-user-wrap').forEach(function(el){ el.style.display = 'none'; });
+                  document.getElementById(id).style.display = 'block';
+                  document.querySelectorAll('.admin-user-subtab').forEach(function(el){
+                    el.style.fontWeight = 'normal'; el.style.color = '#666'; el.style.borderBottom = 'none';
+                  });
+                  btn.style.fontWeight = 'bold'; btn.style.color = '#1e3a5f'; btn.style.borderBottom = '2px solid #1e3a5f';
+                }
+              </script>
             </div>
           </div>
         </div>
@@ -1428,12 +1445,13 @@
         globalUsers = data;
         populateTeacherDropdowns();
         
-        var staffData = data.filter(function(r) { return r.role !== 'parent'; });
+        var staffData = data.filter(function(r) { return r.role !== 'parent' && r.role !== 'student'; });
         var parentData = data.filter(function(r) { return r.role === 'parent'; });
+        var studentData = data.filter(function(r) { return r.role === 'student'; });
         
         var cols = [
           { key: 'fullName' },
-          { key: 'email' },
+          { key: 'email', render: function(r){ return escapeHTML(r.email || r.username || ''); } }, // For students, email might be username
           { key: 'role', render: function(r){ return AA.formatRole(r.role); } },
           { key: 'section', render: function(r){ var sec = normalizeSection(r.section); return sec === 'high' ? 'High' : (sec==='primary'?'Primary':'Both'); } },
           { key: 'status', render: function(r){ return formatStatus(r.status); } }
@@ -1454,6 +1472,7 @@
         
         buildTable('staffTable', cols, staffData, renderActions);
         buildTable('parentsTable', cols, parentData, renderActions);
+        buildTable('studentsPortalTable', cols, studentData, renderActions);
       }, null, true);
     }
     
@@ -1473,7 +1492,7 @@
             principal: 'PrincipalDashboard.html', vp: 'VPDashboard.html',
             headteacher: 'HeadTeacherDashboard.html', teacher: 'TeacherDashboard.html',
             primary_teacher: 'PrimaryTeacherDashboard.html', accounts: 'AccountsDashboard.html',
-            parent: 'ParentDashboard.html'
+            parent: 'ParentDashboard.html', student: 'StudentDashboard.html'
           };
           var dashboard = dashboardMap[res.role] || 'Login.html';
           var redirectUrl = dashboard + '?token=' + encodeURIComponent(res.token);
