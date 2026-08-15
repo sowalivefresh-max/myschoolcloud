@@ -376,6 +376,13 @@ function renderQuizzes(){
   el.innerHTML=html;
 }
 
+function shuffleArray(arr) {
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  return arr;
+}
 function startQuiz(quizId){
   showToast('Loading quiz...','info');
   runBackendAction('studentStartQuiz',[AA.token,quizId]).then(function(r){
@@ -384,7 +391,22 @@ function startQuiz(quizId){
       else showToast(r.message||'Could not start quiz.','error');
       return;
     }
-    _cbtQuestions=r.questions;_cbtAnswers={};_cbtIdx=0;_cbtAttemptId=r.attemptId;
+    var questions = r.questions;
+    // Client-side option shuffle: permute A/B/C/D display but record original letter
+    if (r.quiz && r.quiz.shuffleOptions !== false) {
+      questions = questions.map(function(q) {
+        var opts = shuffleArray([['A', q.optionA], ['B', q.optionB], ['C', q.optionC], ['D', q.optionD]]);
+        return {
+          id: q.id,
+          question: q.question,
+          // _opts stores [{displayLabel, originalLetter, text}]
+          _opts: opts.map(function(o, idx) {
+            return { display: String.fromCharCode(65 + idx), original: o[0], text: o[1] };
+          })
+        };
+      });
+    }
+    _cbtQuestions=questions;_cbtAnswers={};_cbtIdx=0;_cbtAttemptId=r.attemptId;
     _cbtSecs=(r.quiz.durationMinutes||30)*60;
     document.getElementById('cbtQuizTitle').textContent=r.quiz.title;
     document.getElementById('cbtProgress').textContent='1/'+_cbtQuestions.length;
@@ -403,14 +425,21 @@ function renderCBTNav(){
 function renderCBTQuestion(){
   var q=_cbtQuestions[_cbtIdx];if(!q)return;
   document.getElementById('cbtProgress').textContent=(_cbtIdx+1)+'/'+_cbtQuestions.length;
-  var opts=[['A',q.optionA],['B',q.optionB],['C',q.optionC],['D',q.optionD]];
+  // Support both shuffled (_opts) and unshuffled (optionA-D) question formats
+  var opts;
+  if (q._opts) {
+    opts = q._opts.map(function(o) { return [o.original, o.display, o.text]; });
+  } else {
+    opts = [['A','A',q.optionA],['B','B',q.optionB],['C','C',q.optionC],['D','D',q.optionD]];
+  }
   var html='<div class="cbt-q-num">Question '+(_cbtIdx+1)+' of '+_cbtQuestions.length+'</div>';
   html+='<div class="cbt-q-text">'+escHtml(q.question)+'</div>';
   opts.forEach(function(o){
-    var sel=_cbtAnswers[q.id]===o[0]?'selected':'';
-    html+='<label class="cbt-option '+sel+'" onclick="selectAnswer(\''+q.id+'\',\''+o[0]+'\')">';
-    html+='<input type="radio" name="opt" value="'+o[0]+'" '+(sel?'checked':'')+' style="pointer-events:none;">';
-    html+='<div class="cbt-option-label"><strong>'+o[0]+'.</strong> '+escHtml(o[1])+'</div></label>';
+    var origLetter=o[0]; var displayLabel=o[1]; var text=o[2];
+    var sel=_cbtAnswers[q.id]===origLetter?'selected':'';
+    html+='<label class="cbt-option '+sel+'" onclick="selectAnswer(\''+q.id+'\',\''+origLetter+'\')">';
+    html+='<input type="radio" name="opt" value="'+origLetter+'" '+(sel?'checked':'')+' style="pointer-events:none;">';
+    html+='<div class="cbt-option-label"><strong>'+displayLabel+'.</strong> '+escHtml(text)+'</div></label>';
   });
   document.getElementById('cbtQuestionBox').innerHTML=html;
   document.getElementById('cbtPrevBtn').disabled=_cbtIdx===0;

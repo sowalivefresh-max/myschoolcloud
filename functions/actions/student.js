@@ -298,7 +298,10 @@ module.exports = function(db) {
           const q = doc.data();
           questions.push({ id: doc.id, question: q.question, optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD });
         });
-        questions.sort(() => Math.random() - 0.5);
+        // Respect per-quiz shuffle setting (default: true for existing quizzes)
+        if (quiz.shuffleQuestions !== false) {
+          questions.sort(() => Math.random() - 0.5);
+        }
 
         const attemptRef = db.collection("cbt_attempts").doc();
         await attemptRef.set({
@@ -306,7 +309,16 @@ module.exports = function(db) {
           startedAt: new Date().toISOString(), status: "in_progress"
         });
 
-        return res.json({ success: true, attemptId: attemptRef.id, quiz: { title: quiz.title, durationMinutes: quiz.durationMinutes }, questions });
+        return res.json({
+          success: true,
+          attemptId: attemptRef.id,
+          quiz: {
+            title: quiz.title,
+            durationMinutes: quiz.durationMinutes,
+            shuffleOptions: quiz.shuffleOptions !== false  // default true
+          },
+          questions
+        });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }

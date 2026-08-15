@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+  <!-- PDF.js for client-side PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Mammoth.js for .docx text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body>
   <div class="aa-layout">
@@ -394,6 +398,17 @@
           <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="quizClass"><option value="">All Classes</option></select></div>
         </div>
         <div class="aa-form-group"><label class="aa-label">Duration (minutes)</label><input type="number" class="aa-input" id="quizDuration" value="30" min="5" max="180"></div>
+        <div style="background:rgba(240,165,0,0.06);border:1px solid rgba(240,165,0,0.2);border-radius:10px;padding:14px 16px;margin-top:4px;">
+          <p style="font-size:12px;font-weight:600;color:var(--aa-gold,#f0a500);margin:0 0 10px;"><i class="fa fa-random" style="margin-right:6px;"></i>Shuffle Settings</p>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px;font-size:13px;">
+            <input type="checkbox" id="quizShuffleQuestions" checked style="width:16px;height:16px;accent-color:var(--aa-gold,#f0a500);">
+            Shuffle question order for each student
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="quizShuffleOptions" checked style="width:16px;height:16px;accent-color:var(--aa-gold,#f0a500);">
+            Shuffle answer options (A/B/C/D) for each question
+          </label>
+        </div>
       </div>
       <div class="aa-modal-footer">
         <button class="aa-btn aa-btn-outline" onclick="closeModal('quizModal')">Cancel</button>
@@ -438,7 +453,12 @@ Answer: A
 
 (Separate each question with a blank line)</pre>
             <textarea class="aa-input" id="bulkQText" rows="10" placeholder="Paste your questions here..."></textarea>
-            <button class="aa-btn aa-btn-primary" style="margin-top:10px;" onclick="parseBulkQuestions()"><i class="fa fa-magic"></i> Parse &amp; Add Questions</button>
+            <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+              <button class="aa-btn aa-btn-primary" onclick="parseBulkQuestions()"><i class="fa fa-magic"></i> Parse &amp; Add from Text</button>
+              <button class="aa-btn aa-btn-outline" onclick="document.getElementById('bulkFileInput').click()"><i class="fa fa-file-upload"></i> Upload PDF / Word File</button>
+              <input type="file" id="bulkFileInput" accept=".pdf,.docx" style="display:none;" onchange="parseBulkFromFile(this)">
+              <span id="bulkFileStatus" style="font-size:12px;color:rgba(255,255,255,0.5);align-self:center;"></span>
+            </div>
           </div>
         </div>
         <!-- Questions List -->
@@ -1562,6 +1582,8 @@ Answer: A
       document.getElementById('quizTitle').value = '';
       populateContentDropdowns('quiz');
       document.getElementById('quizDuration').value = '30';
+      document.getElementById('quizShuffleQuestions').checked = true;
+      document.getElementById('quizShuffleOptions').checked = true;
       openModal('quizModal');
     }
     function editQuiz(q) {
@@ -1571,6 +1593,8 @@ Answer: A
       document.getElementById('quizSubject').value = q.subjectName || '';
       document.getElementById('quizClass').value = q.className || '';
       document.getElementById('quizDuration').value = q.durationMinutes || 30;
+      document.getElementById('quizShuffleQuestions').checked = q.shuffleQuestions !== false;
+      document.getElementById('quizShuffleOptions').checked = q.shuffleOptions !== false;
       openModal('quizModal');
     }
     function saveQuiz() {
@@ -1583,7 +1607,9 @@ Answer: A
         title: title,
         subjectName: document.getElementById('quizSubject').value,
         className: document.getElementById('quizClass').value,
-        durationMinutes: parseInt(document.getElementById('quizDuration').value) || 30
+        durationMinutes: parseInt(document.getElementById('quizDuration').value) || 30,
+        shuffleQuestions: document.getElementById('quizShuffleQuestions').checked,
+        shuffleOptions: document.getElementById('quizShuffleOptions').checked
       };
       callServer('teacherSaveQuiz', [AA.token, data], function(res) {
         btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i> Save Quiz';
@@ -1755,6 +1781,56 @@ Answer: A
         html += '</tbody></table>';
         document.getElementById('quizResultsBody').innerHTML = html;
       });
+    }
+
+    // ---- PDF / DOCX bulk upload ----
+    async function parseBulkFromFile(input) {
+      if (!input.files || !input.files[0]) return;
+      var file = input.files[0];
+      var statusEl = document.getElementById('bulkFileStatus');
+      statusEl.textContent = 'Extracting text from ' + file.name + '...';
+      input.value = ''; // reset so same file can be re-selected
+
+      try {
+        var text = '';
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+          // PDF.js extraction
+          if (typeof pdfjsLib === 'undefined') { showToast('PDF library not loaded yet. Please try again.', 'error'); statusEl.textContent = ''; return; }
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          var arrayBuffer = await file.arrayBuffer();
+          var pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          for (var p = 1; p <= pdf.numPages; p++) {
+            var page = await pdf.getPage(p);
+            var content = await page.getTextContent();
+            text += content.items.map(function(i) { return i.str; }).join(' ') + '\n';
+          }
+        } else if (file.name.toLowerCase().endsWith('.docx')) {
+          // Mammoth.js extraction
+          if (typeof mammoth === 'undefined') { showToast('Word document library not loaded yet. Please try again.', 'error'); statusEl.textContent = ''; return; }
+          var arrayBuffer = await file.arrayBuffer();
+          var result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+          text = result.value;
+        } else {
+          showToast('Only PDF and .docx files are supported.', 'error');
+          statusEl.textContent = '';
+          return;
+        }
+
+        if (!text.trim()) {
+          showToast('No readable text found in this file. Make sure it is not a scanned/image-only PDF.', 'error');
+          statusEl.textContent = '';
+          return;
+        }
+
+        // Feed extracted text into the textarea and run the parser
+        document.getElementById('bulkQText').value = text;
+        statusEl.textContent = 'Text extracted! Parsing questions...';
+        parseBulkQuestions();
+        statusEl.textContent = '';
+      } catch (err) {
+        showToast('Failed to read file: ' + err.message, 'error');
+        statusEl.textContent = '';
+      }
     }
 
   </script>
