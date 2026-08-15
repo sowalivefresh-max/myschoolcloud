@@ -349,7 +349,11 @@
         <div class="aa-form-group"><label class="aa-label">Title *</label><input type="text" class="aa-input" id="asgTitle" placeholder="Assignment title"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="aa-form-group"><label class="aa-label">Subject</label><select class="aa-input" id="asgSubject"><option value="">All Subjects</option></select></div>
-          <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="asgClass"><option value="">All Classes</option></select></div>
+          <div class="aa-form-group">
+            <label class="aa-label">Class</label>
+            <select class="aa-input" id="asgClass" multiple size="4" style="height:90px;"></select>
+            <small style="color:var(--aa-text-muted);font-size:11px;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
+          </div>
         </div>
         <div class="aa-form-group"><label class="aa-label">Due Date</label><input type="date" class="aa-input" id="asgDueDate"></div>
         <div class="aa-form-group"><label class="aa-label">Description / Instructions *</label><textarea class="aa-input" id="asgDescription" rows="5" placeholder="Write the assignment details and instructions here..."></textarea></div>
@@ -369,7 +373,11 @@
         <div class="aa-form-group"><label class="aa-label">Note Title *</label><input type="text" class="aa-input" id="noteTitle" placeholder="e.g. Introduction to Algebra"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="aa-form-group"><label class="aa-label">Subject</label><select class="aa-input" id="noteSubject"><option value="">All Subjects</option></select></div>
-          <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="noteClass"><option value="">All Classes</option></select></div>
+          <div class="aa-form-group">
+            <label class="aa-label">Class</label>
+            <select class="aa-input" id="noteClass" multiple size="4" style="height:90px;"></select>
+            <small style="color:var(--aa-text-muted);font-size:11px;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
+          </div>
         </div>
         <div class="aa-form-group">
           <label class="aa-label">Attach File (PDF, DOC, DOCX) *</label>
@@ -395,7 +403,11 @@
         <div class="aa-form-group"><label class="aa-label">Quiz Title *</label><input type="text" class="aa-input" id="quizTitle" placeholder="e.g. Mid-Term Biology Quiz"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="aa-form-group"><label class="aa-label">Subject</label><select class="aa-input" id="quizSubject"><option value="">All Subjects</option></select></div>
-          <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="quizClass"><option value="">All Classes</option></select></div>
+          <div class="aa-form-group">
+            <label class="aa-label">Class</label>
+            <select class="aa-input" id="quizClass" multiple size="4" style="height:90px;"></select>
+            <small style="color:var(--aa-text-muted);font-size:11px;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
+          </div>
         </div>
         <div class="aa-form-group"><label class="aa-label">Duration (minutes)</label><input type="number" class="aa-input" id="quizDuration" value="30" min="5" max="180"></div>
         <div style="background:rgba(240,165,0,0.06);border:1px solid rgba(240,165,0,0.2);border-radius:10px;padding:14px 16px;margin-top:4px;">
@@ -1402,15 +1414,45 @@ Answer: A
       var selSub = document.getElementById(prefix + 'Subject');
       var selCls = document.getElementById(prefix + 'Class');
       selSub.innerHTML = '<option value="">All Subjects</option>';
-      selCls.innerHTML = '<option value="">All Classes</option>';
+      if (!selCls.multiple) selCls.innerHTML = '<option value="">All Classes</option>';
+      else selCls.innerHTML = ''; // no default "All Classes" for multiple
+
       if (mySubjects) {
         var addedSub = {}; var addedCls = {};
         mySubjects.forEach(function(s) {
           var sName = s.subjectName || '';
           var cName = s.class || s.className || '';
           if (sName && !addedSub[sName]) { addedSub[sName] = true; selSub.innerHTML += '<option value="' + AA.escapeHTML(sName) + '">' + AA.escapeHTML(sName) + '</option>'; }
-          if (cName && !addedCls[cName]) { addedCls[cName] = true; selCls.innerHTML += '<option value="' + AA.escapeHTML(cName) + '">' + AA.escapeHTML(cName) + '</option>'; }
+          if (cName) {
+            var classes = cName.split(',').map(function(c) { return c.trim(); }).filter(Boolean);
+            classes.forEach(function(c) {
+              if (!addedCls[c]) {
+                addedCls[c] = true;
+                selCls.innerHTML += '<option value="' + AA.escapeHTML(c) + '">' + AA.escapeHTML(c) + '</option>';
+              }
+            });
+          }
         });
+      }
+    }
+
+    function getMultiSelectValues(selectId) {
+      var select = document.getElementById(selectId);
+      if (!select || !select.multiple) return select ? select.value : '';
+      var values = [];
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].selected && select.options[i].value) values.push(select.options[i].value);
+      }
+      return values.join(', ');
+    }
+
+    function setMultiSelectValues(selectId, valString) {
+      var select = document.getElementById(selectId);
+      if (!select) return;
+      if (!select.multiple) { select.value = valString || ''; return; }
+      var vals = (valString || '').split(',').map(function(v){return v.trim();});
+      for (var i = 0; i < select.options.length; i++) {
+        select.options[i].selected = vals.indexOf(select.options[i].value) !== -1;
       }
     }
     function openAssignmentModal() {
@@ -1426,7 +1468,7 @@ Answer: A
       document.getElementById('asgTitle').value = a.title || '';
       populateContentDropdowns('asg');
       document.getElementById('asgSubject').value = a.subjectName || '';
-      document.getElementById('asgClass').value = a.className || '';
+      setMultiSelectValues('asgClass', a.className);
       document.getElementById('asgDueDate').value = a.dueDate || '';
       document.getElementById('asgDescription').value = a.description || '';
       openModal('assignmentModal');
@@ -1441,7 +1483,7 @@ Answer: A
         id: currentAssignmentId,
         title: title,
         subjectName: document.getElementById('asgSubject').value,
-        className: document.getElementById('asgClass').value,
+        className: getMultiSelectValues('asgClass'),
         dueDate: document.getElementById('asgDueDate').value,
         description: desc
       };
@@ -1491,7 +1533,20 @@ Answer: A
         container.innerHTML = html;
       });
     }
+    function editNote(n) {
+      currentNoteId = n.id;
+      document.getElementById('noteTitle').value = n.title || '';
+      populateContentDropdowns('note');
+      document.getElementById('noteSubject').value = n.subjectName || '';
+      setMultiSelectValues('noteClass', n.className);
+      document.getElementById('noteDescription').value = n.description || '';
+      noteFileData = ''; noteFileMime = ''; noteFileName = '';
+      document.getElementById('noteFile').value = '';
+      document.getElementById('noteFileInfo').innerHTML = n.fileUrl ? '<i class="fa fa-link"></i> Existing file attached' : '';
+      openModal('noteModal');
+    }
     function openNoteModal() {
+      currentNoteId = null;
       document.getElementById('noteTitle').value = '';
       populateContentDropdowns('note');
       document.getElementById('noteFile').value = '';
@@ -1515,16 +1570,19 @@ Answer: A
     }
     function saveNote() {
       var title = document.getElementById('noteTitle').value.trim();
+      var desc = document.getElementById('noteDescription').value.trim();
       if (!title) { showToast('Note Title is required.', 'error'); return; }
-      if (!noteFileData) { showToast('Please select a file to upload.', 'error'); return; }
+      if (!noteFileData && !currentNoteId) { showToast('Please select a file to upload.', 'error'); return; }
       var btn = document.getElementById('btnSaveNote');
       btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Uploading...';
       var data = {
+        id: currentNoteId,
         title: title,
         subjectName: document.getElementById('noteSubject').value,
-        className: document.getElementById('noteClass').value,
+        className: getMultiSelectValues('noteClass'),
+        description: desc,
         fileName: noteFileName,
-        mimeType: noteFileMime,
+        fileMime: noteFileMime,
         fileData: noteFileData
       };
       callServer('teacherSaveNote', [AA.token, data], function(res) {
@@ -1591,7 +1649,7 @@ Answer: A
       document.getElementById('quizTitle').value = q.title || '';
       populateContentDropdowns('quiz');
       document.getElementById('quizSubject').value = q.subjectName || '';
-      document.getElementById('quizClass').value = q.className || '';
+      setMultiSelectValues('quizClass', q.className);
       document.getElementById('quizDuration').value = q.durationMinutes || 30;
       document.getElementById('quizShuffleQuestions').checked = q.shuffleQuestions !== false;
       document.getElementById('quizShuffleOptions').checked = q.shuffleOptions !== false;
@@ -1606,7 +1664,7 @@ Answer: A
         id: currentQuizId,
         title: title,
         subjectName: document.getElementById('quizSubject').value,
-        className: document.getElementById('quizClass').value,
+        className: getMultiSelectValues('quizClass'),
         durationMinutes: parseInt(document.getElementById('quizDuration').value) || 30,
         shuffleQuestions: document.getElementById('quizShuffleQuestions').checked,
         shuffleOptions: document.getElementById('quizShuffleOptions').checked
