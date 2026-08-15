@@ -1345,10 +1345,11 @@ ANS: B</pre>
       var container = document.getElementById('myAssignmentsList');
       container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div>';
       callServer('teacherGetMyAssignments', [AA.token], function(res) {
-        if (!res.success) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load assignments.</p></div>'; return; }
-        if (!res.data || res.data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-clipboard-list"></i><p>No assignments found.</p></div>'; return; }
+        if (!Array.isArray(res) && (!res || !res.success)) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load assignments.</p></div>'; return; }
+        var data = Array.isArray(res) ? res : (res.data || []);
+        if (data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-clipboard-list"></i><p>No assignments found.</p></div>'; return; }
         var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Due Date</th><th>Actions</th></tr></thead><tbody>';
-        res.data.forEach(function(a) {
+        data.forEach(function(a) {
           html += '<tr>';
           html += '<td><strong>' + AA.escapeHTML(a.title) + '</strong></td>';
           html += '<td>' + AA.escapeHTML(a.subjectName || 'All Subjects') + '</td>';
@@ -1437,10 +1438,11 @@ ANS: B</pre>
       var container = document.getElementById('myNotesList');
       container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div>';
       callServer('teacherGetMyNotes', [AA.token], function(res) {
-        if (!res.success) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load notes.</p></div>'; return; }
-        if (!res.data || res.data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-file-alt"></i><p>No notes found.</p></div>'; return; }
+        if (!Array.isArray(res) && (!res || !res.success)) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load notes.</p></div>'; return; }
+        var data = Array.isArray(res) ? res : (res.data || []);
+        if (data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-file-alt"></i><p>No notes found.</p></div>'; return; }
         var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Uploaded</th><th>Expires</th><th>Actions</th></tr></thead><tbody>';
-        res.data.forEach(function(n) {
+        data.forEach(function(n) {
           var created = n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : '-';
           var expires = n.expiresAt ? new Date(n.expiresAt).toLocaleDateString('en-GB') : '-';
           html += '<tr>';
@@ -1518,10 +1520,11 @@ ANS: B</pre>
       var container = document.getElementById('myQuizzesList');
       container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div>';
       callServer('teacherGetMyQuizzes', [AA.token], function(res) {
-        if (!res.success) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load quizzes.</p></div>'; return; }
-        if (!res.data || res.data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-tasks"></i><p>No CBT quizzes found.</p></div>'; return; }
+        if (!Array.isArray(res) && (!res || !res.success)) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load quizzes.</p></div>'; return; }
+        var data = Array.isArray(res) ? res : (res.data || []);
+        if (data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-tasks"></i><p>No CBT quizzes found.</p></div>'; return; }
         var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Questions</th><th>Attempts</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-        res.data.forEach(function(q) {
+        data.forEach(function(q) {
           html += '<tr>';
           html += '<td><strong>' + AA.escapeHTML(q.title) + '</strong><br><small style="color:var(--aa-text-muted);">' + (q.durationMinutes||30) + ' mins</small></td>';
           html += '<td>' + AA.escapeHTML(q.subjectName || 'All') + '</td>';
