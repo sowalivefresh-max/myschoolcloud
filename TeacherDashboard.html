@@ -36,6 +36,16 @@
         <button class="aa-nav-item" id="nav-traits" style="display:none;" onclick="switchTab('tch-tabs', 'tab-traits'); setActiveNav('nav-traits')">
           <i class="fa fa-star"></i> Behavioral Traits
         </button>
+        <div class="aa-nav-section">Content</div>
+        <button class="aa-nav-item" id="nav-assignments" onclick="switchTab('tch-tabs', 'tab-assignments'); setActiveNav('nav-assignments'); loadMyAssignments();">
+          <i class="fa fa-clipboard-list"></i> Assignments
+        </button>
+        <button class="aa-nav-item" id="nav-notes" onclick="switchTab('tch-tabs', 'tab-notes'); setActiveNav('nav-notes'); loadMyNotes();">
+          <i class="fa fa-file-alt"></i> Lesson Notes
+        </button>
+        <button class="aa-nav-item" id="nav-cbt" onclick="switchTab('tch-tabs', 'tab-cbt'); setActiveNav('nav-cbt'); loadMyQuizzes();">
+          <i class="fa fa-tasks"></i> CBT Quizzes
+        </button>
         <button class="aa-nav-item text-danger" onclick="AA.logout()">
           <i class="fa fa-sign-out-alt"></i> Logout
         </button>
@@ -67,6 +77,9 @@
           <div class="aa-tab" data-tab="tab-lessonplans" data-onload="loadMyLessonPlans"></div>
           <div class="aa-tab" data-tab="tab-myclass" data-onload="loadMyClass"></div>
           <div class="aa-tab" data-tab="tab-traits" data-onload="loadTraitsTab"></div>
+          <div class="aa-tab" data-tab="tab-assignments"></div>
+          <div class="aa-tab" data-tab="tab-notes"></div>
+          <div class="aa-tab" data-tab="tab-cbt"></div>
         </div>
 
         <!-- TAB: Dashboard -->
@@ -281,6 +294,159 @@
 
       </div>
     </main>
+  </div>
+
+  <!-- TAB: ASSIGNMENTS -->
+  <div class="aa-tab-content" data-group="tch-tabs" data-id="tab-assignments" style="padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;"><i class="fa fa-clipboard-list" style="color:var(--aa-accent);margin-right:10px;"></i>Assignments</h2>
+      <button class="aa-btn aa-btn-primary" onclick="openAssignmentModal()"><i class="fa fa-plus"></i> New Assignment</button>
+    </div>
+    <div class="aa-card">
+      <div class="aa-card-header"><h3 class="aa-card-title">My Assignments</h3></div>
+      <div class="aa-card-body" id="myAssignmentsList"><div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div></div>
+    </div>
+  </div>
+
+  <!-- TAB: LESSON NOTES -->
+  <div class="aa-tab-content" data-group="tch-tabs" data-id="tab-notes" style="padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;"><i class="fa fa-file-alt" style="color:#60a5fa;margin-right:10px;"></i>Lesson Notes</h2>
+      <button class="aa-btn aa-btn-primary" onclick="openNoteModal()"><i class="fa fa-upload"></i> Upload Note</button>
+    </div>
+    <div class="aa-card" style="margin-bottom:14px;background:rgba(96,165,250,0.06);border-color:rgba(96,165,250,0.2);">
+      <div class="aa-card-body" style="padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.6);">
+        <i class="fa fa-info-circle" style="color:#60a5fa;margin-right:6px;"></i>
+        Notes are automatically removed after <strong style="color:#fff;">7 days</strong> to manage storage space.
+      </div>
+    </div>
+    <div class="aa-card">
+      <div class="aa-card-header"><h3 class="aa-card-title">My Notes</h3></div>
+      <div class="aa-card-body" id="myNotesList"><div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div></div>
+    </div>
+  </div>
+
+  <!-- TAB: CBT QUIZZES -->
+  <div class="aa-tab-content" data-group="tch-tabs" data-id="tab-cbt" style="padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;"><i class="fa fa-tasks" style="color:#a78bfa;margin-right:10px;"></i>CBT Quizzes</h2>
+      <button class="aa-btn aa-btn-primary" onclick="openQuizModal()"><i class="fa fa-plus"></i> New Quiz</button>
+    </div>
+    <div class="aa-card">
+      <div class="aa-card-header"><h3 class="aa-card-title">My Quizzes</h3></div>
+      <div class="aa-card-body" id="myQuizzesList"><div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div></div>
+    </div>
+  </div>
+
+  <!-- MODAL: New/Edit Assignment -->
+  <div class="aa-modal-backdrop" id="assignmentModal" style="display:none;">
+    <div class="aa-modal" style="max-width:560px;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title"><i class="fa fa-clipboard-list"></i> Assignment</h5><button class="aa-modal-close" onclick="closeModal('assignmentModal')">&#215;</button></div>
+      <div class="aa-modal-body">
+        <div class="aa-form-group"><label class="aa-label">Title *</label><input type="text" class="aa-input" id="asgTitle" placeholder="Assignment title"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="aa-form-group"><label class="aa-label">Subject</label><select class="aa-input" id="asgSubject"><option value="">All Subjects</option></select></div>
+          <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="asgClass"><option value="">All Classes</option></select></div>
+        </div>
+        <div class="aa-form-group"><label class="aa-label">Due Date</label><input type="date" class="aa-input" id="asgDueDate"></div>
+        <div class="aa-form-group"><label class="aa-label">Description / Instructions *</label><textarea class="aa-input" id="asgDescription" rows="5" placeholder="Write the assignment details and instructions here..."></textarea></div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('assignmentModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" id="btnSaveAssignment" onclick="saveAssignment()"><i class="fa fa-save"></i> Save Assignment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Upload Note -->
+  <div class="aa-modal-backdrop" id="noteModal" style="display:none;">
+    <div class="aa-modal" style="max-width:520px;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title"><i class="fa fa-file-alt"></i> Upload Lesson Note</h5><button class="aa-modal-close" onclick="closeModal('noteModal')">&#215;</button></div>
+      <div class="aa-modal-body">
+        <div class="aa-form-group"><label class="aa-label">Note Title *</label><input type="text" class="aa-input" id="noteTitle" placeholder="e.g. Introduction to Algebra"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="aa-form-group"><label class="aa-label">Subject</label><select class="aa-input" id="noteSubject"><option value="">All Subjects</option></select></div>
+          <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="noteClass"><option value="">All Classes</option></select></div>
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Attach File (PDF, DOC, DOCX) *</label>
+          <input type="file" class="aa-input" id="noteFile" accept=".pdf,.doc,.docx,.txt,.ppt,.pptx" onchange="handleNoteFile(this)">
+          <div id="noteFileInfo" style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:6px;"></div>
+        </div>
+        <div style="background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fb923c;">
+          <i class="fa fa-clock"></i> This note will be automatically deleted after 7 days.
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('noteModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" id="btnSaveNote" onclick="saveNote()"><i class="fa fa-upload"></i> Upload Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Create Quiz -->
+  <div class="aa-modal-backdrop" id="quizModal" style="display:none;">
+    <div class="aa-modal" style="max-width:520px;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title"><i class="fa fa-tasks"></i> Create Quiz</h5><button class="aa-modal-close" onclick="closeModal('quizModal')">&#215;</button></div>
+      <div class="aa-modal-body">
+        <div class="aa-form-group"><label class="aa-label">Quiz Title *</label><input type="text" class="aa-input" id="quizTitle" placeholder="e.g. Mid-Term Biology Quiz"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="aa-form-group"><label class="aa-label">Subject</label><select class="aa-input" id="quizSubject"><option value="">All Subjects</option></select></div>
+          <div class="aa-form-group"><label class="aa-label">Class</label><select class="aa-input" id="quizClass"><option value="">All Classes</option></select></div>
+        </div>
+        <div class="aa-form-group"><label class="aa-label">Duration (minutes)</label><input type="number" class="aa-input" id="quizDuration" value="30" min="5" max="180"></div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('quizModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" id="btnSaveQuiz" onclick="saveQuiz()"><i class="fa fa-save"></i> Create Quiz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quiz Questions Editor -->
+  <div class="aa-modal-backdrop" id="questionsModal" style="display:none;">
+    <div class="aa-modal" style="max-width:720px;max-height:90vh;overflow-y:auto;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title" id="questionModalTitle"><i class="fa fa-question-circle"></i> Quiz Questions</h5><button class="aa-modal-close" onclick="closeModal('questionsModal')">&#215;</button></div>
+      <div class="aa-modal-body">
+        <!-- Bulk Upload -->
+        <div class="aa-card" style="margin-bottom:16px;background:rgba(167,139,250,0.06);border-color:rgba(167,139,250,0.2);">
+          <div class="aa-card-header" style="cursor:pointer;" onclick="toggleBulkUpload()"><h4 style="font-size:14px;font-weight:600;"><i class="fa fa-upload" style="color:#a78bfa;margin-right:8px;"></i>Bulk Upload Questions <small style="font-weight:400;color:rgba(255,255,255,0.5);">(click to expand)</small></h4></div>
+          <div id="bulkUploadArea" style="display:none;padding:16px;">
+            <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;">Paste questions in this format:</p>
+            <pre style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-size:11px;color:#a78bfa;margin-bottom:10px;">Q: What is the capital of Nigeria?
+A: Lagos
+B: Kano
+C: Abuja
+D: Port Harcourt
+ANS: C
+
+Q: 2 + 2 = ?
+A: 3
+B: 4
+C: 5
+D: 6
+ANS: B</pre>
+            <textarea class="aa-input" id="bulkQText" rows="8" placeholder="Paste your questions here..."></textarea>
+            <button class="aa-btn aa-btn-primary" style="margin-top:10px;" onclick="parseBulkQuestions()"><i class="fa fa-magic"></i> Parse & Add Questions</button>
+          </div>
+        </div>
+        <!-- Questions List -->
+        <div id="questionEditorList"></div>
+        <button class="aa-btn aa-btn-outline" onclick="addBlankQuestion()" style="width:100%;margin-top:8px;"><i class="fa fa-plus"></i> Add Question Manually</button>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('questionsModal')">Close</button>
+        <button class="aa-btn aa-btn-primary" id="btnSaveQuestions" onclick="saveQuestions()"><i class="fa fa-save"></i> Save All Questions</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quiz Results -->
+  <div class="aa-modal-backdrop" id="quizResultsModal" style="display:none;">
+    <div class="aa-modal" style="max-width:600px;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title" id="resultsModalTitle"><i class="fa fa-chart-bar"></i> Quiz Results</h5><button class="aa-modal-close" onclick="closeModal('quizResultsModal')">&#215;</button></div>
+      <div class="aa-modal-body" id="quizResultsBody"><div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>
   </div>
 
   <!-- Subject Attendance Modal -->
@@ -1171,20 +1337,361 @@
         loadEnrollmentData(sid, false);
       }, false);
     }
-    function unenrollSubject(sid, subid) {
-      var idx = currentEnrollment.enrolled.findIndex(function(s) { return String(s.id || s.iD) === String(subid); });
-      if (idx !== -1) {
-        var subject = currentEnrollment.enrolled.splice(idx, 1)[0];
-        currentEnrollment.available.push(subject);
-        renderEnrollmentLists(sid);
-      }
-      callServer('teacherUnenrollStudent', [AA.token, sid, subid], function(res) {
-        showToast(res.message, res.success ? 'success' : 'error');
-        if(!res.success) loadEnrollmentData(sid, false);
+
+    // ==========================================
+    // TEACHER CONTENT - ASSIGNMENTS
+    // ==========================================
+    var currentAssignmentId = null;
+    function loadMyAssignments() {
+      var container = document.getElementById('myAssignmentsList');
+      container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div>';
+      callServer('teacherGetMyAssignments', [AA.token], function(res) {
+        if (!res.success) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load assignments.</p></div>'; return; }
+        if (!res.data || res.data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-clipboard-list"></i><p>No assignments found.</p></div>'; return; }
+        var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Due Date</th><th>Actions</th></tr></thead><tbody>';
+        res.data.forEach(function(a) {
+          html += '<tr>';
+          html += '<td><strong>' + escapeHTML(a.title) + '</strong></td>';
+          html += '<td>' + escapeHTML(a.subjectName || 'All Subjects') + '</td>';
+          html += '<td>' + escapeHTML(a.className || 'All Classes') + '</td>';
+          html += '<td>' + (a.dueDate ? new Date(a.dueDate).toLocaleDateString('en-GB') : 'No Due Date') + '</td>';
+          html += '<td>';
+          html += '<button class="aa-btn aa-btn-outline aa-btn-xs" style="margin-right:8px;" onclick=\'editAssignment(' + JSON.stringify(a) + ')\'><i class="fa fa-edit"></i> Edit</button>';
+          html += '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="deleteAssignment(\'' + a.id + '\')"><i class="fa fa-trash"></i> Delete</button>';
+          html += '</td></tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
       }, function() {
-        loadEnrollmentData(sid, false);
-      }, false);
+        container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-wifi"></i><p>Connection error.</p></div>';
+      });
     }
+    function populateContentDropdowns(prefix) {
+      var selSub = document.getElementById(prefix + 'Subject');
+      var selCls = document.getElementById(prefix + 'Class');
+      selSub.innerHTML = '<option value="">All Subjects</option>';
+      selCls.innerHTML = '<option value="">All Classes</option>';
+      if (AA.mySubjects) {
+        var addedSub = {}; var addedCls = {};
+        AA.mySubjects.forEach(function(s) {
+          if (!addedSub[s.subjectName]) { addedSub[s.subjectName] = true; selSub.innerHTML += '<option value="' + escapeHTML(s.subjectName) + '">' + escapeHTML(s.subjectName) + '</option>'; }
+          if (!addedCls[s.className]) { addedCls[s.className] = true; selCls.innerHTML += '<option value="' + escapeHTML(s.className) + '">' + escapeHTML(s.className) + '</option>'; }
+        });
+      }
+    }
+    function openAssignmentModal() {
+      currentAssignmentId = null;
+      document.getElementById('asgTitle').value = '';
+      populateContentDropdowns('asg');
+      document.getElementById('asgDueDate').value = '';
+      document.getElementById('asgDescription').value = '';
+      openModal('assignmentModal');
+    }
+    function editAssignment(a) {
+      currentAssignmentId = a.id;
+      document.getElementById('asgTitle').value = a.title || '';
+      populateContentDropdowns('asg');
+      document.getElementById('asgSubject').value = a.subjectName || '';
+      document.getElementById('asgClass').value = a.className || '';
+      document.getElementById('asgDueDate').value = a.dueDate || '';
+      document.getElementById('asgDescription').value = a.description || '';
+      openModal('assignmentModal');
+    }
+    function saveAssignment() {
+      var title = document.getElementById('asgTitle').value.trim();
+      var desc = document.getElementById('asgDescription').value.trim();
+      if (!title || !desc) { showToast('Title and Description are required.', 'error'); return; }
+      var btn = document.getElementById('btnSaveAssignment');
+      btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+      var data = {
+        id: currentAssignmentId,
+        title: title,
+        subjectName: document.getElementById('asgSubject').value,
+        className: document.getElementById('asgClass').value,
+        dueDate: document.getElementById('asgDueDate').value,
+        description: desc
+      };
+      callServer('teacherSaveAssignment', [AA.token, data], function(res) {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i> Save Assignment';
+        if (res.success) { showToast(res.message, 'success'); closeModal('assignmentModal'); loadMyAssignments(); }
+        else showToast(res.message, 'error');
+      }, function() {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i> Save Assignment';
+        showToast('Connection error.', 'error');
+      });
+    }
+    function deleteAssignment(id) {
+      if (!confirm('Delete this assignment?')) return;
+      callServer('teacherDeleteAssignment', [AA.token, id], function(res) {
+        if (res.success) { showToast(res.message, 'success'); loadMyAssignments(); }
+        else showToast(res.message, 'error');
+      });
+    }
+
+    // ==========================================
+    // TEACHER CONTENT - LESSON NOTES
+    // ==========================================
+    var noteFileData = '', noteFileMime = '', noteFileName = '';
+    function loadMyNotes() {
+      var container = document.getElementById('myNotesList');
+      container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div>';
+      callServer('teacherGetMyNotes', [AA.token], function(res) {
+        if (!res.success) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load notes.</p></div>'; return; }
+        if (!res.data || res.data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-file-alt"></i><p>No notes found.</p></div>'; return; }
+        var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Uploaded</th><th>Expires</th><th>Actions</th></tr></thead><tbody>';
+        res.data.forEach(function(n) {
+          var created = n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : '-';
+          var expires = n.expiresAt ? new Date(n.expiresAt).toLocaleDateString('en-GB') : '-';
+          html += '<tr>';
+          html += '<td><strong>' + escapeHTML(n.title) + '</strong></td>';
+          html += '<td>' + escapeHTML(n.subjectName || 'All Subjects') + '</td>';
+          html += '<td>' + escapeHTML(n.className || 'All Classes') + '</td>';
+          html += '<td>' + created + '</td>';
+          html += '<td>' + expires + (n.expired ? ' <span style="color:#ef4444;font-size:10px;">(Expired)</span>' : '') + '</td>';
+          html += '<td>';
+          html += '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="deleteNote(\'' + n.id + '\')"><i class="fa fa-trash"></i> Delete</button>';
+          html += '</td></tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      });
+    }
+    function openNoteModal() {
+      document.getElementById('noteTitle').value = '';
+      populateContentDropdowns('note');
+      document.getElementById('noteFile').value = '';
+      document.getElementById('noteFileInfo').textContent = '';
+      noteFileData = ''; noteFileMime = ''; noteFileName = '';
+      openModal('noteModal');
+    }
+    function handleNoteFile(input) {
+      if (!input.files || !input.files[0]) return;
+      var file = input.files[0];
+      if (file.size > 10 * 1024 * 1024) { alert('File too large. Maximum size is 10MB.'); input.value = ''; return; }
+      noteFileName = file.name;
+      noteFileMime = file.type || 'application/octet-stream';
+      document.getElementById('noteFileInfo').innerHTML = '<i class="fa fa-check text-success"></i> ' + escapeHTML(file.name) + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var res = e.target.result;
+        noteFileData = res.split(',')[1];
+      };
+      reader.readAsDataURL(file);
+    }
+    function saveNote() {
+      var title = document.getElementById('noteTitle').value.trim();
+      if (!title) { showToast('Note Title is required.', 'error'); return; }
+      if (!noteFileData) { showToast('Please select a file to upload.', 'error'); return; }
+      var btn = document.getElementById('btnSaveNote');
+      btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Uploading...';
+      var data = {
+        title: title,
+        subjectName: document.getElementById('noteSubject').value,
+        className: document.getElementById('noteClass').value,
+        fileName: noteFileName,
+        mimeType: noteFileMime,
+        fileData: noteFileData
+      };
+      callServer('teacherSaveNote', [AA.token, data], function(res) {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-upload"></i> Upload Note';
+        if (res.success) { showToast(res.message, 'success'); closeModal('noteModal'); loadMyNotes(); }
+        else showToast(res.message, 'error');
+      }, function() {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-upload"></i> Upload Note';
+        showToast('Connection error.', 'error');
+      });
+    }
+    function deleteNote(id) {
+      if (!confirm('Delete this lesson note?')) return;
+      callServer('teacherDeleteNote', [AA.token, id], function(res) {
+        if (res.success) { showToast(res.message, 'success'); loadMyNotes(); }
+        else showToast(res.message, 'error');
+      });
+    }
+
+    // ==========================================
+    // TEACHER CONTENT - CBT QUIZZES
+    // ==========================================
+    var currentQuizId = null;
+    function loadMyQuizzes() {
+      var container = document.getElementById('myQuizzesList');
+      container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div>';
+      callServer('teacherGetMyQuizzes', [AA.token], function(res) {
+        if (!res.success) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-exclamation-triangle"></i><p>Failed to load quizzes.</p></div>'; return; }
+        if (!res.data || res.data.length === 0) { container.innerHTML = '<div class="aa-empty-state"><i class="fa fa-tasks"></i><p>No CBT quizzes found.</p></div>'; return; }
+        var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Questions</th><th>Attempts</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+        res.data.forEach(function(q) {
+          html += '<tr>';
+          html += '<td><strong>' + escapeHTML(q.title) + '</strong><br><small style="color:var(--aa-text-muted);">' + (q.durationMinutes||30) + ' mins</small></td>';
+          html += '<td>' + escapeHTML(q.subjectName || 'All') + '</td>';
+          html += '<td>' + escapeHTML(q.className || 'All') + '</td>';
+          html += '<td>' + (q.questionCount || 0) + '</td>';
+          html += '<td>' + (q.attemptCount || 0) + '</td>';
+          html += '<td>' + (q.isPublished ? '<span class="badge badge-success">Published</span>' : '<span class="badge badge-warning">Draft</span>') + '</td>';
+          html += '<td style="white-space:nowrap;">';
+          if (!q.isPublished) html += '<button class="aa-btn aa-btn-outline aa-btn-xs" style="margin-right:6px;" onclick="publishQuiz(\'' + q.id + '\', true)"><i class="fa fa-eye"></i> Publish</button>';
+          else html += '<button class="aa-btn aa-btn-outline aa-btn-xs" style="margin-right:6px;" onclick="publishQuiz(\'' + q.id + '\', false)"><i class="fa fa-eye-slash"></i> Unpublish</button>';
+          html += '<button class="aa-btn aa-btn-outline aa-btn-xs" style="margin-right:6px;" onclick=\'editQuiz(' + JSON.stringify(q) + ')\'><i class="fa fa-edit"></i> Edit</button>';
+          html += '<button class="aa-btn aa-btn-outline aa-btn-xs" style="margin-right:6px;" onclick="manageQuizQuestions(\'' + q.id + '\')"><i class="fa fa-list"></i> Questions</button>';
+          if (q.attemptCount > 0) html += '<button class="aa-btn aa-btn-primary aa-btn-xs" style="margin-right:6px;" onclick="viewQuizResults(\'' + q.id + '\')"><i class="fa fa-chart-bar"></i> Results</button>';
+          html += '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="deleteQuiz(\'' + q.id + '\')"><i class="fa fa-trash"></i></button>';
+          html += '</td></tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      });
+    }
+    function openQuizModal() {
+      currentQuizId = null;
+      document.getElementById('quizTitle').value = '';
+      populateContentDropdowns('quiz');
+      document.getElementById('quizDuration').value = '30';
+      openModal('quizModal');
+    }
+    function editQuiz(q) {
+      currentQuizId = q.id;
+      document.getElementById('quizTitle').value = q.title || '';
+      populateContentDropdowns('quiz');
+      document.getElementById('quizSubject').value = q.subjectName || '';
+      document.getElementById('quizClass').value = q.className || '';
+      document.getElementById('quizDuration').value = q.durationMinutes || 30;
+      openModal('quizModal');
+    }
+    function saveQuiz() {
+      var title = document.getElementById('quizTitle').value.trim();
+      if (!title) { showToast('Quiz Title is required.', 'error'); return; }
+      var btn = document.getElementById('btnSaveQuiz');
+      btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+      var data = {
+        id: currentQuizId,
+        title: title,
+        subjectName: document.getElementById('quizSubject').value,
+        className: document.getElementById('quizClass').value,
+        durationMinutes: parseInt(document.getElementById('quizDuration').value) || 30
+      };
+      callServer('teacherSaveQuiz', [AA.token, data], function(res) {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i> Save Quiz';
+        if (res.success) { showToast(res.message, 'success'); closeModal('quizModal'); loadMyQuizzes(); }
+        else showToast(res.message, 'error');
+      });
+    }
+    function deleteQuiz(id) {
+      if (!confirm('WARNING: Deleting this quiz will also delete all questions and student results. Continue?')) return;
+      callServer('teacherDeleteQuiz', [AA.token, id], function(res) {
+        if (res.success) { showToast(res.message, 'success'); loadMyQuizzes(); }
+        else showToast(res.message, 'error');
+      });
+    }
+    function publishQuiz(id, pub) {
+      if (pub && !confirm('Publishing will make this quiz available to students immediately. Proceed?')) return;
+      callServer('teacherPublishQuiz', [AA.token, id, pub], function(res) {
+        if (res.success) { showToast(res.message, 'success'); loadMyQuizzes(); }
+        else showToast(res.message, 'error');
+      });
+    }
+
+    // -- Quiz Questions Editor --
+    var currentQuizQuestions = [];
+    var editQuizId = null;
+    function manageQuizQuestions(quizId) {
+      editQuizId = quizId;
+      document.getElementById('questionEditorList').innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
+      openModal('questionsModal');
+      callServer('teacherGetQuizQuestions', [AA.token, quizId], function(res) {
+        if (res.success) {
+          currentQuizQuestions = res.data || [];
+          if (currentQuizQuestions.length === 0) currentQuizQuestions.push(createEmptyQuestion());
+          renderQuestionEditor();
+        } else {
+          document.getElementById('questionEditorList').innerHTML = '<div class="aa-empty-state">Error loading questions.</div>';
+        }
+      });
+    }
+    function createEmptyQuestion() { return { question: '', optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' }; }
+    function renderQuestionEditor() {
+      var html = '';
+      currentQuizQuestions.forEach(function(q, i) {
+        html += '<div class="aa-card" style="margin-bottom:12px;padding:16px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+        html += '<h4 style="font-size:14px;font-weight:700;">Question ' + (i+1) + '</h4>';
+        html += '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="removeQuestion(' + i + ')"><i class="fa fa-times"></i> Remove</button>';
+        html += '</div>';
+        html += '<div class="aa-form-group"><textarea class="aa-input" rows="2" placeholder="Enter question..." oninput="updateQ(' + i + ',\'question\',this.value)">' + escapeHTML(q.question) + '</textarea></div>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option A" value="' + escapeHTML(q.optionA) + '" oninput="updateQ(' + i + ',\'optionA\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option B" value="' + escapeHTML(q.optionB) + '" oninput="updateQ(' + i + ',\'optionB\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option C" value="' + escapeHTML(q.optionC) + '" oninput="updateQ(' + i + ',\'optionC\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option D" value="' + escapeHTML(q.optionD) + '" oninput="updateQ(' + i + ',\'optionD\',this.value)"></div>';
+        html += '</div>';
+        html += '<div class="aa-form-group" style="margin:0;width:150px;"><label class="aa-label" style="display:inline;margin-right:8px;">Correct Answer:</label>';
+        html += '<select class="aa-input" style="display:inline-block;width:auto;padding:4px 8px;" onchange="updateQ(' + i + ',\'correctAnswer\',this.value)">';
+        ['A','B','C','D'].forEach(function(opt) { html += '<option value="' + opt + '" ' + (q.correctAnswer===opt?'selected':'') + '>' + opt + '</option>'; });
+        html += '</select></div>';
+        html += '</div>';
+      });
+      document.getElementById('questionEditorList').innerHTML = html;
+    }
+    window.updateQ = function(i, k, v) { currentQuizQuestions[i][k] = v; }; // Expose to global for oninput
+    function addBlankQuestion() { currentQuizQuestions.push(createEmptyQuestion()); renderQuestionEditor(); }
+    function removeQuestion(i) { currentQuizQuestions.splice(i, 1); renderQuestionEditor(); }
+    function saveQuestions() {
+      var valid = currentQuizQuestions.filter(function(q) { return q.question && q.question.trim().length > 0; });
+      var btn = document.getElementById('btnSaveQuestions');
+      btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+      callServer('teacherSaveQuestions', [AA.token, editQuizId, valid], function(res) {
+        btn.disabled = false; btn.innerHTML = '<i class="fa fa-save"></i> Save All Questions';
+        if (res.success) { showToast(res.message, 'success'); closeModal('questionsModal'); loadMyQuizzes(); }
+        else showToast(res.message, 'error');
+      });
+    }
+
+    // -- Bulk Upload --
+    function toggleBulkUpload() {
+      var el = document.getElementById('bulkUploadArea');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+    function parseBulkQuestions() {
+      var text = document.getElementById('bulkQText').value;
+      if (!text.trim()) return;
+      var blocks = text.split(/\n\s*\n/);
+      var added = 0;
+      blocks.forEach(function(b) {
+        var lines = b.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+        var qObj = createEmptyQuestion();
+        lines.forEach(function(l) {
+          if (l.match(/^Q:/i)) qObj.question = l.replace(/^Q:\s*/i, '');
+          else if (l.match(/^A:/i)) qObj.optionA = l.replace(/^A:\s*/i, '');
+          else if (l.match(/^B:/i)) qObj.optionB = l.replace(/^B:\s*/i, '');
+          else if (l.match(/^C:/i)) qObj.optionC = l.replace(/^C:\s*/i, '');
+          else if (l.match(/^D:/i)) qObj.optionD = l.replace(/^D:\s*/i, '');
+          else if (l.match(/^ANS:/i)) qObj.correctAnswer = l.replace(/^ANS:\s*/i, '').trim().toUpperCase();
+        });
+        if (qObj.question) { currentQuizQuestions.push(qObj); added++; }
+      });
+      document.getElementById('bulkQText').value = '';
+      toggleBulkUpload();
+      renderQuestionEditor();
+      showToast(added + ' questions parsed from text.', 'success');
+    }
+
+    function viewQuizResults(quizId) {
+      document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
+      openModal('quizResultsModal');
+      callServer('teacherGetQuizResults', [AA.token, quizId], function(res) {
+        if (!res.success) { document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">Failed to load results.</div>'; return; }
+        if (!res.data || res.data.length === 0) { document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">No students have taken this quiz yet.</div>'; return; }
+        var html = '<table class="aa-table"><thead><tr><th>Student</th><th>Class</th><th>Score</th><th>Submitted</th></tr></thead><tbody>';
+        res.data.forEach(function(r) {
+          html += '<tr><td><strong>' + escapeHTML(r.studentName) + '</strong></td>';
+          html += '<td>' + escapeHTML(r.className) + '</td>';
+          html += '<td><span style="font-weight:700;color:' + (r.percentage>=50?'#4ade80':'#ef4444') + ';">' + r.score + '/' + r.total + ' (' + r.percentage + '%)</span></td>';
+          html += '<td>' + new Date(r.submittedAt).toLocaleString('en-GB') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('quizResultsBody').innerHTML = html;
+      });
+    }
+
   </script>
 </body>
 </html>

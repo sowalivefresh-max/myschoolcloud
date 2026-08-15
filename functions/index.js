@@ -44,6 +44,7 @@ const authActions = require("./actions/auth")(db);
 const adminActions = require("./actions/admin")(db, notificationsActions);
 const teacherActions = require("./actions/teacher")(db, notificationsActions);
 const parentActions = require("./actions/parent")(db);
+const studentActions = require("./actions/student")(db);
 
 async function requireRole(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -69,6 +70,7 @@ async function requireRole(req, res, next) {
       const adminRoles = ["admin", "admin_assistant", "developer", "principal", "vp", "accounts", "headteacher"];
       const teacherRoles = ["teacher", "primary_teacher", "headteacher", "admin", "developer", "principal", "vp"];
       const parentRoles = ["parent", "admin", "developer"];
+      const studentRoles = ["student"];
 
       if (action.startsWith("admin")) {
         isAllowed = adminRoles.includes(role);
@@ -76,6 +78,8 @@ async function requireRole(req, res, next) {
         isAllowed = teacherRoles.includes(role);
       } else if (action.startsWith("parent")) {
         isAllowed = parentRoles.includes(role);
+      } else if (action.startsWith("student") && action !== "studentLogin") {
+        isAllowed = studentRoles.includes(role) || adminRoles.includes(role);
       } else {
         // Explicitly allow general authenticated actions
         const generalAuthActions = ["userUpdateProfile", "userChangePassword", "markNotificationRead", "getGradingSystems"];
@@ -254,6 +258,26 @@ app.post("/api", async (req, res) => {
         if (action === "adminRevokeParentInvite") { req.body.token = args[1]; }
         if (action === "validateParentInvite") { req.body.token = args[0]; }
         if (action === "parentSelfRegister") { req.body.token = args[0]; req.body.fullName = args[1]; req.body.email = args[2]; req.body.password = args[3]; req.body.phone = args[4]; }
+
+        // Student Portal Mappings
+        if (action === "studentLogin") { req.body.admissionNumber = args[0]; req.body.password = args[1]; }
+        if (action === "studentChangePassword") { req.body.currentPassword = args[1]; req.body.newPassword = args[2]; }
+        if (action === "studentResetPassword") { req.body.studentId = args[1]; }
+        if (action === "studentGetNoteFile") { req.body.noteId = args[1]; }
+        if (action === "studentStartQuiz") { req.body.quizId = args[1]; }
+        if (action === "studentSubmitQuiz") { req.body.attemptId = args[1]; req.body.answers = args[2]; }
+
+        // Teacher Content Mappings
+        if (action === "teacherSaveAssignment") { req.body.data = args[1]; }
+        if (action === "teacherDeleteAssignment") { req.body.assignmentId = args[1]; }
+        if (action === "teacherSaveNote") { req.body.data = args[1]; }
+        if (action === "teacherDeleteNote") { req.body.noteId = args[1]; }
+        if (action === "teacherSaveQuiz") { req.body.data = args[1]; }
+        if (action === "teacherSaveQuestions") { req.body.quizId = args[1]; req.body.questions = args[2]; }
+        if (action === "teacherGetQuizQuestions") { req.body.quizId = args[1]; }
+        if (action === "teacherDeleteQuiz") { req.body.quizId = args[1]; }
+        if (action === "teacherGetQuizResults") { req.body.quizId = args[1]; }
+        if (action === "teacherPublishQuiz") { req.body.quizId = args[1]; req.body.publish = args[2]; }
       }
     }
   }
@@ -502,6 +526,58 @@ app.post("/api", async (req, res) => {
         return authActions.validateParentInvite(req, res);
       case "parentSelfRegister":
         return authActions.parentSelfRegister(req, res);
+      
+      // Public — student login (no prior session)
+      case "studentLogin":
+        return studentActions.studentLogin(req, res);
+
+      // --- STUDENT PORTAL ACTIONS ---
+      case "studentGetMyInfo":
+        return requireRole(req, res, () => studentActions.studentGetMyInfo(req, res));
+      case "studentChangePassword":
+        return requireRole(req, res, () => studentActions.studentChangePassword(req, res));
+      case "studentResetPassword":
+        return requireRole(req, res, () => studentActions.studentResetPassword(req, res));
+      case "studentGetAssignments":
+        return requireRole(req, res, () => studentActions.studentGetAssignments(req, res));
+      case "studentGetNotes":
+        return requireRole(req, res, () => studentActions.studentGetNotes(req, res));
+      case "studentGetNoteFile":
+        return requireRole(req, res, () => studentActions.studentGetNoteFile(req, res));
+      case "studentGetQuizzes":
+        return requireRole(req, res, () => studentActions.studentGetQuizzes(req, res));
+      case "studentStartQuiz":
+        return requireRole(req, res, () => studentActions.studentStartQuiz(req, res));
+      case "studentSubmitQuiz":
+        return requireRole(req, res, () => studentActions.studentSubmitQuiz(req, res));
+
+      // --- TEACHER CONTENT ACTIONS ---
+      case "teacherSaveAssignment":
+        return requireRole(req, res, () => teacherActions.teacherSaveAssignment(req, res));
+      case "teacherGetMyAssignments":
+        return requireRole(req, res, () => teacherActions.teacherGetMyAssignments(req, res));
+      case "teacherDeleteAssignment":
+        return requireRole(req, res, () => teacherActions.teacherDeleteAssignment(req, res));
+      case "teacherSaveNote":
+        return requireRole(req, res, () => teacherActions.teacherSaveNote(req, res));
+      case "teacherGetMyNotes":
+        return requireRole(req, res, () => teacherActions.teacherGetMyNotes(req, res));
+      case "teacherDeleteNote":
+        return requireRole(req, res, () => teacherActions.teacherDeleteNote(req, res));
+      case "teacherSaveQuiz":
+        return requireRole(req, res, () => teacherActions.teacherSaveQuiz(req, res));
+      case "teacherGetMyQuizzes":
+        return requireRole(req, res, () => teacherActions.teacherGetMyQuizzes(req, res));
+      case "teacherSaveQuestions":
+        return requireRole(req, res, () => teacherActions.teacherSaveQuestions(req, res));
+      case "teacherGetQuizQuestions":
+        return requireRole(req, res, () => teacherActions.teacherGetQuizQuestions(req, res));
+      case "teacherDeleteQuiz":
+        return requireRole(req, res, () => teacherActions.teacherDeleteQuiz(req, res));
+      case "teacherGetQuizResults":
+        return requireRole(req, res, () => teacherActions.teacherGetQuizResults(req, res));
+      case "teacherPublishQuiz":
+        return requireRole(req, res, () => teacherActions.teacherPublishQuiz(req, res));
 
       // Add more routes here as we build chunks...
 

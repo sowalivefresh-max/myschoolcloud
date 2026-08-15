@@ -968,9 +968,30 @@ module.exports = function(db, notificationsActions) {
         data.admissionNumber = `${prefix}/${year}/${serialStr}`;
 
         data.status = "active";
+        
+        // Auto-provision student portal account
+        // Default password = DOB in DDMMYYYY (e.g. 15082010) if available, else "Welcome@1"
+        let defaultPassword = "Welcome@1";
+        if (data.dateOfBirth) {
+          const dob = data.dateOfBirth.replace(/[-/]/g, ""); // normalize separators
+          // Try to make DDMMYYYY from YYYY-MM-DD or DD/MM/YYYY
+          if (dob.length === 8) {
+            // If YYYYMMDD, convert to DDMMYYYY
+            if (parseInt(dob.substring(0, 4)) > 1900) {
+              defaultPassword = dob.substring(6, 8) + dob.substring(4, 6) + dob.substring(0, 4);
+            } else {
+              defaultPassword = dob; // already DDMMYYYY
+            }
+          }
+        }
+        const portalPasswordHash = await bcrypt.hash(defaultPassword, 10);
+        data.portalPasswordHash = portalPasswordHash;
+        data.mustChangePassword = true;
+        data.portalEnabled = true;
+        
         const docRef = db.collection("students").doc();
         await docRef.set({ ...data, createdAt: new Date().toISOString() });
-        return res.json({ success: true, message: "Student created successfully." });
+        return res.json({ success: true, message: "Student created successfully. Portal account provisioned.", admissionNumber: data.admissionNumber });
       } catch (err) {
         return res.json({ success: false, message: "Error creating student: " + err.message });
       }

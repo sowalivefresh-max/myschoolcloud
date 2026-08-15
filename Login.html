@@ -75,6 +75,15 @@ body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:ce
 /* Footer */
 .login-footer{text-align:center;margin-top:24px;font-size:11px;color:rgba(255,255,255,.25);}
 
+/* Login type tabs */
+.login-tabs{display:flex;background:rgba(255,255,255,0.06);border-radius:12px;padding:4px;margin-bottom:28px;}
+.login-tab{flex:1;text-align:center;padding:9px 10px;font-size:13px;font-weight:600;color:rgba(255,255,255,.5);
+  border-radius:9px;cursor:pointer;transition:all .25s;}
+.login-tab.active{background:linear-gradient(135deg,#f0a500,#c88600);color:#0d1b2a;box-shadow:0 4px 12px rgba(240,165,0,.3);}
+.cpw-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:999;align-items:center;justify-content:center;padding:16px;}
+.cpw-card{background:#1a2e4a;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:36px;width:100%;max-width:440px;}
+.cpw-title{color:#f0a500;font-size:20px;font-weight:700;margin-bottom:8px;}
+.cpw-desc{color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:24px;line-height:1.6;}
 /* Mobile */
 @media(max-width:480px){.login-card{padding:28px 20px;}}
 </style>
@@ -101,12 +110,28 @@ body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:ce
     </div>
 
     <form id="loginForm" onsubmit="return false;">
-      <div class="form-group">
-        <label class="form-label" for="loginEmail">Email Address</label>
-        <div class="input-wrap">
-          <i class="fa fa-envelope prefix"></i>
-          <input class="form-input" type="email" id="loginEmail" name="email"
-            placeholder="Enter your email address" autocomplete="email" required>
+      <div class="login-tabs">
+        <div class="login-tab active" id="tabStaff" onclick="switchLoginType('staff')"><i class="fa fa-user-tie"></i>&nbsp; Staff / Parent</div>
+        <div class="login-tab" id="tabStudent" onclick="switchLoginType('student')"><i class="fa fa-user-graduate"></i>&nbsp; Student</div>
+      </div>
+      <div id="staffFields">
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email Address</label>
+          <div class="input-wrap">
+            <i class="fa fa-envelope prefix"></i>
+            <input class="form-input" type="email" id="loginEmail" name="email"
+              placeholder="Enter your email address" autocomplete="email">
+          </div>
+        </div>
+      </div>
+      <div id="studentFields" style="display:none;">
+        <div class="form-group">
+          <label class="form-label" for="loginAdmNo">Admission Number</label>
+          <div class="input-wrap">
+            <i class="fa fa-id-card prefix"></i>
+            <input class="form-input" type="text" id="loginAdmNo" name="admNo"
+              placeholder="e.g. SCH/26/0001" autocomplete="username">
+          </div>
         </div>
       </div>
 
@@ -115,13 +140,16 @@ body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:ce
         <div class="input-wrap">
           <i class="fa fa-lock prefix"></i>
           <input class="form-input" type="password" id="loginPassword" name="password"
-            placeholder="Enter your password" autocomplete="current-password" required>
+            placeholder="Enter your password" autocomplete="current-password">
           <button type="button" class="eye-toggle" id="eyeToggle" onclick="togglePwd()">
             <i class="fa fa-eye" id="eyeIcon"></i>
           </button>
         </div>
-        <div style="text-align:right;margin-top:6px;">
+        <div id="staffForgotWrap" style="text-align:right;margin-top:6px;">
           <button type="button" onclick="openResetModal()" style="background:none;border:none;color:#f0a500;font-size:12px;cursor:pointer;font-weight:600;">Forgot Password?</button>
+        </div>
+        <div id="studentPwdHint" style="display:none;margin-top:6px;color:rgba(255,255,255,0.45);font-size:11px;">
+          <i class="fa fa-info-circle"></i> Default password: Date of Birth (DDMMYYYY). Contact admin if you need a reset.
         </div>
       </div>
 
@@ -138,6 +166,29 @@ body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:ce
     <div class="login-footer">
       &copy; <span id="copyYear"></span> <span id="footerSchoolName">School Portal</span> &bull; Secure Portal
     </div>
+  </div>
+</div>
+
+<!-- Forced Change Password Overlay (student first login) -->
+<div class="cpw-overlay" id="cpwOverlay">
+  <div class="cpw-card">
+    <div class="cpw-title"><i class="fa fa-shield-alt"></i>&nbsp; Set New Password</div>
+    <p class="cpw-desc">For your security, you must create a new password before accessing your portal. This is a one-time step.</p>
+    <input type="hidden" id="cpwToken">
+    <div class="form-group">
+      <label class="form-label">New Password <small style="color:rgba(255,255,255,0.4);font-weight:400;">(min. 6 characters)</small></label>
+      <div class="input-wrap"><i class="fa fa-lock prefix"></i>
+        <input class="form-input" type="password" id="cpwNew" placeholder="Enter new password" style="padding-left:38px;">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirm Password</label>
+      <div class="input-wrap"><i class="fa fa-lock prefix"></i>
+        <input class="form-input" type="password" id="cpwConfirm" placeholder="Confirm new password" style="padding-left:38px;">
+      </div>
+    </div>
+    <button class="login-btn" id="cpwBtn" onclick="doChangePassword()">Set Password &amp; Continue</button>
+    <div id="cpwMsg" style="margin-top:14px;font-size:13px;display:none;"></div>
   </div>
 </div>
 
@@ -192,8 +243,20 @@ var DASHBOARD_MAP = {
   principal: 'PrincipalDashboard.html', vp: 'VPDashboard.html',
   headteacher: 'HeadTeacherDashboard.html', teacher: 'TeacherDashboard.html',
   primary_teacher: 'PrimaryTeacherDashboard.html', accounts: 'AccountsDashboard.html',
-  parent: 'ParentDashboard.html'
+  parent: 'ParentDashboard.html', student: 'StudentDashboard.html'
 };
+
+var currentLoginType = 'staff';
+function switchLoginType(type) {
+  currentLoginType = type;
+  document.getElementById('staffFields').style.display = type === 'staff' ? '' : 'none';
+  document.getElementById('studentFields').style.display = type === 'student' ? '' : 'none';
+  document.getElementById('staffForgotWrap').style.display = type === 'staff' ? '' : 'none';
+  document.getElementById('studentPwdHint').style.display = type === 'student' ? '' : 'none';
+  document.getElementById('tabStaff').classList.toggle('active', type === 'staff');
+  document.getElementById('tabStudent').classList.toggle('active', type === 'student');
+  document.getElementById('loginError').style.display = 'none';
+}
 
 function togglePwd() {
   var inp = document.getElementById('loginPassword');
@@ -203,11 +266,35 @@ function togglePwd() {
 }
 
 function doLogin() {
-  var email = document.getElementById('loginEmail').value.trim();
   var pass  = document.getElementById('loginPassword').value;
   var errEl = document.getElementById('loginError');
   errEl.style.display = 'none';
 
+  if (currentLoginType === 'student') {
+    var admNo = document.getElementById('loginAdmNo').value.trim();
+    if (!admNo || !pass) { errEl.textContent = 'Please enter your admission number and password.'; errEl.style.display = 'block'; return; }
+    document.getElementById('loginBtn').disabled = true;
+    document.getElementById('btnSpinner').style.display = 'block';
+    document.getElementById('btnText').style.display = 'none';
+    runBackendAction('studentLogin', [admNo, pass])
+      .then(function(res) {
+        if (res.success) {
+          if (res.mustChangePassword) {
+            document.getElementById('cpwToken').value = res.token;
+            document.getElementById('cpwOverlay').style.display = 'flex';
+            resetLoginBtn();
+          } else {
+            window.location.href = 'StudentDashboard.html?token=' + encodeURIComponent(res.token);
+          }
+        } else {
+          errEl.textContent = res.message || 'Login failed.'; errEl.style.display = 'block';
+          document.getElementById('loginPassword').value = ''; resetLoginBtn();
+        }
+      }).catch(function() { errEl.textContent = 'Connection error.'; errEl.style.display = 'block'; resetLoginBtn(); });
+    return;
+  }
+
+  var email = document.getElementById('loginEmail').value.trim();
   if (!email || !pass) {
     errEl.textContent = 'Please enter both email and password.';
     errEl.style.display = 'block'; return;
@@ -290,6 +377,26 @@ function doRequestReset() {
       msg.style.color = '#fca5a5';
       msg.style.display = 'block';
     });
+}
+
+function doChangePassword() {
+  var token = document.getElementById('cpwToken').value;
+  var newPwd = document.getElementById('cpwNew').value;
+  var confirm = document.getElementById('cpwConfirm').value;
+  var msg = document.getElementById('cpwMsg');
+  msg.style.display = 'none';
+  if (!newPwd || newPwd.length < 6) { msg.textContent = 'Password must be at least 6 characters.'; msg.style.color = '#fca5a5'; msg.style.display = 'block'; return; }
+  if (newPwd !== confirm) { msg.textContent = 'Passwords do not match.'; msg.style.color = '#fca5a5'; msg.style.display = 'block'; return; }
+  var btn = document.getElementById('cpwBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  runBackendAction('studentChangePassword', [token, null, newPwd])
+    .then(function(res) {
+      btn.disabled = false; btn.textContent = 'Set Password & Continue';
+      if (res.success) {
+        msg.textContent = 'Password set! Please log in again.'; msg.style.color = '#4ade80'; msg.style.display = 'block';
+        setTimeout(function() { document.getElementById('cpwOverlay').style.display = 'none'; document.getElementById('loginPassword').value = ''; document.getElementById('loginAdmNo').value = ''; }, 2000);
+      } else { msg.textContent = res.message || 'Error.'; msg.style.color = '#fca5a5'; msg.style.display = 'block'; }
+    }).catch(function() { btn.disabled = false; btn.textContent = 'Set Password & Continue'; msg.textContent = 'Connection error.'; msg.style.color = '#fca5a5'; msg.style.display = 'block'; });
 }
 </script>
 </body>

@@ -705,6 +705,275 @@ module.exports = function(db, notificationsActions) {
       } catch (err) {
         return res.json({ success: false, message: "Error generating PDF: " + err.message });
       }
+    },
+
+    // ================================================================
+    // ASSIGNMENTS
+    // ================================================================
+
+    teacherSaveAssignment: async (req, res) => {
+      const data = req.body.data;
+      if (!data || !data.title) return res.json({ success: false, message: "Assignment title required." });
+      try {
+        const settings = await db.collection("settings").doc("global").get();
+        const s = settings.exists ? settings.data() : {};
+        const payload = {
+          ...data,
+          teacherId: req.session.userId,
+          teacherName: req.session.fullName || "",
+          term: data.term || s.current_term || "",
+          session: data.session || s.current_session || "",
+          createdAt: new Date().toISOString()
+        };
+        if (data.id) {
+          await db.collection("assignments").doc(data.id).update(payload);
+          return res.json({ success: true, message: "Assignment updated." });
+        } else {
+          const ref = db.collection("assignments").doc();
+          await ref.set(payload);
+          return res.json({ success: true, message: "Assignment created.", id: ref.id });
+        }
+      } catch (err) {
+        return res.json({ success: false, message: "Error saving assignment: " + err.message });
+      }
+    },
+
+    teacherGetMyAssignments: async (req, res) => {
+      try {
+        const snap = await db.collection("assignments")
+          .where("teacherId", "==", req.session.userId).get();
+        const results = [];
+        snap.forEach(doc => results.push({ id: doc.id, ...doc.data() }));
+        results.sort((a, b) => (b.createdAt || "") > (a.createdAt || "") ? 1 : -1);
+        return res.json({ success: true, data: results });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    teacherDeleteAssignment: async (req, res) => {
+      const { assignmentId } = req.body;
+      if (!assignmentId) return res.json({ success: false, message: "Assignment ID required." });
+      try {
+        await db.collection("assignments").doc(assignmentId).delete();
+        return res.json({ success: true, message: "Assignment deleted." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    // ================================================================
+    // LESSON NOTES
+    // ================================================================
+
+    teacherSaveNote: async (req, res) => {
+      const data = req.body.data;
+      if (!data || !data.title) return res.json({ success: false, message: "Note title required." });
+      try {
+        const settings = await db.collection("settings").doc("global").get();
+        const s = settings.exists ? settings.data() : {};
+        const payload = {
+          title: data.title,
+          subjectName: data.subjectName || "",
+          className: data.className || "All",
+          fileName: data.fileName || "",
+          mimeType: data.mimeType || "application/pdf",
+          fileData: data.fileData || "",
+          teacherId: req.session.userId,
+          teacherName: req.session.fullName || "",
+          term: data.term || s.current_term || "",
+          session: data.session || s.current_session || "",
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        };
+        const ref = db.collection("lesson_notes").doc();
+        await ref.set(payload);
+        return res.json({ success: true, message: "Note uploaded. It will auto-expire in 7 days.", id: ref.id });
+      } catch (err) {
+        return res.json({ success: false, message: "Error saving note: " + err.message });
+      }
+    },
+
+    teacherGetMyNotes: async (req, res) => {
+      try {
+        const snap = await db.collection("lesson_notes")
+          .where("teacherId", "==", req.session.userId).get();
+        const now = Date.now();
+        const results = [];
+        const deletePromises = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          const created = d.createdAt ? new Date(d.createdAt).getTime() : 0;
+          const expired = now - created > 7 * 24 * 60 * 60 * 1000;
+          if (expired) {
+            deletePromises.push(doc.ref.delete());
+          } else {
+            const { fileData, ...meta } = d; // strip file data from list
+            results.push({ id: doc.id, ...meta, expired });
+          }
+        });
+        await Promise.all(deletePromises);
+        results.sort((a, b) => (b.createdAt || "") > (a.createdAt || "") ? 1 : -1);
+        return res.json({ success: true, data: results });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    teacherDeleteNote: async (req, res) => {
+      const { noteId } = req.body;
+      if (!noteId) return res.json({ success: false, message: "Note ID required." });
+      try {
+        await db.collection("lesson_notes").doc(noteId).delete();
+        return res.json({ success: true, message: "Note deleted." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    // ================================================================
+    // CBT QUIZZES
+    // ================================================================
+
+    teacherSaveQuiz: async (req, res) => {
+      const data = req.body.data;
+      if (!data || !data.title) return res.json({ success: false, message: "Quiz title required." });
+      try {
+        const settings = await db.collection("settings").doc("global").get();
+        const s = settings.exists ? settings.data() : {};
+        const payload = {
+          title: data.title,
+          subjectName: data.subjectName || "",
+          className: data.className || "All",
+          durationMinutes: parseInt(data.durationMinutes) || 30,
+          teacherId: req.session.userId,
+          teacherName: req.session.fullName || "",
+          term: data.term || s.current_term || "",
+          session: data.session || s.current_session || "",
+          isPublished: data.isPublished || false,
+          createdAt: new Date().toISOString()
+        };
+        if (data.id) {
+          await db.collection("cbt_quizzes").doc(data.id).update({ ...payload, isPublished: !!data.isPublished });
+          return res.json({ success: true, message: "Quiz updated.", id: data.id });
+        } else {
+          const ref = db.collection("cbt_quizzes").doc();
+          await ref.set(payload);
+          return res.json({ success: true, message: "Quiz created.", id: ref.id });
+        }
+      } catch (err) {
+        return res.json({ success: false, message: "Error saving quiz: " + err.message });
+      }
+    },
+
+    teacherGetMyQuizzes: async (req, res) => {
+      try {
+        const snap = await db.collection("cbt_quizzes")
+          .where("teacherId", "==", req.session.userId).get();
+        const results = [];
+        for (const doc of snap.docs) {
+          const qSnap = await db.collection("cbt_questions").where("quizId", "==", doc.id).get();
+          const attSnap = await db.collection("cbt_attempts").where("quizId", "==", doc.id).where("status", "==", "completed").get();
+          results.push({ id: doc.id, ...doc.data(), questionCount: qSnap.size, attemptCount: attSnap.size });
+        }
+        results.sort((a, b) => (b.createdAt || "") > (a.createdAt || "") ? 1 : -1);
+        return res.json({ success: true, data: results });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    teacherSaveQuestions: async (req, res) => {
+      const { quizId, questions } = req.body;
+      if (!quizId || !questions || !Array.isArray(questions)) {
+        return res.json({ success: false, message: "Quiz ID and questions array required." });
+      }
+      try {
+        // Delete existing questions for this quiz first
+        const existSnap = await db.collection("cbt_questions").where("quizId", "==", quizId).get();
+        const batch = db.batch();
+        existSnap.docs.forEach(doc => batch.delete(doc.ref));
+
+        questions.forEach(q => {
+          if (!q.question || !q.correctAnswer) return;
+          const ref = db.collection("cbt_questions").doc();
+          batch.set(ref, {
+            quizId,
+            question: q.question,
+            optionA: q.optionA || "",
+            optionB: q.optionB || "",
+            optionC: q.optionC || "",
+            optionD: q.optionD || "",
+            correctAnswer: q.correctAnswer.toUpperCase(),
+            createdAt: new Date().toISOString()
+          });
+        });
+
+        await batch.commit();
+        return res.json({ success: true, message: `${questions.length} question(s) saved.` });
+      } catch (err) {
+        return res.json({ success: false, message: "Error saving questions: " + err.message });
+      }
+    },
+
+    teacherGetQuizQuestions: async (req, res) => {
+      const { quizId } = req.body;
+      if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
+      try {
+        const snap = await db.collection("cbt_questions").where("quizId", "==", quizId).get();
+        const results = [];
+        snap.forEach(doc => results.push({ id: doc.id, ...doc.data() }));
+        return res.json({ success: true, data: results });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    teacherDeleteQuiz: async (req, res) => {
+      const { quizId } = req.body;
+      if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
+      try {
+        const batch = db.batch();
+        batch.delete(db.collection("cbt_quizzes").doc(quizId));
+        const qSnap = await db.collection("cbt_questions").where("quizId", "==", quizId).get();
+        qSnap.docs.forEach(doc => batch.delete(doc.ref));
+        const aSnap = await db.collection("cbt_attempts").where("quizId", "==", quizId).get();
+        aSnap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        return res.json({ success: true, message: "Quiz and all related data deleted." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    teacherGetQuizResults: async (req, res) => {
+      const { quizId } = req.body;
+      if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
+      try {
+        const snap = await db.collection("cbt_attempts")
+          .where("quizId", "==", quizId)
+          .where("status", "==", "completed").get();
+        const results = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          results.push({ id: doc.id, studentName: d.studentName, className: d.className, score: d.score, total: d.total, percentage: d.percentage, submittedAt: d.submittedAt });
+        });
+        results.sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+        return res.json({ success: true, data: results });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    teacherPublishQuiz: async (req, res) => {
+      const { quizId, publish } = req.body;
+      if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
+      try {
+        await db.collection("cbt_quizzes").doc(quizId).update({ isPublished: !!publish });
+        return res.json({ success: true, message: publish ? "Quiz published. Students can now access it." : "Quiz unpublished." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
     }
   };
 };
