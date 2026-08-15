@@ -461,11 +461,19 @@
         if (chartInstances.gradeDist) chartInstances.gradeDist.destroy();
         var gradeCtx = document.getElementById('chartGradeDistribution');
         if (gradeCtx && res.gradeDistribution) {
+          var gradeLabels = Object.keys(res.gradeDistribution).sort();
+          var gradeData = gradeLabels.map(function(k) { return res.gradeDistribution[k]; });
+          var baseColors = ['#16a34a', '#0284c7', '#1e3a5f', '#f0a500', '#d97706', '#dc2626', '#9333ea', '#ec4899', '#0ea5e9'];
+          var bgColors = gradeLabels.map(function(k, i) { return baseColors[i % baseColors.length]; });
+
           chartInstances.gradeDist = new Chart(gradeCtx, {
             type: 'doughnut',
             data: {
-              labels: ['A', 'B', 'C', 'D', 'E', 'F'],
-              datasets: [{ data: [ res.gradeDistribution.A || 0, res.gradeDistribution.B || 0, res.gradeDistribution.C || 0, res.gradeDistribution.D || 0, res.gradeDistribution.E || 0, res.gradeDistribution.F || 0 ], backgroundColor: [ '#16a34a', '#0284c7', '#1e3a5f', '#f0a500', '#d97706', '#dc2626' ] }]
+              labels: gradeLabels.length > 0 ? gradeLabels : ['No Data'],
+              datasets: [{
+                data: gradeData.length > 0 ? gradeData : [1],
+                backgroundColor: gradeData.length > 0 ? bgColors : ['#e2e8f0']
+              }]
             },
             options: { responsive: true, maintainAspectRatio: false }
           });
