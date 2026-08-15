@@ -411,22 +411,34 @@
         <div class="aa-card" style="margin-bottom:16px;background:rgba(167,139,250,0.06);border-color:rgba(167,139,250,0.2);">
           <div class="aa-card-header" style="cursor:pointer;" onclick="toggleBulkUpload()"><h4 style="font-size:14px;font-weight:600;"><i class="fa fa-upload" style="color:#a78bfa;margin-right:8px;"></i>Bulk Upload Questions <small style="font-weight:400;color:rgba(255,255,255,0.5);">(click to expand)</small></h4></div>
           <div id="bulkUploadArea" style="display:none;padding:16px;">
-            <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;">Paste questions in this format:</p>
-            <pre style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-size:11px;color:#a78bfa;margin-bottom:10px;">Q: What is the capital of Nigeria?
-A: Lagos
-B: Kano
-C: Abuja
-D: Port Harcourt
-ANS: C
-
-Q: 2 + 2 = ?
+            <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;">Paste questions below. The following formats are all supported:</p>
+            <pre style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-size:11px;color:#a78bfa;margin-bottom:10px;">Format 1 (Q/A/B/C/D/ANS prefix):
+Q: What is 2 + 2?
 A: 3
 B: 4
 C: 5
 D: 6
-ANS: B</pre>
-            <textarea class="aa-input" id="bulkQText" rows="8" placeholder="Paste your questions here..."></textarea>
-            <button class="aa-btn aa-btn-primary" style="margin-top:10px;" onclick="parseBulkQuestions()"><i class="fa fa-magic"></i> Parse & Add Questions</button>
+ANS: B
+
+Format 2 (numbered options):
+1. What is the capital of Nigeria?
+1. Lagos
+2. Kano
+3. Abuja
+4. Port Harcourt
+Answer: 3
+
+Format 3 (lettered options):
+What year did Nigeria gain independence?
+A) 1960
+B) 1963
+C) 1914
+D) 1970
+Answer: A
+
+(Separate each question with a blank line)</pre>
+            <textarea class="aa-input" id="bulkQText" rows="10" placeholder="Paste your questions here..."></textarea>
+            <button class="aa-btn aa-btn-primary" style="margin-top:10px;" onclick="parseBulkQuestions()"><i class="fa fa-magic"></i> Parse &amp; Add Questions</button>
           </div>
         </div>
         <!-- Questions List -->
@@ -1657,25 +1669,74 @@ ANS: B</pre>
     function parseBulkQuestions() {
       var text = document.getElementById('bulkQText').value;
       if (!text.trim()) return;
-      var blocks = text.split(/\n\s*\n/);
+
+      // Split into question blocks by one or more blank lines
+      var blocks = text.trim().split(/\n{2,}/);
       var added = 0;
+
       blocks.forEach(function(b) {
-        var lines = b.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+        var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+        if (lines.length < 2) return;
+
         var qObj = createEmptyQuestion();
-        lines.forEach(function(l) {
-          if (l.match(/^Q:/i)) qObj.question = l.replace(/^Q:\s*/i, '');
-          else if (l.match(/^A:/i)) qObj.optionA = l.replace(/^A:\s*/i, '');
-          else if (l.match(/^B:/i)) qObj.optionB = l.replace(/^B:\s*/i, '');
-          else if (l.match(/^C:/i)) qObj.optionC = l.replace(/^C:\s*/i, '');
-          else if (l.match(/^D:/i)) qObj.optionD = l.replace(/^D:\s*/i, '');
-          else if (l.match(/^ANS:/i)) qObj.correctAnswer = l.replace(/^ANS:\s*/i, '').trim().toUpperCase();
-        });
-        if (qObj.question) { currentQuizQuestions.push(qObj); added++; }
+
+        // Detect format type
+        var hasQPrefix = lines.some(function(l) { return /^Q:/i.test(l); });
+        var hasAnsPrefix = lines.some(function(l) { return /^ANS:/i.test(l); });
+
+        if (hasQPrefix || hasAnsPrefix) {
+          // ---- Format 1: Q: / A: / B: / C: / D: / ANS: ----
+          lines.forEach(function(l) {
+            if (/^Q:/i.test(l))         qObj.question     = l.replace(/^Q:\s*/i, '').trim();
+            else if (/^A:/i.test(l))    qObj.optionA      = l.replace(/^A:\s*/i, '').trim();
+            else if (/^B:/i.test(l))    qObj.optionB      = l.replace(/^B:\s*/i, '').trim();
+            else if (/^C:/i.test(l))    qObj.optionC      = l.replace(/^C:\s*/i, '').trim();
+            else if (/^D:/i.test(l))    qObj.optionD      = l.replace(/^D:\s*/i, '').trim();
+            else if (/^ANS:/i.test(l))  qObj.correctAnswer = l.replace(/^ANS:\s*/i, '').trim().toUpperCase().charAt(0);
+          });
+        } else {
+          // ---- Format 2/3: First line is the question, options follow ----
+          // First line is question (strip leading number/dot if present e.g. "1. What...")
+          qObj.question = lines[0].replace(/^\d+[.)\s]+/, '').trim();
+
+          var options = [];
+          var answerLine = null;
+
+          for (var i = 1; i < lines.length; i++) {
+            var l = lines[i];
+            // Detect answer line: "Answer: A" or "Answer: 1" or "Ans: B" etc.
+            if (/^(answer|ans)[:\s]/i.test(l)) {
+              answerLine = l.replace(/^(answer|ans)[:\s]*/i, '').trim().toUpperCase();
+              continue;
+            }
+            // Strip option prefix: A) A. A: 1) 1. 1:
+            var cleaned = l.replace(/^([A-Da-d]|[1-4])[.):\s]+/, '').trim();
+            if (cleaned) options.push(cleaned);
+          }
+
+          if (options[0]) qObj.optionA = options[0];
+          if (options[1]) qObj.optionB = options[1];
+          if (options[2]) qObj.optionC = options[2];
+          if (options[3]) qObj.optionD = options[3];
+
+          // Map answer: if answer is a number (1-4), convert to letter
+          if (answerLine) {
+            var numMap = {'1':'A','2':'B','3':'C','4':'D'};
+            if (numMap[answerLine]) {
+              qObj.correctAnswer = numMap[answerLine];
+            } else {
+              qObj.correctAnswer = answerLine.charAt(0).toUpperCase();
+            }
+          }
+        }
+
+        if (qObj.question && qObj.optionA) { currentQuizQuestions.push(qObj); added++; }
       });
+
       document.getElementById('bulkQText').value = '';
       toggleBulkUpload();
       renderQuestionEditor();
-      showToast(added + ' questions parsed from text.', 'success');
+      showToast(added + ' question(s) parsed and added successfully.', added > 0 ? 'success' : 'error');
     }
 
     function viewQuizResults(quizId) {
