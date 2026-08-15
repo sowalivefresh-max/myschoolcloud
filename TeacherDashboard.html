@@ -1370,11 +1370,13 @@ ANS: B</pre>
       var selCls = document.getElementById(prefix + 'Class');
       selSub.innerHTML = '<option value="">All Subjects</option>';
       selCls.innerHTML = '<option value="">All Classes</option>';
-      if (AA.mySubjects) {
+      if (mySubjects) {
         var addedSub = {}; var addedCls = {};
-        AA.mySubjects.forEach(function(s) {
-          if (!addedSub[s.subjectName]) { addedSub[s.subjectName] = true; selSub.innerHTML += '<option value="' + AA.escapeHTML(s.subjectName) + '">' + AA.escapeHTML(s.subjectName) + '</option>'; }
-          if (!addedCls[s.className]) { addedCls[s.className] = true; selCls.innerHTML += '<option value="' + AA.escapeHTML(s.className) + '">' + AA.escapeHTML(s.className) + '</option>'; }
+        mySubjects.forEach(function(s) {
+          var sName = s.subjectName || '';
+          var cName = s.class || s.className || '';
+          if (sName && !addedSub[sName]) { addedSub[sName] = true; selSub.innerHTML += '<option value="' + AA.escapeHTML(sName) + '">' + AA.escapeHTML(sName) + '</option>'; }
+          if (cName && !addedCls[cName]) { addedCls[cName] = true; selCls.innerHTML += '<option value="' + AA.escapeHTML(cName) + '">' + AA.escapeHTML(cName) + '</option>'; }
         });
       }
     }
