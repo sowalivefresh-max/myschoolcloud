@@ -291,11 +291,6 @@
             </div>
           </div>
         </div>
-
-      </div>
-    </main>
-  </div>
-
   <!-- TAB: ASSIGNMENTS -->
   <div class="aa-tab-content" data-group="tch-tabs" data-id="tab-assignments" style="padding:24px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -336,6 +331,10 @@
       <div class="aa-card-header"><h3 class="aa-card-title">My Quizzes</h3></div>
       <div class="aa-card-body" id="myQuizzesList"><div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i><p>Loading...</p></div></div>
     </div>
+  </div>
+
+      </div>
+    </main>
   </div>
 
   <!-- MODAL: New/Edit Assignment -->
@@ -1351,9 +1350,9 @@ ANS: B</pre>
         var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Due Date</th><th>Actions</th></tr></thead><tbody>';
         res.data.forEach(function(a) {
           html += '<tr>';
-          html += '<td><strong>' + escapeHTML(a.title) + '</strong></td>';
-          html += '<td>' + escapeHTML(a.subjectName || 'All Subjects') + '</td>';
-          html += '<td>' + escapeHTML(a.className || 'All Classes') + '</td>';
+          html += '<td><strong>' + AA.escapeHTML(a.title) + '</strong></td>';
+          html += '<td>' + AA.escapeHTML(a.subjectName || 'All Subjects') + '</td>';
+          html += '<td>' + AA.escapeHTML(a.className || 'All Classes') + '</td>';
           html += '<td>' + (a.dueDate ? new Date(a.dueDate).toLocaleDateString('en-GB') : 'No Due Date') + '</td>';
           html += '<td>';
           html += '<button class="aa-btn aa-btn-outline aa-btn-xs" style="margin-right:8px;" onclick=\'editAssignment(' + JSON.stringify(a) + ')\'><i class="fa fa-edit"></i> Edit</button>';
@@ -1374,8 +1373,8 @@ ANS: B</pre>
       if (AA.mySubjects) {
         var addedSub = {}; var addedCls = {};
         AA.mySubjects.forEach(function(s) {
-          if (!addedSub[s.subjectName]) { addedSub[s.subjectName] = true; selSub.innerHTML += '<option value="' + escapeHTML(s.subjectName) + '">' + escapeHTML(s.subjectName) + '</option>'; }
-          if (!addedCls[s.className]) { addedCls[s.className] = true; selCls.innerHTML += '<option value="' + escapeHTML(s.className) + '">' + escapeHTML(s.className) + '</option>'; }
+          if (!addedSub[s.subjectName]) { addedSub[s.subjectName] = true; selSub.innerHTML += '<option value="' + AA.escapeHTML(s.subjectName) + '">' + AA.escapeHTML(s.subjectName) + '</option>'; }
+          if (!addedCls[s.className]) { addedCls[s.className] = true; selCls.innerHTML += '<option value="' + AA.escapeHTML(s.className) + '">' + AA.escapeHTML(s.className) + '</option>'; }
         });
       }
     }
@@ -1443,9 +1442,9 @@ ANS: B</pre>
           var created = n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : '-';
           var expires = n.expiresAt ? new Date(n.expiresAt).toLocaleDateString('en-GB') : '-';
           html += '<tr>';
-          html += '<td><strong>' + escapeHTML(n.title) + '</strong></td>';
-          html += '<td>' + escapeHTML(n.subjectName || 'All Subjects') + '</td>';
-          html += '<td>' + escapeHTML(n.className || 'All Classes') + '</td>';
+          html += '<td><strong>' + AA.escapeHTML(n.title) + '</strong></td>';
+          html += '<td>' + AA.escapeHTML(n.subjectName || 'All Subjects') + '</td>';
+          html += '<td>' + AA.escapeHTML(n.className || 'All Classes') + '</td>';
           html += '<td>' + created + '</td>';
           html += '<td>' + expires + (n.expired ? ' <span style="color:#ef4444;font-size:10px;">(Expired)</span>' : '') + '</td>';
           html += '<td>';
@@ -1470,7 +1469,7 @@ ANS: B</pre>
       if (file.size > 10 * 1024 * 1024) { alert('File too large. Maximum size is 10MB.'); input.value = ''; return; }
       noteFileName = file.name;
       noteFileMime = file.type || 'application/octet-stream';
-      document.getElementById('noteFileInfo').innerHTML = '<i class="fa fa-check text-success"></i> ' + escapeHTML(file.name) + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+      document.getElementById('noteFileInfo').innerHTML = '<i class="fa fa-check text-success"></i> ' + AA.escapeHTML(file.name) + ' (' + (file.size/1024).toFixed(1) + ' KB)';
       var reader = new FileReader();
       reader.onload = function(e) {
         var res = e.target.result;
@@ -1522,9 +1521,9 @@ ANS: B</pre>
         var html = '<table class="aa-table"><thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Questions</th><th>Attempts</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
         res.data.forEach(function(q) {
           html += '<tr>';
-          html += '<td><strong>' + escapeHTML(q.title) + '</strong><br><small style="color:var(--aa-text-muted);">' + (q.durationMinutes||30) + ' mins</small></td>';
-          html += '<td>' + escapeHTML(q.subjectName || 'All') + '</td>';
-          html += '<td>' + escapeHTML(q.className || 'All') + '</td>';
+          html += '<td><strong>' + AA.escapeHTML(q.title) + '</strong><br><small style="color:var(--aa-text-muted);">' + (q.durationMinutes||30) + ' mins</small></td>';
+          html += '<td>' + AA.escapeHTML(q.subjectName || 'All') + '</td>';
+          html += '<td>' + AA.escapeHTML(q.className || 'All') + '</td>';
           html += '<td>' + (q.questionCount || 0) + '</td>';
           html += '<td>' + (q.attemptCount || 0) + '</td>';
           html += '<td>' + (q.isPublished ? '<span class="badge badge-success">Published</span>' : '<span class="badge badge-warning">Draft</span>') + '</td>';
@@ -1616,12 +1615,12 @@ ANS: B</pre>
         html += '<h4 style="font-size:14px;font-weight:700;">Question ' + (i+1) + '</h4>';
         html += '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="removeQuestion(' + i + ')"><i class="fa fa-times"></i> Remove</button>';
         html += '</div>';
-        html += '<div class="aa-form-group"><textarea class="aa-input" rows="2" placeholder="Enter question..." oninput="updateQ(' + i + ',\'question\',this.value)">' + escapeHTML(q.question) + '</textarea></div>';
+        html += '<div class="aa-form-group"><textarea class="aa-input" rows="2" placeholder="Enter question..." oninput="updateQ(' + i + ',\'question\',this.value)">' + AA.escapeHTML(q.question) + '</textarea></div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">';
-        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option A" value="' + escapeHTML(q.optionA) + '" oninput="updateQ(' + i + ',\'optionA\',this.value)"></div>';
-        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option B" value="' + escapeHTML(q.optionB) + '" oninput="updateQ(' + i + ',\'optionB\',this.value)"></div>';
-        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option C" value="' + escapeHTML(q.optionC) + '" oninput="updateQ(' + i + ',\'optionC\',this.value)"></div>';
-        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option D" value="' + escapeHTML(q.optionD) + '" oninput="updateQ(' + i + ',\'optionD\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option A" value="' + AA.escapeHTML(q.optionA) + '" oninput="updateQ(' + i + ',\'optionA\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option B" value="' + AA.escapeHTML(q.optionB) + '" oninput="updateQ(' + i + ',\'optionB\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option C" value="' + AA.escapeHTML(q.optionC) + '" oninput="updateQ(' + i + ',\'optionC\',this.value)"></div>';
+        html += '<div class="aa-form-group" style="margin:0;"><input type="text" class="aa-input" placeholder="Option D" value="' + AA.escapeHTML(q.optionD) + '" oninput="updateQ(' + i + ',\'optionD\',this.value)"></div>';
         html += '</div>';
         html += '<div class="aa-form-group" style="margin:0;width:150px;"><label class="aa-label" style="display:inline;margin-right:8px;">Correct Answer:</label>';
         html += '<select class="aa-input" style="display:inline-block;width:auto;padding:4px 8px;" onchange="updateQ(' + i + ',\'correctAnswer\',this.value)">';
@@ -1682,8 +1681,8 @@ ANS: B</pre>
         if (!res.data || res.data.length === 0) { document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">No students have taken this quiz yet.</div>'; return; }
         var html = '<table class="aa-table"><thead><tr><th>Student</th><th>Class</th><th>Score</th><th>Submitted</th></tr></thead><tbody>';
         res.data.forEach(function(r) {
-          html += '<tr><td><strong>' + escapeHTML(r.studentName) + '</strong></td>';
-          html += '<td>' + escapeHTML(r.className) + '</td>';
+          html += '<tr><td><strong>' + AA.escapeHTML(r.studentName) + '</strong></td>';
+          html += '<td>' + AA.escapeHTML(r.className) + '</td>';
           html += '<td><span style="font-weight:700;color:' + (r.percentage>=50?'#4ade80':'#ef4444') + ';">' + r.score + '/' + r.total + ' (' + r.percentage + '%)</span></td>';
           html += '<td>' + new Date(r.submittedAt).toLocaleString('en-GB') + '</td></tr>';
         });
