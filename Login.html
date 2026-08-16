@@ -290,7 +290,7 @@ function doLogin() {
           errEl.textContent = res.message || 'Login failed.'; errEl.style.display = 'block';
           document.getElementById('loginPassword').value = ''; resetLoginBtn();
         }
-      }).catch(function() { errEl.textContent = 'Connection error.'; errEl.style.display = 'block'; resetLoginBtn(); });
+      }).catch(function(err) { errEl.textContent = 'Connection error: ' + (err.message || err); errEl.style.display = 'block'; resetLoginBtn(); });
     return;
   }
 
@@ -323,7 +323,7 @@ function doLogin() {
       }
     })
     .catch(function(err) {
-      errEl.textContent = 'Connection error. Please check your internet connection.';
+      errEl.textContent = 'Connection error: ' + (err.message || err);
       errEl.style.display = 'block';
       resetLoginBtn();
     });

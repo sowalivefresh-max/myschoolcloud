@@ -87,7 +87,11 @@ module.exports = function(db) {
       if (!sessDoc.exists) return res.json({ success: false, message: "Invalid session" });
       
       const sess = sessDoc.data();
-      const uDoc = await db.collection("users").doc(sess.userId).get();
+      let collectionName = "users";
+      if (sess.role === "student") collectionName = "students";
+      
+      const uDoc = await db.collection(collectionName).doc(sess.userId).get();
+      if (!uDoc.exists) return res.json({ success: false, message: "User not found" });
       
       const settingsDoc = await db.collection("settings").doc("global").get();
       const settings = settingsDoc.exists ? settingsDoc.data() : { currentTerm: "1", currentSession: "2026/2027" };

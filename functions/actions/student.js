@@ -24,13 +24,33 @@ module.exports = function(db) {
         const doc = snap.docs[0];
         const student = doc.data();
 
-        if (!student.portalEnabled) {
-          return res.json({ success: false, message: "Your portal account is not yet activated. Please contact admin." });
+        if (student.portalEnabled === false) {
+          return res.json({ success: false, message: "Your portal account has been disabled. Please contact admin." });
         }
 
-        const hash = student.portalPasswordHash;
+        let hash = student.portalPasswordHash;
+        let mustChange = student.mustChangePassword;
+
+        // Auto-initialize default password for bulk-uploaded or legacy students
         if (!hash) {
-          return res.json({ success: false, message: "No portal password set. Please contact admin." });
+          let defaultPassword = "Welcome@1";
+          if (student.dateOfBirth) {
+            const dob = student.dateOfBirth.replace(/[-/]/g, "");
+            if (dob.length === 8) {
+              if (parseInt(dob.substring(0, 4)) > 1900) {
+                defaultPassword = dob.substring(6, 8) + dob.substring(4, 6) + dob.substring(0, 4);
+              } else {
+                defaultPassword = dob;
+              }
+            }
+          }
+          hash = await bcrypt.hash(defaultPassword, 10);
+          mustChange = true;
+          await db.collection("students").doc(doc.id).update({
+            portalPasswordHash: hash,
+            mustChangePassword: true,
+            portalEnabled: true
+          });
         }
 
         const isMatch = await bcrypt.compare(String(password), hash);
@@ -55,7 +75,7 @@ module.exports = function(db) {
           success: true,
           token,
           role: "student",
-          mustChangePassword: !!student.mustChangePassword,
+          mustChangePassword: !!mustChange,
           userName: student.fullName,
           userId: doc.id,
           admissionNumber: student.admissionNumber

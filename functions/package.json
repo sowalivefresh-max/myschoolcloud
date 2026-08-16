@@ -9,7 +9,7 @@
   "keywords": [],
   "type": "commonjs",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -17,7 +17,7 @@
     "express": "^4.22.2",
     "express-rate-limit": "^8.6.2",
     "firebase-admin": "^14.2.0",
-    "firebase-functions": "^7.3.2-rc.0",
+    "firebase-functions": "^7.3.2",
     "nodemailer": "^9.0.3"
   }
 }
