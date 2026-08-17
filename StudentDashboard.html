@@ -489,9 +489,14 @@ function renderCBTQuestion(){
   opts.forEach(function(o){
     var origLetter=o[0]; var displayLabel=o[1]; var text=o[2];
     var sel=_cbtAnswers[q.id]===origLetter?'selected':'';
+    
+    // Strip leading A-D prefixes from the text to avoid "A. (D) monitor"
+    var cleanText = String(text).replace(/^([a-d][\.\)]\s*|\([a-d]\)\s*)/i, '');
+    if (!cleanText.trim()) cleanText = text;
+
     html+='<label class="cbt-option '+sel+'" onclick="selectAnswer(\''+q.id+'\',\''+origLetter+'\')">';
     html+='<input type="radio" name="opt" value="'+origLetter+'" '+(sel?'checked':'')+' style="pointer-events:none;">';
-    html+='<div class="cbt-option-label"><strong>'+displayLabel+'.</strong> '+escHtml(text)+'</div></label>';
+    html+='<div class="cbt-option-label"><strong>'+displayLabel+'.</strong> '+escHtml(cleanText)+'</div></label>';
   });
   document.getElementById('cbtQuestionBox').innerHTML=html;
   document.getElementById('cbtPrevBtn').disabled=_cbtIdx===0;
