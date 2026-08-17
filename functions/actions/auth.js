@@ -63,6 +63,7 @@ module.exports = function(db) {
       await db.collection("audit_logs").add({
         timestamp: new Date().toISOString(),
         userId: userDoc.id,
+        userName: user.fullName,
         action: "LOGIN",
         details: `${user.fullName} logged in as ${user.role}`
       });
@@ -343,6 +344,7 @@ module.exports = function(db) {
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: newUserRef.id,
+          userName: fullName.trim(),
           action: "PARENT_SELF_REGISTERED",
           details: `${fullName.trim()} registered as parent via invite link`
         });

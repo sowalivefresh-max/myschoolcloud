@@ -269,6 +269,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSaveScore: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "EDIT_GRADEBOOK", details: `Updated gradebook score for student ${req.body.data ? req.body.data.studentId : "unknown"}` }).catch(()=>{}); }
       const data = req.body.data;
       if (!data || !data.studentId || !data.subjectId) {
         return res.json({ success: false, message: "Student ID and Subject ID required." });
@@ -303,6 +304,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherBulkSaveScores: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "EDIT_GRADEBOOK", details: `Bulk updated gradebook scores` }).catch(()=>{}); }
       const scores = req.body.data;
       if (!scores || !Array.isArray(scores) || scores.length === 0) {
         return res.json({ success: false, message: "No score data provided." });
@@ -370,6 +372,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSaveLessonPlan: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "UPLOAD_LESSON_NOTE", details: `Uploaded/Saved lesson note` }).catch(()=>{}); }
       const data = req.body.data;
       const session = req.session;
       
@@ -425,6 +428,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSaveAttendance: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "MARK_ATTENDANCE", details: `Marked attendance for ${req.body.className || "unknown class"}` }).catch(()=>{}); }
       const records = req.body.records || req.body.data;
       if (!records || !Array.isArray(records)) {
         return res.json({ success: false, message: "Invalid attendance data." });
@@ -539,6 +543,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSaveSubjectAttendance: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "MARK_ATTENDANCE", details: `Marked subject attendance` }).catch(()=>{}); }
       const records = req.body.records || req.body.data;
       if (!records || !Array.isArray(records)) {
         return res.json({ success: false, message: "Invalid attendance data." });
@@ -605,6 +610,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSavePsychomotor: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "UPDATE_TRAITS", details: `Updated psychomotor traits` }).catch(()=>{}); }
       const data = req.body.data;
       if (!data || !data.studentId || !data.term || !data.session) {
         return res.json({ success: false, message: "Missing required data." });
@@ -652,6 +658,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherSaveAffective: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "UPDATE_TRAITS", details: `Updated affective traits` }).catch(()=>{}); }
       const data = req.body.data;
       if (!data || !data.studentId || !data.term || !data.session) {
         return res.json({ success: false, message: "Missing required data." });
@@ -712,6 +719,7 @@ module.exports = function(db, notificationsActions) {
     // ================================================================
 
     teacherSaveAssignment: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "CREATE_CONTENT", details: `Saved assignment` }).catch(()=>{}); }
       const data = req.body.data;
       if (!data || !data.title) return res.json({ success: false, message: "Assignment title required." });
       try {
@@ -767,6 +775,7 @@ module.exports = function(db, notificationsActions) {
     // ================================================================
 
     teacherSaveNote: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "CREATE_CONTENT", details: `Saved class note` }).catch(()=>{}); }
       const data = req.body.data;
       if (!data || !data.title) return res.json({ success: false, message: "Note title required." });
       try {
@@ -982,6 +991,7 @@ module.exports = function(db, notificationsActions) {
     },
 
     teacherPublishQuiz: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "PUBLISH_QUIZ", details: `Published quiz` }).catch(()=>{}); }
       const { quizId, publish } = req.body;
       if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
       try {

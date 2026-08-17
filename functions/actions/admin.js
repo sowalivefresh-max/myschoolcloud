@@ -898,6 +898,7 @@ module.exports = function(db, notificationsActions) {
           currentBatch.set(auditRef, {
             timestamp: new Date().toISOString(),
             userId: recordedByUserId,
+            userName: req.session.fullName || 'System Admin',
             action: "GENERATE_BILLS",
             details: `${term} ${session}: ${generated} bills generated.`
           });
@@ -1189,6 +1190,7 @@ module.exports = function(db, notificationsActions) {
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: req.session.userId,
+          userName: req.session.fullName || 'System Admin',
           action: "MANAGE_CAMPUSES",
           details: `Campus list updated: ${sanitized.map(c => c.name).join(', ') || '(empty)'}`
         });
@@ -1362,6 +1364,7 @@ module.exports = function(db, notificationsActions) {
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: req.session.userId,
+          userName: req.session.fullName || 'System Admin',
           action: "APPROVE_PAYMENT",
           details: `Approved payment ${pid} for ${payment.amount || 'an unknown amount'}.`
         });
@@ -1449,6 +1452,7 @@ module.exports = function(db, notificationsActions) {
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: req.session.userId,
+          userName: req.session.fullName || 'System Admin',
           action: "REJECT_PAYMENT",
           details: `Rejected payment ${pid}.`
         });
@@ -1536,6 +1540,7 @@ module.exports = function(db, notificationsActions) {
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: req.session.userId,
+          userName: req.session.fullName || 'System Admin',
           action: "IMPERSONATE_USER",
           details: `Admin ${req.session.userId} generated a session to impersonate ${userId}.`
         });
@@ -1614,6 +1619,7 @@ module.exports = function(db, notificationsActions) {
         await db.collection("audit_logs").add({
           timestamp: new Date().toISOString(),
           userId: req.session.userId,
+          userName: req.session.fullName || 'System Admin',
           action: "UPDATE_GRADING_SYSTEM",
           details: `Updated grading system: ${data.name || data.id}`
         });

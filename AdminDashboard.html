@@ -454,12 +454,14 @@
                   <input type="text" id="search-audit" class="aa-input" placeholder="Search logs..." onkeyup="filterTable('search-audit', 'auditTable')">
                 </div>
                 <button class="aa-btn aa-btn-outline" onclick="loadAuditLogs()"><i class="fa fa-sync"></i> Refresh</button>
+                <button class="aa-btn aa-btn-outline" onclick="exportAuditCSV()"><i class="fa fa-file-csv"></i> CSV</button>
+                <button class="aa-btn aa-btn-outline" onclick="exportAuditPDF()"><i class="fa fa-file-pdf"></i> PDF</button>
               </div>
             </div>
             <div class="aa-card-body" style="padding:0;">
               <div class="aa-table-wrap">
                 <table class="aa-table" id="auditTable">
-                  <thead><tr><th>Date & Time</th><th>User ID</th><th>Action</th><th>Details</th></tr></thead>
+                  <thead><tr><th>Date & Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
                   <tbody></tbody>
                 </table>
               </div>
@@ -2614,12 +2616,42 @@
       callServer('adminGetAuditLogs', [AA.token], function(data) {
         buildTable('auditTable', [
           { key: 'timestamp', render: function(r){ return formatDateTime(r.timestamp || r.date || r[4] || ''); } },
-          { key: 'userId', render: function(r){ return AA.escapeHTML(r.userId || r[1] || 'system'); } },
+          { key: 'userName', render: function(r){ return AA.escapeHTML(r.userName || r.userId || r[1] || 'system'); } },
           { key: 'action', render: function(r){ return '<span class="aa-badge aa-badge-info">' + AA.escapeHTML(r.action || r[2] || '') + '</span>'; } },
           { key: 'details', render: function(r){ return AA.escapeHTML(r.details || r[3] || ''); } }
         ], data);
       }, null, true);
     }
+
+    function exportAuditCSV() {
+      const table = document.getElementById('auditTable');
+      if(!table) return;
+      let csv = [];
+      const rows = table.querySelectorAll('tr');
+      for (let i = 0; i < rows.length; i++) {
+        let row = [], cols = rows[i].querySelectorAll('td, th');
+        for (let j = 0; j < cols.length; j++) row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
+        csv.push(row.join(','));
+      }
+      const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'audit_logs.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    function exportAuditPDF() {
+      const table = document.getElementById('auditTable');
+      if(!table) return;
+      const newWin = window.open('');
+      newWin.document.write('<html><head><title>Audit Logs</title><style>table{border-collapse:collapse;width:100%;font-family:sans-serif}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background-color:#f2f2f2}</style></head><body><h2>Audit Logs</h2>' + table.outerHTML + '</body></html>');
+      newWin.document.close();
+      newWin.focus();
+      setTimeout(function() { newWin.print(); newWin.close(); }, 500);
+    }
+
         // --- SETTINGS ---
       var currentGradebookFormat = [];
       

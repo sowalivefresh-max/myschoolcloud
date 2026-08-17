@@ -207,6 +207,7 @@ module.exports = function(db) {
     },
 
     parentDownloadReport: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "DOWNLOAD_REPORT", details: `Viewed/Downloaded report` }).catch(()=>{}); }
       const { studentId, term, session: academicSession, reportType } = req.body;
       const session = req.session;
       
@@ -314,6 +315,7 @@ module.exports = function(db) {
     },
 
     parentSubmitPaymentData: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "SUBMIT_PAYMENT", details: `Submitted fee payment` }).catch(()=>{}); }
       const { data } = req.body;
       const session = req.session;
       try {

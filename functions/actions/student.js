@@ -86,6 +86,7 @@ module.exports = function(db) {
     },
 
     studentChangePassword: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "CHANGE_PASSWORD", details: `Changed password` }).catch(()=>{}); }
       if (!req.session || req.session.role !== "student") {
         return res.status(403).json({ success: false, message: "Unauthorized." });
       }
@@ -386,6 +387,7 @@ module.exports = function(db) {
     },
 
     studentSubmitQuiz: async (req, res) => {
+      if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "SUBMIT_QUIZ", details: `Submitted CBT Quiz` }).catch(()=>{}); }
       if (!req.session || req.session.role !== "student") {
         return res.status(403).json({ success: false, message: "Unauthorized." });
       }
