@@ -173,6 +173,31 @@ module.exports = function(db, notificationsActions) {
           delete data.salt;
           users.push(data);
         });
+
+        // Append students with active portals
+        const studentsSnap = await db.collection("students").where("portalEnabled", "==", true).get();
+        studentsSnap.forEach(doc => {
+          let data = doc.data();
+          if (data.portalPasswordHash) {
+            if (section && section !== "both") {
+              const sec = (data.section || "").toLowerCase();
+              if (sec !== section && sec !== "both") return;
+            }
+            if (campusId) {
+              if ((data.campusId || null) !== campusId) return;
+            }
+            users.push({
+              id: doc.id,
+              fullName: data.fullName,
+              username: data.admissionNumber,
+              email: data.admissionNumber,
+              role: "student",
+              section: data.section || "both",
+              status: data.status || "active"
+            });
+          }
+        });
+
         return res.json({ success: true, data: users });
       } catch (err) {
         return res.json({ success: false, message: "Error fetching users: " + err.message });
@@ -533,6 +558,13 @@ module.exports = function(db, notificationsActions) {
       if (!userId || !updates) return res.json({ success: false, message: "User ID and updates required." });
       
       try {
+        const uDoc = await db.collection("users").doc(userId).get();
+        if (!uDoc.exists) {
+           const sDoc = await db.collection("students").doc(userId).get();
+           if (sDoc.exists) return res.json({ success: false, message: "Please use the Student Manager to edit student details." });
+           return res.json({ success: false, message: "User not found." });
+        }
+        
         // If password is being updated, we need to hash it
         if (updates.password) {
           updates.passwordHash = await bcrypt.hash(String(updates.password), 10);
@@ -927,6 +959,13 @@ module.exports = function(db, notificationsActions) {
       const userId = req.body.userId;
       if (!userId) return res.json({ success: false, message: "User ID required." });
       try {
+        const uDoc = await db.collection("users").doc(userId).get();
+        if (!uDoc.exists) {
+           const sDoc = await db.collection("students").doc(userId).get();
+           if (sDoc.exists) return res.json({ success: false, message: "Please use the Student Manager to delete students." });
+           return res.json({ success: false, message: "User not found." });
+        }
+        
         await db.collection("users").doc(userId).delete();
         return res.json({ success: true, message: "User deleted successfully." });
       } catch (err) {
@@ -1286,10 +1325,22 @@ module.exports = function(db, notificationsActions) {
         const tempPassword = Math.random().toString(36).slice(-8);
         const hash = await bcrypt.hash(String(tempPassword), 10);
         
-        await db.collection("users").doc(userId).update({ salt: null, passwordHash: hash });
+        const userDoc = await db.collection("users").doc(userId).get();
+        if (userDoc.exists) {
+          await db.collection("users").doc(userId).update({ salt: null, passwordHash: hash });
+          return res.json({ success: true, message: `Password reset successfully. Temporary password is: ${tempPassword}` });
+        }
         
-        return res.json({ success: true, message: `Password reset. New temporary password is: ${tempPassword}` });
-      } catch (err) { return res.json({ success: false, message: err.message }); }
+        const studentDoc = await db.collection("students").doc(userId).get();
+        if (studentDoc.exists) {
+          await db.collection("students").doc(userId).update({ portalPasswordHash: hash, mustChangePassword: true });
+          return res.json({ success: true, message: `Student password reset successfully. Temporary password is: ${tempPassword}` });
+        }
+        
+        return res.json({ success: false, message: "User not found" });
+      } catch (err) {
+        return res.json({ success: false, message: "Reset error: " + err.message });
+      }
     },
     adminApprovePayment: async (req, res) => { 
       try {
@@ -1460,15 +1511,23 @@ module.exports = function(db, notificationsActions) {
         const userId = req.body.userId;
         if (!userId) return res.json({ success: false, message: "User ID required" });
         
-        const userDoc = await db.collection("users").doc(userId).get();
+        let userDoc = await db.collection("users").doc(userId).get();
+        let collection = "users";
+        
+        if (!userDoc.exists) {
+          userDoc = await db.collection("students").doc(userId).get();
+          collection = "students";
+        }
+        
         if (!userDoc.exists) return res.json({ success: false, message: "User not found" });
         
         const user = userDoc.data();
+        const role = collection === "students" ? "student" : user.role;
         const token = uuidv4();
         
         await db.collection("sessions").doc(token).set({
           userId: userDoc.id,
-          role: user.role,
+          role: role,
           fullName: user.fullName,
           section: user.section || "both",
           createdAt: new Date().toISOString()
@@ -1481,7 +1540,7 @@ module.exports = function(db, notificationsActions) {
           details: `Admin ${req.session.userId} generated a session to impersonate ${userId}.`
         });
         
-        return res.json({ success: true, token, role: user.role });
+        return res.json({ success: true, token, role: role });
       } catch (err) { return res.json({ success: false, message: err.message }); }
     },
     adminGenerateIDCard: async (req, res) => {

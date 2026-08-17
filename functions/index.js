@@ -24,10 +24,16 @@ app.use(cors({
   origin: function(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error("CORS policy violation"), false);
-  }
+  },
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Trust Firebase Cloud Run proxy for rate limiting
+app.set('trust proxy', 1);
 
 // Apply rate limiting to all requests
 const apiLimiter = rateLimit({

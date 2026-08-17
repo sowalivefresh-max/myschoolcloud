@@ -777,7 +777,7 @@ module.exports = function(db, notificationsActions) {
           subjectName: data.subjectName || "",
           className: data.className || "All",
           fileName: data.fileName || "",
-          mimeType: data.mimeType || "application/pdf",
+          mimeType: data.mimeType || data.fileMime || "application/pdf",
           fileData: data.fileData || "",
           teacherId: req.session.userId,
           teacherName: req.session.fullName || "",

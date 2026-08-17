@@ -171,7 +171,10 @@ module.exports = function(db) {
         return res.status(403).json({ success: false, message: "Unauthorized." });
       }
       try {
-        const { className } = req.session;
+        const uDoc = await db.collection("students").doc(req.session.userId).get();
+        const studentData = uDoc.data() || {};
+        const sClass = (studentData.className || "").trim().toLowerCase();
+        
         const settingsDoc = await db.collection("settings").doc("global").get();
         const settings = settingsDoc.exists ? settingsDoc.data() : {};
         const term = settings.current_term || "";
@@ -181,10 +184,20 @@ module.exports = function(db) {
           .where("term", "==", term)
           .where("session", "==", session).get();
 
+
         const results = [];
         snap.forEach(doc => {
           const d = doc.data();
-          if (!d.className || d.className === className || d.className === "All") {
+          let isTarget = false;
+          if (!d.className || d.className === "All") {
+            isTarget = true;
+          } else if (Array.isArray(d.className)) {
+            isTarget = d.className.some(c => String(c).trim().toLowerCase() === sClass || String(c).trim().toLowerCase() === "all");
+          } else if (typeof d.className === 'string') {
+            const parts = d.className.split(',').map(s => s.trim().toLowerCase());
+            isTarget = parts.includes(sClass) || parts.includes("all") || d.className.trim().toLowerCase() === sClass;
+          }
+          if (!d.className || isTarget) {
             results.push({ id: doc.id, ...d });
           }
         });
@@ -200,15 +213,13 @@ module.exports = function(db) {
         return res.status(403).json({ success: false, message: "Unauthorized." });
       }
       try {
-        const { className } = req.session;
-        const settingsDoc = await db.collection("settings").doc("global").get();
-        const settings = settingsDoc.exists ? settingsDoc.data() : {};
-        const term = settings.current_term || "";
-        const session = settings.current_session || "";
-
-        const snap = await db.collection("lesson_notes")
-          .where("term", "==", term)
-          .where("session", "==", session).get();
+        const uDoc = await db.collection("students").doc(req.session.userId).get();
+        const studentData = uDoc.data() || {};
+        const sClass = (studentData.className || "").trim().toLowerCase();
+        console.log(`[DEBUG] studentGetNotes called for student class: "${sClass}" (raw: "${studentData.className}")`);
+        
+        const snap = await db.collection("lesson_notes").get();
+        console.log(`[DEBUG] Found ${snap.size} total notes in Firestore.`);
 
         const now = Date.now();
         const results = [];
@@ -220,15 +231,29 @@ module.exports = function(db) {
             deletePromises.push(doc.ref.delete());
             return;
           }
-          if (!d.className || d.className === className || d.className === "All") {
+          let isTarget = false;
+          if (!d.className || d.className === "All") {
+            isTarget = true;
+          } else if (Array.isArray(d.className)) {
+            isTarget = d.className.some(c => String(c).trim().toLowerCase() === sClass || String(c).trim().toLowerCase() === "all");
+          } else if (typeof d.className === 'string') {
+            const parts = d.className.split(',').map(s => s.trim().toLowerCase());
+            isTarget = parts.includes(sClass) || parts.includes("all") || d.className.trim().toLowerCase() === sClass;
+          }
+          
+          console.log(`[DEBUG] Note ID: ${doc.id}, Note Class: ${JSON.stringify(d.className)}, isTarget: ${isTarget}`);
+          
+          if (!d.className || isTarget) {
             const { fileData, ...meta } = d;
             results.push({ id: doc.id, ...meta });
           }
         });
         await Promise.all(deletePromises);
         results.sort((a, b) => (b.createdAt || "") > (a.createdAt || "") ? 1 : -1);
+        console.log(`[DEBUG] Returning ${results.length} notes for student.`);
         return res.json({ success: true, data: results });
       } catch (err) {
+        console.error("[DEBUG] Error in studentGetNotes:", err);
         return res.json({ success: false, message: err.message });
       }
     },
@@ -258,7 +283,10 @@ module.exports = function(db) {
         return res.status(403).json({ success: false, message: "Unauthorized." });
       }
       try {
-        const { className, userId } = req.session;
+        const { userId } = req.session;
+        const uDoc = await db.collection("students").doc(req.session.userId).get();
+        const studentData = uDoc.data() || {};
+        const className = studentData.className || "";
         const settingsDoc = await db.collection("settings").doc("global").get();
         const settings = settingsDoc.exists ? settingsDoc.data() : {};
         const term = settings.current_term || "";
@@ -276,10 +304,20 @@ module.exports = function(db) {
           if (data.status === "completed") attemptedMap[data.quizId] = { score: data.score, total: data.total, percentage: data.percentage };
         });
 
+        const sClass = (className || "").trim().toLowerCase();
         const results = [];
         snap.forEach(doc => {
           const d = doc.data();
-          if (!d.className || d.className === className || d.className === "All") {
+          let isTarget = false;
+          if (!d.className || d.className === "All") {
+            isTarget = true;
+          } else if (Array.isArray(d.className)) {
+            isTarget = d.className.some(c => String(c).trim().toLowerCase() === sClass || String(c).trim().toLowerCase() === "all");
+          } else if (typeof d.className === 'string') {
+            const parts = d.className.split(',').map(s => s.trim().toLowerCase());
+            isTarget = parts.includes(sClass) || parts.includes("all") || d.className.trim().toLowerCase() === sClass;
+          }
+          if (!d.className || isTarget) {
             results.push({ id: doc.id, ...d, attemptResult: attemptedMap[doc.id] || null });
           }
         });
@@ -296,7 +334,10 @@ module.exports = function(db) {
       const { quizId } = req.body;
       if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
       try {
-        const { userId, fullName, className } = req.session;
+        const { userId, fullName } = req.session;
+        const uDoc = await db.collection("students").doc(req.session.userId).get();
+        const studentData = uDoc.data() || {};
+        const className = studentData.className || "";
 
         const existingSnap = await db.collection("cbt_attempts")
           .where("quizId", "==", quizId)

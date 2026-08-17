@@ -28,7 +28,7 @@ async function runBackendAction(action, args = []) {
     const token = (typeof AA !== 'undefined' && AA.token) ? AA.token : (args[0] || "");
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({ action: action, args: args }),
+      body: JSON.stringify({ action: action, args: args, token: token }),
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`

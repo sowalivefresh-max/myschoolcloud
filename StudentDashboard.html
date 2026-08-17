@@ -95,7 +95,21 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,0.12);}
 .form-group{margin-bottom:16px;}
 .result-ring{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;margin:0 auto 20px;}
-@media(max-width:768px){.sidebar{display:none;}.page{padding:16px;}}
+@media(max-width:768px){
+  .sidebar{
+    position:fixed;
+    top:0;
+    left:-250px;
+    bottom:0;
+    z-index:9999;
+    transition:left 0.3s ease;
+    box-shadow:2px 0 10px rgba(0,0,0,0.5);
+  }
+  .sidebar.show{left:0;}
+  .page{padding:16px;}
+  .mobile-menu-btn{display:flex!important;}
+}
+.mobile-menu-btn{display:none;background:transparent;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:8px;align-items:center;justify-content:center;}
 </style>
 </head>
 <body>
@@ -132,6 +146,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 
 <div class="main">
   <div class="topbar">
+    <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('show')"><i class="fa fa-bars"></i></button>
     <div class="topbar-title" id="topbarTitle">Dashboard</div>
     <div id="topbarSession" style="font-size:12px;color:var(--muted);"></div>
   </div>
@@ -251,15 +266,35 @@ function updateUserUI(){
   document.getElementById('userAvatar').textContent=(u.fullName||'S').charAt(0).toUpperCase();
 }
 function loadAll(){loadAssignments();loadNotes();loadQuizzes();}
-function showPage(id){
-  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-  document.getElementById(id).classList.add('active');
-  var nm={'pg-home':'nav-home','pg-assignments':'nav-assignments','pg-notes':'nav-notes','pg-cbt':'nav-cbt','pg-password':'nav-password'};
-  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
-  if(nm[id])document.getElementById(nm[id]).classList.add('active');
-  var tm={'pg-home':'Dashboard','pg-assignments':'Assignments','pg-notes':'Lesson Notes','pg-cbt':'CBT Quizzes','pg-password':'Change Password'};
-  document.getElementById('topbarTitle').textContent=tm[id]||'';
+function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById(pageId).classList.add('active');
+    
+    document.querySelectorAll('.nav-item').forEach(function(el) { el.classList.remove('active'); });
+    var navId = 'nav-' + pageId.replace('pg-', '');
+    var navEl = document.getElementById(navId);
+    if(navEl) navEl.classList.add('active');
+    
+    var titles = {
+      'pg-home': 'Dashboard',
+      'pg-assignments': 'Assignments',
+      'pg-notes': 'Lesson Notes',
+      'pg-cbt': 'CBT Quizzes',
+      'pg-password': 'Change Password'
+    };
+    document.getElementById('topbarTitle').innerText = titles[pageId] || 'Portal';
+    
+    document.querySelector('.sidebar').classList.remove('show');
 }
+
+// Close sidebar when clicking outside
+document.addEventListener('click', function(e) {
+  var sidebar = document.querySelector('.sidebar');
+  var menuBtn = document.querySelector('.mobile-menu-btn');
+  if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(e.target) && (!menuBtn || !menuBtn.contains(e.target))) {
+    sidebar.classList.remove('show');
+  }
+});
 function closeModal(id){document.getElementById(id).style.display='none';}
 function showToast(msg,type){
   var el=document.getElementById('toast');
@@ -271,12 +306,18 @@ function showToast(msg,type){
 
 function loadAssignments(){
   runBackendAction('studentGetAssignments',[AA.token]).then(function(r){
-    _assignments=r.success?(r.data||[]):[];renderAssignments();
-    document.getElementById('statAssign').textContent=_assignments.length;
-    var b=document.getElementById('assignBadge');
-    if(_assignments.length>0){b.textContent=_assignments.length;b.style.display='';}else b.style.display='none';
+    if(Array.isArray(r)){
+      _assignments=r;
+    } else {
+      _assignments=(r && r.success)?(r.data||[]):[];
+    }
+    renderAssignments();
+    var pending=_assignments.filter(function(a){return a.status!=='submitted';}).length;
+    document.getElementById('statAssign').textContent=pending;
+    var badge=document.getElementById('assignBadge');
+    if(pending>0){badge.textContent=pending;badge.style.display='';} else {badge.style.display='none';}
     renderHomeAssignments();
-  }).catch(function(){});
+  }).catch(function(){renderAssignments();});
 }
 function renderAssignments(){
   var el=document.getElementById('assignmentsList');
@@ -314,9 +355,15 @@ function viewAssignment(id){
 
 function loadNotes(){
   runBackendAction('studentGetNotes',[AA.token]).then(function(r){
-    _notes=r.success?(r.data||[]):[];renderNotes();
+    // api.js unwraps {success,data} -> r is the raw array if success, or the full object if failed
+    if(Array.isArray(r)){
+      _notes=r;
+    } else {
+      _notes=(r && r.success)?(r.data||[]):[];
+    }
+    renderNotes();
     document.getElementById('statNotes').textContent=_notes.length;
-  }).catch(function(){});
+  }).catch(function(){renderNotes();});
 }
 function renderNotes(){
   var el=document.getElementById('notesList');
@@ -352,10 +399,15 @@ function openNote(id){
 
 function loadQuizzes(){
   runBackendAction('studentGetQuizzes',[AA.token]).then(function(r){
-    _quizzes=r.success?(r.data||[]):[];renderQuizzes();
+    if(Array.isArray(r)){
+      _quizzes=r;
+    } else {
+      _quizzes=(r && r.success)?(r.data||[]):[];
+    }
+    renderQuizzes();
     var av=_quizzes.filter(function(q){return q.isPublished&&!q.attemptResult;}).length;
     document.getElementById('statQuiz').textContent=av;
-  }).catch(function(){});
+  }).catch(function(){renderQuizzes();});
 }
 function renderQuizzes(){
   var el=document.getElementById('quizzesList');

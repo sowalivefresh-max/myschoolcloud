@@ -314,9 +314,9 @@
       <button class="aa-btn aa-btn-primary" onclick="openNoteModal()"><i class="fa fa-upload"></i> Upload Note</button>
     </div>
     <div class="aa-card" style="margin-bottom:14px;background:rgba(96,165,250,0.06);border-color:rgba(96,165,250,0.2);">
-      <div class="aa-card-body" style="padding:12px 18px;font-size:13px;color:rgba(255,255,255,0.6);">
+      <div class="aa-card-body" style="padding:12px 18px;font-size:13px;color:var(--aa-text-color);">
         <i class="fa fa-info-circle" style="color:#60a5fa;margin-right:6px;"></i>
-        Notes are automatically removed after <strong style="color:#fff;">7 days</strong> to manage storage space.
+        Notes are automatically removed after <strong style="color:var(--aa-text-color);">7 days</strong> to manage storage space.
       </div>
     </div>
     <div class="aa-card">
@@ -384,8 +384,8 @@
           <input type="file" class="aa-input" id="noteFile" accept=".pdf,.doc,.docx,.txt,.ppt,.pptx" onchange="handleNoteFile(this)">
           <div id="noteFileInfo" style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:6px;"></div>
         </div>
-        <div style="background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fb923c;">
-          <i class="fa fa-clock"></i> This note will be automatically deleted after 7 days.
+        <div style="background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--aa-text-color);">
+          <i class="fa fa-clock" style="color:#fb923c;"></i> This note will be automatically deleted after 7 days.
         </div>
       </div>
       <div class="aa-modal-footer">
@@ -436,10 +436,14 @@
       <div class="aa-modal-body">
         <!-- Bulk Upload -->
         <div class="aa-card" style="margin-bottom:16px;background:rgba(167,139,250,0.06);border-color:rgba(167,139,250,0.2);">
+          <div class="aa-card-body" style="padding:14px;font-size:13px;color:var(--aa-text-color);">
+            <i class="fa fa-info-circle" style="color:#a78bfa;margin-right:6px;"></i>
+            Copy and paste your questions using one of the supported text formats below. Our AI-powered parser will automatically extract the questions, options, and correct answers.
+          </div>
           <div class="aa-card-header" style="cursor:pointer;" onclick="toggleBulkUpload()"><h4 style="font-size:14px;font-weight:600;"><i class="fa fa-upload" style="color:#a78bfa;margin-right:8px;"></i>Bulk Upload Questions <small style="font-weight:400;color:rgba(255,255,255,0.5);">(click to expand)</small></h4></div>
           <div id="bulkUploadArea" style="display:none;padding:16px;">
-            <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px;">Paste questions below. The following formats are all supported:</p>
-            <pre style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-size:11px;color:#a78bfa;margin-bottom:10px;">Format 1 (Q/A/B/C/D/ANS prefix):
+            <p style="font-size:12px;color:var(--aa-text-muted);margin-bottom:10px;">Paste questions below. The following formats are all supported:</p>
+            <pre style="background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:12px;font-size:11px;color:var(--aa-text-color);margin-bottom:10px;">Format 1 (Q/A/B/C/D/ANS prefix):
 Q: What is 2 + 2?
 A: 3
 B: 4
@@ -1570,7 +1574,8 @@ Answer: A
     }
     function saveNote() {
       var title = document.getElementById('noteTitle').value.trim();
-      var desc = document.getElementById('noteDescription').value.trim();
+      var descEl = document.getElementById('noteDescription');
+      var desc = descEl ? descEl.value.trim() : '';
       if (!title) { showToast('Note Title is required.', 'error'); return; }
       if (!noteFileData && !currentNoteId) { showToast('Please select a file to upload.', 'error'); return; }
       var btn = document.getElementById('btnSaveNote');
