@@ -1832,14 +1832,22 @@ Answer: A
       document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
       openModal('quizResultsModal');
       callServer('teacherGetQuizResults', [AA.token, quizId], function(res) {
-        if (!res.success) { document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">Failed to load results.</div>'; return; }
-        if (!res.data || res.data.length === 0) { document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">No students have taken this quiz yet.</div>'; return; }
+        if (res && res.success === false) { 
+          document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">Failed to load results: ' + AA.escapeHTML(res.message || 'Unknown error') + '</div>'; 
+          return; 
+        }
+        var data = Array.isArray(res) ? res : (res && res.data ? res.data : []);
+        if (data.length === 0) { 
+          document.getElementById('quizResultsBody').innerHTML = '<div class="aa-empty-state">No students have taken this quiz yet.</div>'; 
+          return; 
+        }
         var html = '<table class="aa-table"><thead><tr><th>Student</th><th>Class</th><th>Score</th><th>Submitted</th></tr></thead><tbody>';
-        res.data.forEach(function(r) {
+        data.forEach(function(r) {
           html += '<tr><td><strong>' + AA.escapeHTML(r.studentName) + '</strong></td>';
           html += '<td>' + AA.escapeHTML(r.className) + '</td>';
-          html += '<td><span style="font-weight:700;color:' + (r.percentage>=50?'#4ade80':'#ef4444') + ';">' + r.score + '/' + r.total + ' (' + r.percentage + '%)</span></td>';
-          html += '<td>' + new Date(r.submittedAt).toLocaleString('en-GB') + '</td></tr>';
+          var pct = r.percentage || 0;
+          html += '<td><span style="font-weight:700;color:' + (pct>=50?'#4ade80':'#ef4444') + ';">' + r.score + ' / ' + r.total + ' (' + pct.toFixed(1) + '%)</span></td>';
+          html += '<td>' + (r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-GB') : 'N/A') + '</td></tr>';
         });
         html += '</tbody></table>';
         document.getElementById('quizResultsBody').innerHTML = html;
