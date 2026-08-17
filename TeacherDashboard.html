@@ -205,6 +205,7 @@
                 </select>
                 <button class="aa-btn aa-btn-primary" onclick="loadStudentsForScoring()"><i class="fa fa-sync-alt"></i> Load</button>
                 <div class="flex-1 text-end">
+                  <button class="aa-btn aa-btn-secondary" id="btnImportCbt" style="display:none;" onclick="openImportCbtModal()"><i class="fa fa-file-import"></i> Import CBT</button>
                   <button class="aa-btn aa-btn-primary" id="btnSaveAllScores" style="display:none;" onclick="saveAllScores()">Save All Scores</button>
                   <button class="aa-btn aa-btn-outline" id="btnDownloadTemplate" style="display:none;" onclick="downloadScoreTemplate()"><i class="fa fa-download"></i> Template</button>
                   <button class="aa-btn aa-btn-outline" id="btnBulkUpload" style="display:none;" onclick="openBulkScoreModal()"><i class="fa fa-upload"></i> Bulk Upload</button>
@@ -409,7 +410,14 @@
             <small style="color:var(--aa-text-muted);font-size:11px;">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
           </div>
         </div>
-        <div class="aa-form-group"><label class="aa-label">Duration (minutes)</label><input type="number" class="aa-input" id="quizDuration" value="30" min="5" max="180"></div>
+        <div class="aa-form-group">
+          <label class="aa-label">Duration (minutes)</label>
+          <input type="number" class="aa-input" id="quizDuration" value="30" min="5" max="180">
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Total Obtainable Score (e.g. 10)</label>
+          <input type="number" class="aa-input" id="quizObtainableScore" value="" placeholder="Leave blank to use raw score">
+        </div>
         <div style="background:rgba(240,165,0,0.06);border:1px solid rgba(240,165,0,0.2);border-radius:10px;padding:14px 16px;margin-top:4px;">
           <p style="font-size:12px;font-weight:600;color:var(--aa-gold,#f0a500);margin:0 0 10px;"><i class="fa fa-random" style="margin-right:6px;"></i>Shuffle Settings</p>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:8px;font-size:13px;">
@@ -681,6 +689,31 @@ Answer: A
     </div>
   </div>
 
+  <!-- IMPORT CBT MODAL -->
+  <div class="aa-modal-backdrop" id="importCbtModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title">Import CBT Score</h5>
+        <button class="aa-modal-close" onclick="closeModal('importCbtModal')">x</button>
+      </div>
+      <div class="aa-modal-body">
+        <p class="text-muted fs-14 mb-3">Select a CBT quiz and map it to a gradebook column. Scores will be scaled to the column's max marks automatically.</p>
+        <div class="aa-form-group">
+          <label class="aa-label">Select Quiz</label>
+          <select class="aa-input" id="importCbtQuizId"></select>
+        </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Target Column</label>
+          <select class="aa-input" id="importCbtColId"></select>
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('importCbtModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" onclick="doImportCbtScore()" id="btnDoImportCbt">Import</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ENROLLMENT MODAL -->
   <div class="aa-modal-backdrop" id="enrollmentModal">
     <div class="aa-modal" style="max-width:500px;">
@@ -938,7 +971,7 @@ Answer: A
         
         format.forEach(function(col) {
           var val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);
-          trHtml += '<td><input type="number" id="'+col.id+'_'+sid+'" class="aa-input" style="padding:4px;" value="'+val+'" max="'+col.max+'" '+(locked?'disabled':'')+'></td>';
+          trHtml += '<td><input type="number" id="'+col.id+'_'+sid+'" class="aa-input" style="padding:4px;" value="'+val+'" min="0" max="'+col.max+'" oninput="if(parseFloat(this.value) > '+col.max+') this.value = '+col.max+'; else if(parseFloat(this.value) < 0) this.value = 0;" '+(locked?'disabled':'')+'></td>';
         });
         
         trHtml += '<td><strong>'+(sc.total||0)+'</strong></td>'+
@@ -953,6 +986,7 @@ Answer: A
       var canSubmit = students.length > 0 && !allLocked && anyScores;
       var canSave = students.length > 0 && !allLocked;
       document.getElementById('btnSaveAllScores').style.display = canSave ? 'inline-block' : 'none';
+      document.getElementById('btnImportCbt').style.display = canSave ? 'inline-block' : 'none';
       document.getElementById('btnSubmitScores').style.display = canSubmit ? 'inline-block' : 'none';
       document.getElementById('btnDownloadTemplate').style.display = 'inline-block';
       document.getElementById('btnBulkUpload').style.display = 'inline-block';
@@ -1062,6 +1096,93 @@ Answer: A
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    }
+
+    function openImportCbtModal() {
+      var subSel = document.getElementById('scoreSubjectSelect');
+      var clsSel = document.getElementById('scoreClassSelect');
+      var subjectName = subSel.options[subSel.selectedIndex].text;
+      var className = clsSel.value;
+      
+      callServer('teacherGetMyQuizzes', [AA.token], function(res) {
+        var data = Array.isArray(res) ? res : (res.data || []);
+        
+        var validQuizzes = data.filter(function(q) {
+          return (q.subjectName === subjectName && (q.className.includes(className) || q.className.includes('All')));
+        });
+        
+        if (validQuizzes.length === 0) {
+          showToast('No CBT quizzes found for ' + className + ' - ' + subjectName, 'warning');
+          return;
+        }
+        
+        var opts = '<option value="">-- Select Quiz --</option>';
+        validQuizzes.forEach(function(q) {
+          opts += '<option value="'+q.id+'">'+AA.escapeHTML(q.title) + '</option>';
+        });
+        document.getElementById('importCbtQuizId').innerHTML = opts;
+        
+        var format = (AA.settings && AA.settings.gradebook_format) ? AA.settings.gradebook_format : [
+          { id: 'ca1', title: 'CA1', max: 10 },
+          { id: 'ca2', title: 'CA2', max: 10 },
+          { id: 'ca3', title: 'CA3', max: 10 },
+          { id: 'exam', title: 'Exam', max: 70 }
+        ];
+        var colOpts = '<option value="">-- Select Gradebook Column --</option>';
+        format.forEach(function(c) {
+          colOpts += '<option value="'+c.id+'">'+c.title+' (Max '+c.max+')</option>';
+        });
+        document.getElementById('importCbtColId').innerHTML = colOpts;
+        
+        openModal('importCbtModal');
+      });
+    }
+
+    function doImportCbtScore() {
+      var quizId = document.getElementById('importCbtQuizId').value;
+      var colId = document.getElementById('importCbtColId').value;
+      if (!quizId || !colId) return showToast('Please select a quiz and a column.', 'error');
+      
+      var btn = document.getElementById('btnDoImportCbt');
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Importing...';
+      btn.disabled = true;
+      
+      callServer('teacherGetQuizResults', [AA.token, quizId], function(res) {
+        btn.innerHTML = 'Import';
+        btn.disabled = false;
+        
+        if (res && res.success === false) {
+          return showToast('Failed to load results.', 'error');
+        }
+        var data = Array.isArray(res) ? res : (res && res.data ? res.data : []);
+        
+        if (data.length === 0) {
+          showToast('No results found for this quiz.', 'warning');
+          return;
+        }
+        
+        var count = 0;
+        data.forEach(function(r) {
+          if (!r.studentId) return;
+          var input = document.getElementById(colId + '_' + r.studentId);
+          if (input && !input.disabled) {
+            var scaled = r.score;
+            if (r.obtainableScore) {
+              scaled = (r.score / r.total) * r.obtainableScore;
+            } else {
+              var maxStr = input.getAttribute('max');
+              if (maxStr) scaled = (r.score / r.total) * parseFloat(maxStr);
+            }
+            var max = parseFloat(input.getAttribute('max')) || 100;
+            if (scaled > max) scaled = max;
+            input.value = parseFloat(scaled.toFixed(1));
+            count++;
+          }
+        });
+        
+        closeModal('importCbtModal');
+        showToast('Populated ' + count + ' cells. Please click "Save All Scores" to save.', 'success');
+      });
     }
 
     function openBulkScoreModal() {
@@ -1645,6 +1766,7 @@ Answer: A
       document.getElementById('quizTitle').value = '';
       populateContentDropdowns('quiz');
       document.getElementById('quizDuration').value = '30';
+      document.getElementById('quizObtainableScore').value = '';
       document.getElementById('quizShuffleQuestions').checked = true;
       document.getElementById('quizShuffleOptions').checked = true;
       openModal('quizModal');
@@ -1655,7 +1777,8 @@ Answer: A
       populateContentDropdowns('quiz');
       document.getElementById('quizSubject').value = q.subjectName || '';
       setMultiSelectValues('quizClass', q.className);
-      document.getElementById('quizDuration').value = q.durationMinutes || 30;
+      document.getElementById('quizDuration').value = q.durationMinutes || '30';
+      document.getElementById('quizObtainableScore').value = q.obtainableScore || '';
       document.getElementById('quizShuffleQuestions').checked = q.shuffleQuestions !== false;
       document.getElementById('quizShuffleOptions').checked = q.shuffleOptions !== false;
       openModal('quizModal');
@@ -1671,6 +1794,7 @@ Answer: A
         subjectName: document.getElementById('quizSubject').value,
         className: getMultiSelectValues('quizClass'),
         durationMinutes: parseInt(document.getElementById('quizDuration').value) || 30,
+        obtainableScore: parseFloat(document.getElementById('quizObtainableScore').value) || null,
         shuffleQuestions: document.getElementById('quizShuffleQuestions').checked,
         shuffleOptions: document.getElementById('quizShuffleOptions').checked
       };
@@ -1846,7 +1970,12 @@ Answer: A
           html += '<tr><td><strong>' + AA.escapeHTML(r.studentName) + '</strong></td>';
           html += '<td>' + AA.escapeHTML(r.className) + '</td>';
           var pct = r.percentage || 0;
-          html += '<td><span style="font-weight:700;color:' + (pct>=50?'#4ade80':'#ef4444') + ';">' + r.score + ' / ' + r.total + ' (' + pct.toFixed(1) + '%)</span></td>';
+          if (r.obtainableScore) {
+            var scaled = (r.score / r.total) * r.obtainableScore;
+            html += '<td><span style="font-weight:700;color:' + (pct>=50?'#4ade80':'#ef4444') + ';">' + scaled.toFixed(1) + ' / ' + r.obtainableScore + ' (' + pct.toFixed(1) + '%)</span><br><small style="color:var(--aa-text-muted);">Raw: ' + r.score + ' / ' + r.total + '</small></td>';
+          } else {
+            html += '<td><span style="font-weight:700;color:' + (pct>=50?'#4ade80':'#ef4444') + ';">' + r.score + ' / ' + r.total + ' (' + pct.toFixed(1) + '%)</span></td>';
+          }
           html += '<td>' + (r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-GB') : 'N/A') + '</td></tr>';
         });
         html += '</tbody></table>';

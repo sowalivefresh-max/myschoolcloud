@@ -846,6 +846,9 @@ module.exports = function(db, notificationsActions) {
           subjectName: data.subjectName || "",
           className: data.className || "All",
           durationMinutes: parseInt(data.durationMinutes) || 30,
+          obtainableScore: parseFloat(data.obtainableScore) || null,
+          shuffleQuestions: !!data.shuffleQuestions,
+          shuffleOptions: !!data.shuffleOptions,
           teacherId: req.session.userId,
           teacherName: req.session.fullName || "",
           term: data.term || s.current_term || "",
@@ -950,13 +953,26 @@ module.exports = function(db, notificationsActions) {
       const { quizId } = req.body;
       if (!quizId) return res.json({ success: false, message: "Quiz ID required." });
       try {
+        const quizSnap = await db.collection("cbt_quizzes").doc(quizId).get();
+        const obtainableScore = quizSnap.exists ? (quizSnap.data().obtainableScore || null) : null;
+
         const snap = await db.collection("cbt_attempts")
           .where("quizId", "==", quizId)
           .where("status", "==", "completed").get();
         const results = [];
         snap.forEach(doc => {
           const d = doc.data();
-          results.push({ id: doc.id, studentName: d.studentName, className: d.className, score: d.score, total: d.total, percentage: d.percentage, submittedAt: d.submittedAt });
+          results.push({ 
+            id: doc.id, 
+            studentId: d.studentId,
+            studentName: d.studentName, 
+            className: d.className, 
+            score: d.score, 
+            total: d.total, 
+            percentage: d.percentage, 
+            submittedAt: d.submittedAt,
+            obtainableScore: obtainableScore
+          });
         });
         results.sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
         return res.json({ success: true, data: results });
