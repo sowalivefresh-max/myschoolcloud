@@ -261,7 +261,7 @@ app.post("/api", async (req, res) => {
         if (action === "parentDownloadReceipt") { req.body.paymentId = args[1]; }
         
         // Parent Invite Mappings
-        if (action === "adminGenerateParentInvite") { req.body.linkedStudentId = args[1]; }
+        if (action === "adminGenerateParentInvite") { req.body.linkedStudentIds = args[1]; }
         if (action === "adminRevokeParentInvite") { req.body.token = args[1]; }
         if (action === "validateParentInvite") { req.body.token = args[0]; }
         if (action === "parentSelfRegister") { req.body.token = args[0]; req.body.fullName = args[1]; req.body.email = args[2]; req.body.password = args[3]; req.body.phone = args[4]; }

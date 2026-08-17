@@ -268,18 +268,23 @@ module.exports = function(db) {
           return res.json({ success: false, message: "This invite link has expired (valid for 48 hours). Please request a new one." });
         }
 
-        // Optionally get the linked student name if present
-        let linkedStudentName = null;
-        if (invite.linkedStudentId) {
+        // Optionally get the linked student names if present
+        let linkedStudentNames = [];
+        if (invite.linkedStudentIds && Array.isArray(invite.linkedStudentIds)) {
+          for (let sid of invite.linkedStudentIds) {
+            const stuDoc = await db.collection("students").doc(sid).get();
+            if (stuDoc.exists) linkedStudentNames.push(stuDoc.data().fullName);
+          }
+        } else if (invite.linkedStudentId) {
           const stuDoc = await db.collection("students").doc(invite.linkedStudentId).get();
-          if (stuDoc.exists) linkedStudentName = stuDoc.data().fullName;
+          if (stuDoc.exists) linkedStudentNames.push(stuDoc.data().fullName);
         }
 
         return res.json({
           success: true,
           schoolName: invite.schoolName || "MySchool Cloud",
-          linkedStudentId: invite.linkedStudentId || null,
-          linkedStudentName
+          linkedStudentIds: invite.linkedStudentIds || (invite.linkedStudentId ? [invite.linkedStudentId] : []),
+          linkedStudentNames
         });
       } catch (err) {
         return res.json({ success: false, message: "Error validating invite: " + err.message });
@@ -324,9 +329,14 @@ module.exports = function(db) {
         await newUserRef.set(userData);
 
         // 4. Link to student if applicable
-        if (invite.linkedStudentId) {
+        const sids = invite.linkedStudentIds || (invite.linkedStudentId ? [invite.linkedStudentId] : []);
+        if (sids.length > 0) {
           try {
-            await db.collection("students").doc(invite.linkedStudentId).update({ parentId: newUserRef.id });
+            const batch = db.batch();
+            for(let sid of sids) {
+              batch.update(db.collection("students").doc(sid), { parentId: newUserRef.id });
+            }
+            await batch.commit();
           } catch (e) {
             console.error("Could not link parent to student:", e.message);
           }

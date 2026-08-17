@@ -1016,7 +1016,7 @@
           <div class="aa-grid-2" style="gap:12px;align-items:flex-end;">
             <div class="aa-form-group mb-0">
               <label class="aa-label">Link to Student (Optional)</label>
-              <select id="inviteStudentSelect" class="aa-select">
+              <select id="inviteStudentSelect" class="aa-input" multiple size="4">
                 <option value="">No specific student</option>
               </select>
               <div class="aa-helper">If selected, parent will be auto-linked to this student on registration.</div>
@@ -3059,8 +3059,14 @@
     }
 
     function generateParentInvite() {
-      var linkedStudentId = document.getElementById('inviteStudentSelect').value || null;
-      callServer('adminGenerateParentInvite', [AA.token, linkedStudentId], function(res) {
+      var select = document.getElementById('inviteStudentSelect');
+      var linkedStudentIds = [];
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].selected && select.options[i].value) {
+          linkedStudentIds.push(select.options[i].value);
+        }
+      }
+      callServer('adminGenerateParentInvite', [AA.token, linkedStudentIds], function(res) {
         if (!res.success) { showToast(res.message || 'Failed to generate invite', 'error'); return; }
         
         // Build the public URL for the registration page

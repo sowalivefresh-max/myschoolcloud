@@ -2302,7 +2302,7 @@ module.exports = function(db, notificationsActions) {
 
     adminGenerateParentInvite: async (req, res) => {
       try {
-        const { linkedStudentId } = req.body;
+        const { linkedStudentIds } = req.body;
         const token = uuidv4();
         const now = new Date();
         const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000); // 48 hours
@@ -2320,7 +2320,7 @@ module.exports = function(db, notificationsActions) {
           createdAt: now.toISOString(),
           expiresAt: expiresAt.toISOString(),
           status: "pending",
-          linkedStudentId: linkedStudentId || null
+          linkedStudentIds: linkedStudentIds || []
         };
 
         await db.collection("parent_invites").doc(token).set(inviteData);
