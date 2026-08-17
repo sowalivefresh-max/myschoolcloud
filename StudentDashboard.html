@@ -503,7 +503,17 @@ function renderCBTQuestion(){
   document.getElementById('cbtNextBtn').textContent=_cbtIdx===_cbtQuestions.length-1?'Review':'Next \u203a';
 }
 function selectAnswer(qId,opt){_cbtAnswers[qId]=opt;renderCBTNav();renderCBTQuestion();}
-function cbtNav(dir){_cbtIdx=Math.max(0,Math.min(_cbtQuestions.length-1,_cbtIdx+dir));renderCBTNav();renderCBTQuestion();}
+function cbtNav(dir){
+  if (_cbtIdx === _cbtQuestions.length - 1 && dir === 1) {
+    for (var i = 0; i < _cbtQuestions.length; i++) {
+      if (!_cbtAnswers[_cbtQuestions[i].id]) { jumpCBT(i); return; }
+    }
+    jumpCBT(0); return;
+  }
+  _cbtIdx=Math.max(0,Math.min(_cbtQuestions.length-1,_cbtIdx+dir));
+  renderCBTNav();
+  renderCBTQuestion();
+}
 function jumpCBT(i){_cbtIdx=i;renderCBTNav();renderCBTQuestion();}
 function startCBTTimer(){
   clearInterval(_cbtTimer);
