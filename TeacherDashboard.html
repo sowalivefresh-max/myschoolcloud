@@ -1827,12 +1827,12 @@ Answer: A
       document.getElementById('questionEditorList').innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
       openModal('questionsModal');
       callServer('teacherGetQuizQuestions', [AA.token, quizId], function(res) {
-        if (res.success) {
-          currentQuizQuestions = res.data || [];
+        if (res && res.success === false) {
+          document.getElementById('questionEditorList').innerHTML = '<div class="aa-empty-state">Error loading questions. ' + (res.message || '') + '</div>';
+        } else {
+          currentQuizQuestions = Array.isArray(res) ? res : (res && res.data ? res.data : []);
           if (currentQuizQuestions.length === 0) currentQuizQuestions.push(createEmptyQuestion());
           renderQuestionEditor();
-        } else {
-          document.getElementById('questionEditorList').innerHTML = '<div class="aa-empty-state">Error loading questions.</div>';
         }
       });
     }
@@ -1883,12 +1883,29 @@ Answer: A
       var text = document.getElementById('bulkQText').value;
       if (!text.trim()) return;
 
-      // Split into question blocks by one or more blank lines
-      var blocks = text.trim().split(/\n{2,}/);
+      var allLines = text.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+      var blocks = [];
+      var currentBlock = [];
+      
+      for (var i = 0; i < allLines.length; i++) {
+        var l = allLines[i];
+        currentBlock.push(l);
+        if (/^(answer|ans)[:\s]/i.test(l)) {
+          blocks.push(currentBlock.slice()); // clone array
+          currentBlock = [];
+        } else if (/^Q:/i.test(l) && currentBlock.length > 1) {
+          // Found a Q: but we already had lines in currentBlock?
+          // It means the previous question didn't have an answer line.
+          var previousLine = currentBlock.pop(); // The 'Q:' line
+          blocks.push(currentBlock.slice());
+          currentBlock = [previousLine];
+        }
+      }
+      if (currentBlock.length > 0) blocks.push(currentBlock);
+
       var added = 0;
 
-      blocks.forEach(function(b) {
-        var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+      blocks.forEach(function(lines) {
         if (lines.length < 2) return;
 
         var qObj = createEmptyQuestion();
@@ -1945,6 +1962,7 @@ Answer: A
 
         if (qObj.question && qObj.optionA) { currentQuizQuestions.push(qObj); added++; }
       });
+
 
       document.getElementById('bulkQText').value = '';
       toggleBulkUpload();
