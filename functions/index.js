@@ -273,6 +273,7 @@ app.post("/api", async (req, res) => {
         if (action === "studentGetNoteFile") { req.body.noteId = args[1]; }
         if (action === "studentStartQuiz") { req.body.quizId = args[1]; }
         if (action === "studentSubmitQuiz") { req.body.attemptId = args[1]; req.body.answers = args[2]; }
+        if (action === "studentSaveQuizProgress") { req.body.attemptId = args[1]; req.body.answers = args[2]; req.body.remainingSeconds = args[3]; }
 
         // Teacher Content Mappings
         if (action === "teacherSaveAssignment") { req.body.data = args[1]; }
@@ -557,6 +558,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => studentActions.studentStartQuiz(req, res));
       case "studentSubmitQuiz":
         return requireRole(req, res, () => studentActions.studentSubmitQuiz(req, res));
+      case "studentSaveQuizProgress":
+        return requireRole(req, res, () => studentActions.studentSaveQuizProgress(req, res));
 
       // --- TEACHER CONTENT ACTIONS ---
       case "teacherSaveAssignment":

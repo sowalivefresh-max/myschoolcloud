@@ -340,14 +340,29 @@ module.exports = function(db) {
         const studentData = uDoc.data() || {};
         const className = studentData.className || "";
 
+        
         const existingSnap = await db.collection("cbt_attempts")
           .where("quizId", "==", quizId)
           .where("studentId", "==", userId)
-          .where("status", "==", "completed")
           .limit(1).get();
+          
+        let attemptId = null;
+        let savedAnswers = {};
+        let savedSecs = null;
+
         if (!existingSnap.empty) {
           const att = existingSnap.docs[0].data();
-          return res.json({ success: false, alreadyAttempted: true, message: "You have already attempted this quiz.", score: att.score, total: att.total, percentage: att.percentage });
+          if (att.status === "completed") {
+            return res.json({ success: false, alreadyAttempted: true, message: "You have already attempted this quiz.", score: att.score, total: att.total, percentage: att.percentage });
+          } else {
+            attemptId = existingSnap.docs[0].id;
+            if (att.answers && Array.isArray(att.answers)) {
+              att.answers.forEach(a => {
+                if (a.selectedOption) savedAnswers[a.questionId] = a.selectedOption;
+              });
+            }
+            if (att.remainingSeconds !== undefined) savedSecs = att.remainingSeconds;
+          }
         }
 
         const quizDoc = await db.collection("cbt_quizzes").doc(quizId).get();
@@ -360,33 +375,67 @@ module.exports = function(db) {
           const q = doc.data();
           questions.push({ id: doc.id, question: q.question, optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD });
         });
-        // Respect per-quiz shuffle setting (default: true for existing quizzes)
+        
+        // Only shuffle if it's a new attempt, to avoid confusing them if they resume? 
+        // Actually, the answer is mapped by ID and letter, so shuffle is perfectly safe.
         if (quiz.shuffleQuestions !== false) {
           questions.sort(() => Math.random() - 0.5);
         }
 
-        const attemptRef = db.collection("cbt_attempts").doc();
-        await attemptRef.set({
-          quizId, studentId: userId, studentName: fullName, className,
-          startedAt: new Date().toISOString(), status: "in_progress"
-        });
+        if (!attemptId) {
+          const attemptRef = db.collection("cbt_attempts").doc();
+          await attemptRef.set({
+            quizId, studentId: userId, studentName: fullName, className,
+            startedAt: new Date().toISOString(), status: "in_progress"
+          });
+          attemptId = attemptRef.id;
+        }
 
         return res.json({
           success: true,
-          attemptId: attemptRef.id,
+          attemptId,
+          savedAnswers,
+          savedSecs,
           quiz: {
             title: quiz.title,
             durationMinutes: quiz.durationMinutes,
-            shuffleOptions: quiz.shuffleOptions !== false  // default true
+            shuffleOptions: quiz.shuffleOptions !== false
           },
           questions
         });
+
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    
+    studentSaveQuizProgress: async (req, res) => {
+      if (!req.session || req.session.role !== "student") {
+        return res.status(403).json({ success: false, message: "Unauthorized." });
+      }
+      const { attemptId, answers, remainingSeconds } = req.body;
+      if (!attemptId) return res.json({ success: false, message: "Attempt ID required." });
+      try {
+        const attemptRef = db.collection("cbt_attempts").doc(attemptId);
+        const attemptDoc = await attemptRef.get();
+        if (!attemptDoc.exists) return res.json({ success: false, message: "Attempt not found." });
+        if (attemptDoc.data().status === "completed") {
+          return res.json({ success: false, message: "Quiz already completed." });
+        }
+        await attemptRef.update({
+          answers: answers || [],
+          remainingSeconds: remainingSeconds || 0,
+          lastSavedAt: new Date().toISOString()
+        });
+        return res.json({ success: true, message: "Progress saved." });
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
     },
 
     studentSubmitQuiz: async (req, res) => {
+
       if(req.session) { db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "User", action: "SUBMIT_QUIZ", details: `Submitted CBT Quiz` }).catch(()=>{}); }
       if (!req.session || req.session.role !== "student") {
         return res.status(403).json({ success: false, message: "Unauthorized." });
