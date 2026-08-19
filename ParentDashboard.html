@@ -125,15 +125,34 @@
           </div>
           
           <div id="finContent" style="display:none;">
+            <!-- Clearance Badge -->
+            <div id="clearanceBadge" style="display:none; text-align:center; padding:20px; margin-bottom:16px; background:linear-gradient(135deg,#064e3b,#065f46); border-radius:14px; border:2px solid #10b981;">
+              <div style="font-size:48px; margin-bottom:6px;">✅</div>
+              <h3 style="color:#6ee7b7; margin:0 0 4px; font-size:22px;">Financially Cleared!</h3>
+              <p style="color:#a7f3d0; margin:0; font-size:14px;">All fees are fully paid. Thank you for your prompt payment!</p>
+            </div>
+            <!-- Early-Bird Banner -->
+            <div id="earlyBirdBanner" style="display:none; background:linear-gradient(135deg,#1e3a5f,#1e40af); border-radius:12px; padding:16px 20px; margin-bottom:16px; border:1px solid #3b82f6;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="font-size:28px;">⚡</div>
+                <div>
+                  <div style="color:#93c5fd; font-weight:700; font-size:15px;">Early Payment Discount Available!</div>
+                  <div id="earlyBirdText" style="color:#bfdbfe; font-size:13px;">Pay in full before the deadline and save on tuition.</div>
+                </div>
+              </div>
+            </div>
             <div class="aa-alert aa-alert-success mb-4" id="overageAlert" style="display:none;">
               <i class="fa fa-piggy-bank" style="font-size:18px; margin-top:2px;"></i>
               <div>This child has an overage (credit balance) of <strong id="overageAmountText">₦0.00</strong>. This credit will be automatically deducted from your next term's bill when generated.</div>
             </div>
             <div class="aa-card mb-4">
-              <div class="aa-card-header"><h3 class="aa-card-title">Term Bills</h3></div>
+              <div class="aa-card-header">
+                <h3 class="aa-card-title">Term Bills</h3>
+                <button class="aa-btn aa-btn-outline aa-btn-sm" id="requestPlanBtn" style="display:none;" onclick="openInstallmentModal()"><i class="fa fa-calendar-alt"></i> Request Payment Plan</button>
+              </div>
               <div class="aa-card-body" style="padding:0;">
                 <table class="aa-table" id="myBillsTable">
-                  <thead><tr><th>Term / Session</th><th>Total Billed</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Term / Session</th><th>Total Billed</th><th>Paid</th><th>Balance Due</th><th>Status</th><th>Plan</th></tr></thead>
                   <tbody></tbody>
                 </table>
               </div>
@@ -308,6 +327,9 @@
       if(!sid) return showToast('Please select a child', 'warning');
       callServer('parentDownloadReport', [AA.token, sid, term, sess, rptType], function(res) {
         if(res.success) openPDFViewer(res.previewUrl, res.downloadUrl, 'Report Card');
+        else if(res.financeLocked) {
+          showToast('Report access restricted. Outstanding balance: ' + formatNaira(res.outstandingAmount || 0) + '. Please contact accounts.', 'error');
+        }
         else showToast(res.message, 'error');
       }, null, true);
     }
@@ -325,31 +347,83 @@
       }, null, false);
       callServer('parentGetBills', [AA.token, sid], function(bills) {
         document.getElementById('finContent').style.display='block';
-        buildTable('myBillsTable', [
-          {key:'term', render:function(r){return r.term+' '+r.session;}},
-          {key:'totalBilled', render:function(r){
-            var html = formatNaira(r.totalBilled);
-            if (r.arrears > 0) html += '<br><small class="text-danger">+ ' + formatNaira(r.arrears) + ' Arrears</small>';
-            return html;
-          }},
-          {key:'totalPaid', render:function(r){return '<span class="text-success">'+formatNaira(r.totalPaid)+'</span>';}},
-          {key:'balance', render:function(r){
-            var bal = parseFloat(r.balance) || 0;
-            var arr = parseFloat(r.arrears) || 0;
-            var totalDue = bal + arr;
-            if (totalDue <= 0) return '<span class="text-success">Cleared</span>';
-            return '<span class="text-danger" style="font-weight:bold;">'+formatNaira(totalDue)+'</span>';
-          }},
-          {key:'status', render:function(r){
-             var bal = parseFloat(r.balance) || 0;
-             var arr = parseFloat(r.arrears) || 0;
-             var totalDue = bal + arr;
-             if (totalDue <= 0) return '<span class="aa-badge aa-badge-success">Paid</span>';
-             if (r.totalPaid > 0) return '<span class="aa-badge aa-badge-warning">Partial</span>';
-             return '<span class="aa-badge aa-badge-danger">Unpaid</span>';
-          }}
-        ], bills);
+        
+        // Compute overall balance for clearance badge / early-bird banner
+        var totalOutstanding = 0;
+        var mostRecentBill = null;
+        bills.forEach(function(b) {
+          var bal = parseFloat(b.balance) || 0;
+          var arr = parseFloat(b.arrears) || 0;
+          totalOutstanding += Math.max(0, bal + arr - (parseFloat(b.totalPaid)||0));
+          if (!mostRecentBill || new Date(b.createdAt) > new Date(mostRecentBill.createdAt)) mostRecentBill = b;
+        });
+
+        // Clearance badge
+        document.getElementById('clearanceBadge').style.display = (totalOutstanding <= 0 && bills.length > 0) ? 'block' : 'none';
+
+        // Show/hide plan button
+        document.getElementById('requestPlanBtn').style.display = (totalOutstanding > 0) ? 'inline-flex' : 'none';
+
+        // Early-bird banner
+        var ebBanner = document.getElementById('earlyBirdBanner');
+        if (mostRecentBill && mostRecentBill.earlyBirdDeadline && mostRecentBill.earlyBirdSavings > 0) {
+          var deadline = new Date(mostRecentBill.earlyBirdDeadline);
+          var now = new Date();
+          if (deadline > now && !mostRecentBill.earlyBirdApplied) {
+            var daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+            document.getElementById('earlyBirdText').textContent = 'Pay in full before ' + deadline.toLocaleDateString() + ' (' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + ' left) and save \u20a6' + Number(mostRecentBill.earlyBirdSavings).toLocaleString() + ' on tuition!';
+            ebBanner.style.display = 'block';
+          } else {
+            ebBanner.style.display = 'none';
+          }
+        } else {
+          ebBanner.style.display = 'none';
+        }
+
+        // Fetch installment plans to show in table
+        callServer('parentGetInstallmentPlan', [AA.token, sid], function(plansRes) {
+          var planMap = {};
+          if (plansRes && plansRes.success && plansRes.data) {
+            plansRes.data.forEach(function(p) { planMap[p.billId] = p; });
+          }
+
+          buildTable('myBillsTable', [
+            {key:'term', render:function(r){return r.term+' '+r.session;}},
+            {key:'totalBilled', render:function(r){
+              var html = formatNaira(r.totalBilled);
+              if (r.arrears > 0) html += '<br><small class="text-danger">+ ' + formatNaira(r.arrears) + ' Arrears</small>';
+              return html;
+            }},
+            {key:'totalPaid', render:function(r){return '<span class="text-success">'+formatNaira(r.totalPaid)+'</span>';}},
+            {key:'balance', render:function(r){
+              var bal = parseFloat(r.balance) || 0;
+              var arr = parseFloat(r.arrears) || 0;
+              var totalDue = Math.max(0, bal + arr);
+              if (totalDue <= 0) return '<span class="text-success">Cleared</span>';
+              return '<span class="text-danger" style="font-weight:bold;">'+formatNaira(totalDue)+'</span>';
+            }},
+            {key:'status', render:function(r){
+               var bal = parseFloat(r.balance) || 0;
+               var arr = parseFloat(r.arrears) || 0;
+               var totalDue = bal + arr;
+               if (totalDue <= 0) return '<span class="aa-badge aa-badge-success">Paid</span>';
+               if (r.totalPaid > 0) return '<span class="aa-badge aa-badge-warning">Partial</span>';
+               return '<span class="aa-badge aa-badge-danger">Unpaid</span>';
+            }},
+            {key:'plan', render:function(r){
+              var plan = planMap[r.id];
+              if (!plan) return '<span style="color:#64748b;font-size:12px;">—</span>';
+              if (plan.status === 'pending') return '<span class="aa-badge aa-badge-warning">Plan Pending</span>';
+              if (plan.status === 'approved') return '<span class="aa-badge aa-badge-success"><i class="fa fa-check"></i> Plan Active</span>';
+              if (plan.status === 'rejected') return '<span class="aa-badge aa-badge-danger">Plan Rejected</span>';
+              return '';
+            }}
+          ], bills);
+        }, null, false);
       }, null, true);
+
+      // Store sid for installment modal
+      window._activeFinSid = sid;
 
       callServer('parentGetPayments', [AA.token, sid], function(payments) {
         buildTable('myPaymentsTable', [
@@ -451,6 +525,62 @@
         showToast('Receipt error: ' + (err || 'Unknown error'), 'error');
       }, true);
     }
+    function openInstallmentModal() {
+      var sid = window._activeFinSid;
+      if (!sid) return showToast('Please select a child first.', 'warning');
+      document.getElementById('installmentMilestones').innerHTML = '<div class="milestone-row" style="display:flex;gap:8px;margin-bottom:8px;"><input type="date" class="aa-input" placeholder="Due Date" style="flex:1;"><input type="number" class="aa-input" placeholder="Amount (₦)" style="flex:1;"><button type="button" onclick="addMilestoneRow()" class="aa-btn aa-btn-outline aa-btn-sm" style="flex:0 0 auto;"><i class="fa fa-plus"></i></button></div>';
+      openModal('installmentModal');
+    }
+    function addMilestoneRow() {
+      var div = document.createElement('div');
+      div.className = 'milestone-row';
+      div.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;';
+      div.innerHTML = '<input type="date" class="aa-input" placeholder="Due Date" style="flex:1;"><input type="number" class="aa-input" placeholder="Amount (₦)" style="flex:1;"><button type="button" onclick="this.parentNode.remove()" class="aa-btn aa-btn-sm" style="flex:0 0 auto;background:#ef4444;color:#fff;"><i class="fa fa-trash"></i></button>';
+      document.getElementById('installmentMilestones').appendChild(div);
+    }
+    function submitInstallmentPlan() {
+      var sid = window._activeFinSid;
+      if (!sid) return showToast('No child selected.', 'warning');
+      var rows = document.querySelectorAll('#installmentMilestones .milestone-row');
+      var milestones = [];
+      var valid = true;
+      rows.forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var date = inputs[0] ? inputs[0].value : '';
+        var amount = inputs[1] ? parseFloat(inputs[1].value) : 0;
+        if (!date || !amount || amount <= 0) { valid = false; return; }
+        milestones.push({ dueDate: date, amount: amount });
+      });
+      if (!valid || milestones.length === 0) return showToast('Please fill in all milestone rows correctly.', 'warning');
+      callServer('parentRequestInstallmentPlan', [AA.token, sid, null, null, null, milestones], function(res) {
+        if (res.success) {
+          showToast(res.message, 'success');
+          closeModal('installmentModal');
+          loadChildFinance(sid);
+        } else {
+          showToast(res.message, 'error');
+        }
+      }, null, true);
+    }
   </script>
+
+  <!-- Installment Plan Modal -->
+  <div class="aa-modal-backdrop" id="installmentModal">
+    <div class="aa-modal" style="max-width:520px;">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title"><i class="fa fa-calendar-alt"></i> Request Installment Plan</h5>
+        <button class="aa-modal-close" onclick="closeModal('installmentModal')">×</button>
+      </div>
+      <div class="aa-modal-body">
+        <div class="aa-alert aa-alert-info mb-3">
+          <i class="fa fa-info-circle" style="margin-top:2px;"></i>
+          <div>Define your preferred payment milestones. The total of all milestones must equal your total amount due. The accounts office will review and approve your plan.</div>
+        </div>
+        <label class="aa-label">Payment Milestones</label>
+        <div id="installmentMilestones" class="mb-3"></div>
+        <button class="aa-btn aa-btn-success w-100 mt-2" onclick="submitInstallmentPlan()"><i class="fa fa-paper-plane"></i> Submit for Approval</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

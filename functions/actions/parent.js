@@ -102,6 +102,35 @@ module.exports = function(db) {
         if (term === cfg.current_term && academicSession === cfg.current_session && !cfg.results_published) {
           return res.json({ success: false, message: "Results for the current term have not been published yet." });
         }
+
+        // === REPORT FINANCE LOCK CHECK ===
+        const rulesDoc = await db.collection("settings").doc("compliance_rules").get();
+        const compRules = rulesDoc.exists ? rulesDoc.data() : {};
+        if (compRules.report_lock_enabled) {
+          const billSnap = await db.collection("bills")
+            .where("studentId", "==", studentId)
+            .where("term", "==", term)
+            .where("session", "==", academicSession)
+            .limit(1).get();
+          if (!billSnap.empty) {
+            const bill = billSnap.docs[0].data();
+            const billed = Number(bill.totalBilled || 0);
+            const arrears = Number(bill.arrears || 0);
+            const paidSnap = await db.collection("payments")
+              .where("studentId", "==", studentId)
+              .where("term", "==", term)
+              .where("session", "==", academicSession)
+              .where("status", "==", "Approved").get();
+            let paid = 0;
+            paidSnap.forEach(d => paid += Number(d.data().amount || 0));
+            const outstanding = Math.max(0, (billed + arrears) - paid);
+            const minBalance = Number(compRules.report_lock_min_balance || 0);
+            if (outstanding > minBalance) {
+              return res.json({ success: false, financeLocked: true, outstandingAmount: outstanding, message: `Report download is restricted. Outstanding fee balance: ₦${outstanding.toLocaleString()}. Please contact the accounts office.` });
+            }
+          }
+        }
+        // === END REPORT FINANCE LOCK CHECK ===
         
         const scoresSnap = await db.collection("assessments")
           .where("studentId", "==", studentId)
@@ -410,5 +439,60 @@ module.exports = function(db) {
         return res.json({ success: false, message: err.message });
       }
     }
+    parentRequestInstallmentPlan: async (req, res) => {
+      try {
+        const { studentId, billId, term, session, milestones } = req.body;
+        const parentId = req.session.userId;
+        if (!studentId || !billId || !milestones || !Array.isArray(milestones) || milestones.length === 0) {
+          return res.json({ success: false, message: "Student ID, bill ID, and milestones are required." });
+        }
+        await verifyParentChild(parentId, studentId);
+        const billDoc = await db.collection("bills").doc(billId).get();
+        if (!billDoc.exists) return res.json({ success: false, message: "Bill not found." });
+        const bill = billDoc.data();
+        const totalMilestone = milestones.reduce((sum, m) => sum + Number(m.amount || 0), 0);
+        const billTotal = Number(bill.totalBilled || 0) + Number(bill.arrears || 0);
+        if (Math.abs(totalMilestone - billTotal) > 1) {
+          return res.json({ success: false, message: `Milestone total (N${totalMilestone.toLocaleString()}) must equal total due (N${billTotal.toLocaleString()}).` });
+        }
+        const existingSnap = await db.collection("installment_plans").where("billId", "==", billId).get();
+        if (!existingSnap.empty) {
+          const existing = existingSnap.docs[0].data();
+          if (existing.status === "pending" || existing.status === "approved") {
+            return res.json({ success: false, message: "A plan already exists for this bill." });
+          }
+        }
+        const studentDoc = await db.collection("students").doc(studentId).get();
+        const studentName = studentDoc.exists ? studentDoc.data().fullName : "Unknown";
+        const planRef = db.collection("installment_plans").doc();
+        await planRef.set({
+          id: planRef.id, studentId, studentName, billId, parentId,
+          term: term || bill.term, session: session || bill.session,
+          totalAmount: billTotal,
+          milestones: milestones.map(m => ({ ...m, amount: Number(m.amount), paid: false })),
+          status: "pending", createdAt: new Date().toISOString()
+        });
+        await db.collection("notifications").add({
+          targetRole: "accounts",
+          title: "New Installment Plan Request",
+          message: `${studentName}'s parent has requested an installment payment plan for ${term || bill.term}, ${session || bill.session}.`,
+          type: "FINANCE", isRead: false, createdAt: new Date().toISOString()
+        });
+        return res.json({ success: true, message: "Installment plan submitted for approval. The accounts office will review it shortly." });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    parentGetInstallmentPlan: async (req, res) => {
+      try {
+        const { studentId } = req.body;
+        const parentId = req.session.userId;
+        await verifyParentChild(parentId, studentId);
+        const snap = await db.collection("installment_plans").where("studentId", "==", studentId).get();
+        const plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        plans.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return res.json({ success: true, data: plans });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
   };
 };

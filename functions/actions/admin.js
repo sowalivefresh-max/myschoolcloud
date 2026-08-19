@@ -736,6 +736,10 @@ module.exports = function(db, notificationsActions) {
         const existingBillsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         const existingBillStudentIds = new Set(existingBillsSnap.docs.map(doc => doc.data().studentId));
 
+        // Pre-fetch early-bird config
+        const earlyBirdConfigDoc = await db.collection("settings").doc("early_bird_config").get();
+        const earlyBirdCfg = earlyBirdConfigDoc.exists ? earlyBirdConfigDoc.data() : null;
+
         // Pre-fetch settings and parents for email notifications
         const settingsDoc = await db.collection("settings").doc("global").get();
         const settings = settingsDoc.data() || {};
@@ -829,17 +833,36 @@ module.exports = function(db, notificationsActions) {
              if (owed > 0) pastArrears = owed;
           }
 
+          var earlyBirdSavings = 0;
           // For simplicity in this chunk, assuming 0 credit. Real implementation would fetch credit.
           const credit = 0; 
           const appliedCredit = Math.min(credit, total);
           const finalBalance = total - appliedCredit;
           const billStatus = finalBalance <= 0 ? "Paid" : (appliedCredit > 0 ? "Partial" : "Outstanding");
           
+          // Fetch early-bird config for this bill generation
+          let earlyBirdDeadline = null;
+          let earlyBirdDiscountPercent = 0;
+          if (typeof earlyBirdCfg !== 'undefined' && earlyBirdCfg && earlyBirdCfg.enabled) {
+            const deadlineDate = new Date();
+            deadlineDate.setDate(deadlineDate.getDate() + (earlyBirdCfg.days || 14));
+            earlyBirdDeadline = deadlineDate.toISOString();
+            earlyBirdDiscountPercent = Number(earlyBirdCfg.discountPercent || 3);
+            // Calculate the early bird tuition savings
+            const tuitionItem = lineItems.find(i => i.name && i.name.toLowerCase().includes('tuition'));
+            const tuitionAmount = tuitionItem ? (parseFloat(tuitionItem.amount) || 0) : 0;
+            earlyBirdSavings = (earlyBirdDiscountPercent / 100) * tuitionAmount;
+          }
+
           const newBillRef = db.collection("bills").doc();
           currentBatch.set(newBillRef, {
             id: newBillRef.id, studentId: sid, studentName: student.fullName, className: className,
             term: term, session: session, originalFeeTotal, arrears: pastArrears, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
-            balance: finalBalance, status: billStatus, createdAt: new Date().toISOString()
+            balance: finalBalance, status: billStatus, createdAt: new Date().toISOString(),
+            earlyBirdDeadline: earlyBirdDeadline,
+            earlyBirdDiscountPercent: earlyBirdDiscountPercent,
+            earlyBirdSavings: earlyBirdSavings || 0,
+            earlyBirdApplied: false
           });
           operationCount++;
           commitBatchIfNeeded();
@@ -2573,6 +2596,115 @@ module.exports = function(db, notificationsActions) {
         return res.json({ success: false, message: "Bulk create error: " + err.message });
       }
     }
+
+    // ================================================
+    // COMPLIANCE ENGINE — Finance Lock Configuration
+    // ================================================
+    adminGetComplianceRules: async (req, res) => {
+      try {
+        const doc = await db.collection("settings").doc("compliance_rules").get();
+        return res.json({ success: true, data: doc.exists ? doc.data() : {
+          cbt_lock_enabled: false,
+          cbt_lock_threshold: 0.5,
+          report_lock_enabled: false,
+          report_lock_min_balance: 0,
+          soft_lock_enabled: false,
+          soft_lock_threshold: 0.5
+        }});
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminSetComplianceRules: async (req, res) => {
+      try {
+        const rules = req.body.rules;
+        if (!rules) return res.json({ success: false, message: "Rules object required." });
+        await db.collection("settings").doc("compliance_rules").set(rules, { merge: true });
+        await db.collection("audit_logs").add({
+          timestamp: new Date().toISOString(),
+          userId: req.session.userId,
+          userName: req.session.fullName || "Admin",
+          action: "SET_COMPLIANCE_RULES",
+          details: JSON.stringify(rules)
+        });
+        return res.json({ success: true, message: "Compliance rules updated." });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminGetEarlyBirdConfig: async (req, res) => {
+      try {
+        const doc = await db.collection("settings").doc("early_bird_config").get();
+        return res.json({ success: true, data: doc.exists ? doc.data() : {
+          enabled: false, days: 14, discountPercent: 3
+        }});
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminSetEarlyBirdConfig: async (req, res) => {
+      try {
+        const config = req.body.config;
+        if (!config) return res.json({ success: false, message: "Config object required." });
+        await db.collection("settings").doc("early_bird_config").set(config, { merge: true });
+        await db.collection("audit_logs").add({
+          timestamp: new Date().toISOString(),
+          userId: req.session.userId,
+          userName: req.session.fullName || "Admin",
+          action: "SET_EARLY_BIRD_CONFIG",
+          details: JSON.stringify(config)
+        });
+        return res.json({ success: true, message: "Early-bird config saved." });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminGetInstallmentPlans: async (req, res) => {
+      try {
+        const { status } = req.body;
+        let query = db.collection("installment_plans").orderBy("createdAt", "desc");
+        if (status) query = db.collection("installment_plans").where("status", "==", status).orderBy("createdAt", "desc");
+        const snap = await query.get();
+        const plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return res.json({ success: true, data: plans });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminApproveInstallmentPlan: async (req, res) => {
+      try {
+        const { planId } = req.body;
+        if (!planId) return res.json({ success: false, message: "Plan ID required." });
+        const planRef = db.collection("installment_plans").doc(planId);
+        const planSnap = await planRef.get();
+        if (!planSnap.exists) return res.json({ success: false, message: "Plan not found." });
+        const plan = planSnap.data();
+        await planRef.update({ status: "approved", approvedAt: new Date().toISOString(), approvedBy: req.session.userId });
+        await db.collection("notifications").add({
+          targetUserId: plan.parentId,
+          title: "Installment Plan Approved",
+          message: `Your installment payment plan for ${plan.studentName || "your child"} (${plan.term}, ${plan.session}) has been approved.`,
+          type: "FINANCE", isRead: false, createdAt: new Date().toISOString()
+        });
+        await db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "Admin", action: "APPROVE_INSTALLMENT_PLAN", details: `Approved plan ${planId}` });
+        return res.json({ success: true, message: "Installment plan approved." });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
+
+    adminRejectInstallmentPlan: async (req, res) => {
+      try {
+        const { planId, reason } = req.body;
+        if (!planId) return res.json({ success: false, message: "Plan ID required." });
+        const planRef = db.collection("installment_plans").doc(planId);
+        const planSnap = await planRef.get();
+        if (!planSnap.exists) return res.json({ success: false, message: "Plan not found." });
+        const plan = planSnap.data();
+        await planRef.update({ status: "rejected", rejectedAt: new Date().toISOString(), rejectedBy: req.session.userId, rejectionReason: reason || "" });
+        await db.collection("notifications").add({
+          targetUserId: plan.parentId,
+          title: "Installment Plan Not Approved",
+          message: `Your installment plan for ${plan.studentName || "your child"} was not approved. ${reason ? "Reason: " + reason : "Please contact the accounts office."}`,
+          type: "FINANCE", isRead: false, createdAt: new Date().toISOString()
+        });
+        await db.collection("audit_logs").add({ timestamp: new Date().toISOString(), userId: req.session.userId, userName: req.session.fullName || "Admin", action: "REJECT_INSTALLMENT_PLAN", details: `Rejected plan ${planId}. Reason: ${reason || "N/A"}` });
+        return res.json({ success: true, message: "Plan rejected." });
+      } catch(err) { return res.json({ success: false, message: err.message }); }
+    },
 
   };
 };

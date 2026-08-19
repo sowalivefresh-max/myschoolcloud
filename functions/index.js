@@ -226,6 +226,13 @@ app.post("/api", async (req, res) => {
         if (action === "adminDeleteBill") { req.body.billId = args[1]; }
         if (action === "adminSendReminders") { req.body.term = args[1]; req.body.session = args[2]; req.body.batchSize = args[3]; }
         if (action === "adminGetSubjects") { /* no args */ }
+        if (action === "adminSetComplianceRules") { req.body.rules = args[1]; }
+        if (action === "adminSetEarlyBirdConfig") { req.body.config = args[1]; }
+        if (action === "adminGetInstallmentPlans") { req.body.status = args[1] || null; }
+        if (action === "adminApproveInstallmentPlan") { req.body.planId = args[1]; }
+        if (action === "adminRejectInstallmentPlan") { req.body.planId = args[1]; req.body.reason = args[2]; }
+        if (action === "parentRequestInstallmentPlan") { req.body.studentId = args[1]; req.body.billId = args[2]; req.body.term = args[3]; req.body.session = args[4]; req.body.milestones = args[5]; }
+        if (action === "parentGetInstallmentPlan") { req.body.studentId = args[1]; }
         
         if (action === "teacherGetMySubjects") { req.body.userId = args[1]; }
         if (action === "teacherGetClassStudents") { req.body.className = args[1]; }
@@ -418,6 +425,20 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminDeleteExpense(req, res));
       case "adminSendReminders":
         return requireRole(req, res, () => adminActions.adminSendReminders(req, res));
+      case "adminGetComplianceRules":
+        return requireRole(req, res, () => adminActions.adminGetComplianceRules(req, res));
+      case "adminSetComplianceRules":
+        return requireRole(req, res, () => adminActions.adminSetComplianceRules(req, res));
+      case "adminGetEarlyBirdConfig":
+        return requireRole(req, res, () => adminActions.adminGetEarlyBirdConfig(req, res));
+      case "adminSetEarlyBirdConfig":
+        return requireRole(req, res, () => adminActions.adminSetEarlyBirdConfig(req, res));
+      case "adminGetInstallmentPlans":
+        return requireRole(req, res, () => adminActions.adminGetInstallmentPlans(req, res));
+      case "adminApproveInstallmentPlan":
+        return requireRole(req, res, () => adminActions.adminApproveInstallmentPlan(req, res));
+      case "adminRejectInstallmentPlan":
+        return requireRole(req, res, () => adminActions.adminRejectInstallmentPlan(req, res));
         
       // New Principal Endpoints
       case "adminGetLessonPlans":
@@ -514,6 +535,10 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => parentActions.parentSubmitPaymentData(req, res));
       case "parentDownloadReceipt":
         return requireRole(req, res, () => parentActions.parentDownloadReceipt(req, res));
+      case "parentRequestInstallmentPlan":
+        return requireRole(req, res, () => parentActions.parentRequestInstallmentPlan(req, res));
+      case "parentGetInstallmentPlan":
+        return requireRole(req, res, () => parentActions.parentGetInstallmentPlan(req, res));
 
       // --- NOTIFICATIONS ACTIONS ---
       case "getNotifications":

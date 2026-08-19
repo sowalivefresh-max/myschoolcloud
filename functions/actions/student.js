@@ -288,6 +288,42 @@ module.exports = function(db) {
         const uDoc = await db.collection("students").doc(req.session.userId).get();
         const studentData = uDoc.data() || {};
         const className = studentData.className || "";
+
+        // === FINANCE LOCK CHECK ===
+        const rulesDoc = await db.collection("settings").doc("compliance_rules").get();
+        const rules = rulesDoc.exists ? rulesDoc.data() : {};
+        if (rules.cbt_lock_enabled) {
+          const settingsDoc = await db.collection("settings").doc("global").get();
+          const globalSettings = settingsDoc.data() || {};
+          const currentTerm = globalSettings.current_term;
+          const currentSession = globalSettings.current_session;
+          if (currentTerm && currentSession) {
+            const billSnap = await db.collection("bills")
+              .where("studentId", "==", userId)
+              .where("term", "==", currentTerm)
+              .where("session", "==", currentSession)
+              .limit(1).get();
+            if (!billSnap.empty) {
+              const bill = billSnap.docs[0].data();
+              const billed = Number(bill.totalBilled || 0);
+              const arrears = Number(bill.arrears || 0);
+              const paidSnap = await db.collection("payments")
+                .where("studentId", "==", userId)
+                .where("term", "==", currentTerm)
+                .where("session", "==", currentSession)
+                .where("status", "==", "Approved").get();
+              let paid = 0;
+              paidSnap.forEach(d => paid += Number(d.data().amount || 0));
+              const outstanding = Math.max(0, (billed + arrears) - paid);
+              const totalDue = billed + arrears;
+              const threshold = rules.cbt_lock_threshold || 0.5;
+              if (totalDue > 0 && (outstanding / totalDue) > threshold) {
+                return res.json({ success: false, financeLocked: true, outstandingAmount: outstanding, message: `CBT access is restricted. You have an outstanding fee balance of ₦${outstanding.toLocaleString()}. Please contact the accounts office.` });
+              }
+            }
+          }
+        }
+        // === END FINANCE LOCK CHECK ===
         const settingsDoc = await db.collection("settings").doc("global").get();
         const settings = settingsDoc.exists ? settingsDoc.data() : {};
         const term = settings.current_term || "";

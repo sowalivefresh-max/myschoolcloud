@@ -32,6 +32,13 @@
         <button class="aa-nav-item" id="nav-expenses" onclick="switchTab('acc-tabs', 'tab-expenses'); setActiveNav('nav-expenses')">
           <i class="fa fa-receipt"></i> Expenses
         </button>
+        <button class="aa-nav-item" id="nav-plans" onclick="switchTab('acc-tabs', 'tab-plans'); setActiveNav('nav-plans'); loadInstallmentPlans();">
+          <i class="fa fa-calendar-alt"></i> Payment Plans
+        </button>
+        <div class="aa-nav-section">Settings</div>
+        <button class="aa-nav-item" id="nav-compliance" onclick="switchTab('acc-tabs', 'tab-compliance'); setActiveNav('nav-compliance'); loadComplianceSettings();">
+          <i class="fa fa-shield-alt"></i> Compliance Rules
+        </button>
         <button class="aa-nav-item text-danger" onclick="AA.logout()">
           <i class="fa fa-sign-out-alt"></i> Logout
         </button>
@@ -65,6 +72,8 @@
           <div class="aa-tab" data-tab="tab-fees" data-onload="loadFeeStructures"></div>
           <div class="aa-tab" data-tab="tab-bills" data-onload="loadBills"></div>
           <div class="aa-tab" data-tab="tab-expenses" data-onload="loadExpenses"></div>
+          <div class="aa-tab" data-tab="tab-plans"></div>
+          <div class="aa-tab" data-tab="tab-compliance"></div>
         </div>
 
         <!-- TAB: Dashboard -->
@@ -180,6 +189,67 @@
                 <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
                 <tbody></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Installment Plans -->
+        <div class="aa-tab-content" data-group="acc-tabs" data-id="tab-plans">
+          <div class="aa-card mb-4">
+            <div class="aa-card-header">
+              <h3 class="aa-card-title"><i class="fa fa-calendar-alt"></i> Installment Payment Plans</h3>
+              <div style="display:flex;gap:8px;">
+                <select id="planFilterStatus" class="aa-select" style="width:auto;" onchange="loadInstallmentPlans()">
+                  <option value="">All Plans</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button class="aa-btn aa-btn-outline aa-btn-sm" onclick="loadInstallmentPlans()"><i class="fa fa-sync"></i> Refresh</button>
+              </div>
+            </div>
+            <div class="aa-card-body" style="padding:0;">
+              <table class="aa-table" id="plansTable">
+                <thead><tr><th>Student</th><th>Term</th><th>Total</th><th>Milestones</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Compliance Rules -->
+        <div class="aa-tab-content" data-group="acc-tabs" data-id="tab-compliance">
+          <div class="aa-card mb-4">
+            <div class="aa-card-header"><h3 class="aa-card-title"><i class="fa fa-shield-alt"></i> Finance Compliance Rules</h3></div>
+            <div class="aa-card-body">
+              <div class="aa-alert aa-alert-info mb-4"><i class="fa fa-info-circle"></i><div>These rules control automatic access restrictions for students and parents with outstanding fee balances. All locks are <strong>OFF by default</strong>.</div></div>
+              <div class="aa-grid-2">
+                <div>
+                  <h4 style="color:var(--aa-primary);margin-bottom:16px;"><i class="fa fa-tasks"></i> CBT Assessment Lock</h4>
+                  <div class="aa-form-group"><label class="aa-label">Enable CBT Lock</label>
+                    <select id="cbt_lock_enabled" class="aa-select"><option value="false">OFF (Disabled)</option><option value="true">ON (Enabled)</option></select></div>
+                  <div class="aa-form-group"><label class="aa-label">Lock Threshold (% of bill outstanding)</label>
+                    <input type="number" id="cbt_lock_threshold" class="aa-input" min="0" max="100" placeholder="e.g. 50 = lock if 50% unpaid"></div>
+                </div>
+                <div>
+                  <h4 style="color:var(--aa-primary);margin-bottom:16px;"><i class="fa fa-file-alt"></i> Report Card Lock</h4>
+                  <div class="aa-form-group"><label class="aa-label">Enable Report Card Lock</label>
+                    <select id="report_lock_enabled" class="aa-select"><option value="false">OFF (Disabled)</option><option value="true">ON (Enabled)</option></select></div>
+                  <div class="aa-form-group"><label class="aa-label">Minimum Outstanding Balance to Lock (₦)</label>
+                    <input type="number" id="report_lock_min_balance" class="aa-input" min="0" placeholder="e.g. 0 = lock on any balance, 5000 = only if owed > ₦5000"></div>
+                </div>
+              </div>
+              <hr style="margin:20px 0;">
+              <h4 style="color:var(--aa-primary);margin-bottom:16px;"><i class="fa fa-bolt"></i> Early Payment Discount</h4>
+              <div class="aa-grid-3">
+                <div class="aa-form-group"><label class="aa-label">Enable Early-Bird Discount</label>
+                  <select id="eb_enabled" class="aa-select"><option value="false">OFF</option><option value="true">ON</option></select></div>
+                <div class="aa-form-group"><label class="aa-label">Days from Bill Generation</label>
+                  <input type="number" id="eb_days" class="aa-input" min="1" placeholder="e.g. 14"></div>
+                <div class="aa-form-group"><label class="aa-label">Discount % on Tuition</label>
+                  <input type="number" id="eb_percent" class="aa-input" min="0" max="50" placeholder="e.g. 3"></div>
+              </div>
+              <button class="aa-btn aa-btn-primary" onclick="saveComplianceSettings()"><i class="fa fa-save"></i> Save All Settings</button>
             </div>
           </div>
         </div>
@@ -961,6 +1031,98 @@
                 showToast(res.message, 'error');
             }
         }, null, true);
+    }
+  </script>
+
+  <script>
+    // ====================================
+    // INSTALLMENT PLANS JS
+    // ====================================
+    function loadInstallmentPlans() {
+      var status = (document.getElementById('planFilterStatus') || {}).value || '';
+      callServer('adminGetInstallmentPlans', [AA.token, status || null], function(res) {
+        if (!res.success) return showToast(res.message, 'error');
+        var tbody = document.querySelector('#plansTable tbody');
+        if (!tbody) return;
+        if (!res.data || res.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No installment plans found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = res.data.map(function(p) {
+          var statusBadge = p.status === 'pending' ? '<span class="aa-badge aa-badge-warning">Pending</span>'
+            : p.status === 'approved' ? '<span class="aa-badge aa-badge-success">Approved</span>'
+            : '<span class="aa-badge aa-badge-danger">Rejected</span>';
+          var milestonesSummary = (p.milestones || []).map(function(m, i) {
+            return '<small>' + (i+1) + '. ' + (m.dueDate||'') + ' — \u20a6' + Number(m.amount||0).toLocaleString() + (m.paid ? ' <i class="fa fa-check" style="color:#10b981;"></i>' : '') + '</small>';
+          }).join('<br>');
+          var actions = p.status === 'pending' ? '<button class="aa-btn aa-btn-success aa-btn-xs" onclick="approvePlan(\'' + p.id + '\')"><i class="fa fa-check"></i> Approve</button> <button class="aa-btn aa-btn-xs" style="background:#ef4444;color:#fff;" onclick="rejectPlan(\'' + p.id + '\')"><i class="fa fa-times"></i> Reject</button>' : '<span style="color:#64748b;font-size:12px;">—</span>';
+          return '<tr><td>' + (p.studentName||'') + '</td><td>' + (p.term||'') + ' ' + (p.session||'') + '</td><td>\u20a6' + Number(p.totalAmount||0).toLocaleString() + '</td><td>' + milestonesSummary + '</td><td>' + statusBadge + '</td><td>' + actions + '</td></tr>';
+        }).join('');
+      }, null, true);
+    }
+
+    function approvePlan(planId) {
+      if (!confirm('Approve this installment plan?')) return;
+      callServer('adminApproveInstallmentPlan', [AA.token, planId], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) loadInstallmentPlans();
+      }, null, true);
+    }
+
+    function rejectPlan(planId) {
+      var reason = prompt('Reason for rejection (optional):');
+      callServer('adminRejectInstallmentPlan', [AA.token, planId, reason || ''], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) loadInstallmentPlans();
+      }, null, true);
+    }
+
+    // ====================================
+    // COMPLIANCE RULES JS
+    // ====================================
+    function loadComplianceSettings() {
+      callServer('adminGetComplianceRules', [AA.token], function(res) {
+        if (!res.success) return;
+        var d = res.data || {};
+        var cbtSel = document.getElementById('cbt_lock_enabled');
+        if (cbtSel) cbtSel.value = d.cbt_lock_enabled ? 'true' : 'false';
+        var cbtThresh = document.getElementById('cbt_lock_threshold');
+        if (cbtThresh) cbtThresh.value = (d.cbt_lock_threshold !== undefined ? d.cbt_lock_threshold * 100 : 50);
+        var rptSel = document.getElementById('report_lock_enabled');
+        if (rptSel) rptSel.value = d.report_lock_enabled ? 'true' : 'false';
+        var rptMin = document.getElementById('report_lock_min_balance');
+        if (rptMin) rptMin.value = d.report_lock_min_balance || 0;
+      }, null, false);
+
+      callServer('adminGetEarlyBirdConfig', [AA.token], function(res) {
+        if (!res.success) return;
+        var d = res.data || {};
+        var ebSel = document.getElementById('eb_enabled');
+        if (ebSel) ebSel.value = d.enabled ? 'true' : 'false';
+        var ebDays = document.getElementById('eb_days');
+        if (ebDays) ebDays.value = d.days || 14;
+        var ebPct = document.getElementById('eb_percent');
+        if (ebPct) ebPct.value = d.discountPercent || 3;
+      }, null, false);
+    }
+
+    function saveComplianceSettings() {
+      var rules = {
+        cbt_lock_enabled: document.getElementById('cbt_lock_enabled').value === 'true',
+        cbt_lock_threshold: (parseFloat(document.getElementById('cbt_lock_threshold').value) || 50) / 100,
+        report_lock_enabled: document.getElementById('report_lock_enabled').value === 'true',
+        report_lock_min_balance: parseFloat(document.getElementById('report_lock_min_balance').value) || 0
+      };
+      var ebConfig = {
+        enabled: document.getElementById('eb_enabled').value === 'true',
+        days: parseInt(document.getElementById('eb_days').value) || 14,
+        discountPercent: parseFloat(document.getElementById('eb_percent').value) || 3
+      };
+      callServer('adminSetComplianceRules', [AA.token, rules], function(r1) {
+        callServer('adminSetEarlyBirdConfig', [AA.token, ebConfig], function(r2) {
+          showToast(r1.success && r2.success ? 'Settings saved successfully!' : 'Some settings could not be saved.', r1.success && r2.success ? 'success' : 'error');
+        }, null, true);
+      }, null, true);
     }
   </script>
 </body>

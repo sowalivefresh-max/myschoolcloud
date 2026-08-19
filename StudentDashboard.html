@@ -440,6 +440,26 @@ function startQuiz(quizId){
   runBackendAction('studentStartQuiz',[AA.token,quizId]).then(function(r){
     if(!r.success){
       if(r.alreadyAttempted)showToast('Already attempted. Score: '+r.score+'/'+r.total,'info');
+      else if(r.financeLocked) {
+        var lockDiv = document.getElementById('financeLockBanner');
+        if (!lockDiv) {
+          lockDiv = document.createElement('div');
+          lockDiv.id = 'financeLockBanner';
+          lockDiv.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;';
+          lockDiv.innerHTML = '<div style="background:#1e293b;border:2px solid #ef4444;border-radius:16px;padding:36px;max-width:480px;width:100%;text-align:center;">'
+            + '<div style="font-size:48px;margin-bottom:12px;">🔒</div>'
+            + '<h2 style="color:#ef4444;margin:0 0 8px;">Finance Hold</h2>'
+            + '<p style="color:#94a3b8;margin-bottom:20px;">CBT access is currently restricted due to an outstanding fee balance.</p>'
+            + '<div style="background:#0f172a;border-radius:10px;padding:16px;margin-bottom:24px;">'
+            + '<div style="color:#94a3b8;font-size:13px;">Outstanding Balance</div>'
+            + '<div style="color:#ef4444;font-size:28px;font-weight:800;margin-top:4px;">₦'+Number(r.outstandingAmount||0).toLocaleString()+'</div>'
+            + '</div>'
+            + '<p style="color:#64748b;font-size:13px;margin-bottom:20px;">Please contact the accounts office to resolve your account before taking assessments.</p>'
+            + '<button onclick="document.getElementById(\'financeLockBanner\').remove()" style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:14px;cursor:pointer;font-weight:600;">Close</button>'
+            + '</div>';
+          document.body.appendChild(lockDiv);
+        } else { lockDiv.style.display = 'flex'; }
+      }
       else showToast(r.message||'Could not start quiz.','error');
       return;
     }
