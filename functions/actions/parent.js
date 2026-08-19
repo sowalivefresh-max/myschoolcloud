@@ -438,7 +438,7 @@ module.exports = function(db) {
       } catch (err) {
         return res.json({ success: false, message: err.message });
       }
-    }
+    },
     parentRequestInstallmentPlan: async (req, res) => {
       try {
         const { studentId, billId, term, session, milestones } = req.body;

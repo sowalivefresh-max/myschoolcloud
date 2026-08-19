@@ -2595,7 +2595,7 @@ module.exports = function(db, notificationsActions) {
       } catch (err) {
         return res.json({ success: false, message: "Bulk create error: " + err.message });
       }
-    }
+    },
 
     // ================================================
     // COMPLIANCE ENGINE — Finance Lock Configuration
