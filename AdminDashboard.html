@@ -1889,28 +1889,54 @@
       var displayTitle = title ? '<h3 style="margin-bottom:1rem; border-bottom:2px solid var(--aa-primary); padding-bottom:5px; color:var(--aa-primary);">'+title+'</h3>' : '';
       return `
         ${displayTitle}
-        <div class="aa-grid-4 mb-4">
+        <div class="aa-grid-3 mb-4">
           <div class="aa-stat-card">
             <div class="aa-stat-icon bg-info"><i class="fa fa-file-invoice-dollar"></i></div>
             <div class="aa-stat-value" id="${prefix}-fin-billed">...0.00</div>
-            <div class="aa-stat-label">Total Billed</div>
+            <div class="aa-stat-label">Total Expected (Billed)</div>
           </div>
           <div class="aa-stat-card">
             <div class="aa-stat-icon bg-success"><i class="fa fa-wallet"></i></div>
             <div class="aa-stat-value" id="${prefix}-fin-collected">...0.00</div>
-            <div class="aa-stat-label">Total Collected</div>
+            <div class="aa-stat-label">Actual Revenue (Collected)</div>
           </div>
           <div class="aa-stat-card">
             <div class="aa-stat-icon bg-danger"><i class="fa fa-hand-holding-usd"></i></div>
             <div class="aa-stat-value" id="${prefix}-fin-outstanding">...0.00</div>
-            <div class="aa-stat-label">Outstanding Balance</div>
+            <div class="aa-stat-label">Outstanding Debt</div>
           </div>
           <div class="aa-stat-card">
             <div class="aa-stat-icon bg-warning"><i class="fa fa-receipt"></i></div>
             <div class="aa-stat-value" id="${prefix}-fin-expense">...0.00</div>
             <div class="aa-stat-label">Total Expenses</div>
           </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-navy"><i class="fa fa-balance-scale"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-net">...0.00</div>
+            <div class="aa-stat-label">Net Cash Flow</div>
+          </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-primary"><i class="fa fa-chart-pie"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-rate">0%</div>
+            <div class="aa-stat-label">Collection Rate</div>
+          </div>
         </div>
+
+        <div class="aa-grid-2 mb-4">
+          <div class="aa-card">
+            <div class="aa-card-header"><h3 class="aa-card-title"><i class="fa fa-chart-pie"></i> Revenue Breakdown</h3></div>
+            <div class="aa-card-body">
+              <canvas id="${prefix}-chartRevenue" style="max-height: 250px; width:100%;"></canvas>
+            </div>
+          </div>
+          <div class="aa-card">
+            <div class="aa-card-header"><h3 class="aa-card-title"><i class="fa fa-chart-bar"></i> Cash Flow Overview</h3></div>
+            <div class="aa-card-body">
+              <canvas id="${prefix}-chartCashFlow" style="max-height: 250px; width:100%;"></canvas>
+            </div>
+          </div>
+        </div>
+
         <div class="aa-card mb-4">
           <div class="aa-card-header">
             <h3 class="aa-card-title">Top Debtors</h3>
@@ -1918,175 +1944,81 @@
           </div>
           <div class="aa-card-body" style="padding:0;">
             <table class="aa-table" id="${prefix}-finDebtorsTable">
-              <thead><tr><th>Student Name</th><th>Class</th><th>Balance</th></tr></thead>
+              <thead><tr><th>Student</th><th>Class</th><th>Amount Owed</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
         </div>
       `;
-    }
-
-    function downloadDebtorsReport(prefix) {
-      showToast('Generating debtors report...', 'info');
-      var section = prefix === 'primary' ? 'primary' : (prefix === 'high' ? 'high' : 'both');
-      callServer('adminGetDebtors', [AA.token, currentTerm, currentSession, section], function(debtorsData) {
-        if (!debtorsData || debtorsData.length === 0) {
-          showToast('No debtors found to export.', 'warning');
-          return;
-        }
-        var csvContent = "data:text/csv;charset=utf-8,Student Name,Class,Outstanding Balance\n";
-        debtorsData.forEach(function(r) {
-          var name = '"' + String(r.studentName).replace(/"/g, '""') + '"';
-          var cls = '"' + String(r.class).replace(/"/g, '""') + '"';
-          csvContent += name + "," + cls + "," + (r.amountOwed || 0) + "\n";
-        });
-        
-        var encodedUri = encodeURI(csvContent);
-        var link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "Debtors_Report_" + section + "_" + currentTerm + "_" + currentSession + ".csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showToast('Download started.', 'success');
-      }, null, true);
-    }
-    function filterFinanceTable() {
-      var type = document.getElementById('financeReportType').value; // 'both', 'income', 'expenses'
-      var rows = document.querySelectorAll('#finTxTable tbody tr');
-      rows.forEach(function(row) {
-        if (row.children.length > 2) {
-          var rowType = row.children[2].textContent.trim().toLowerCase(); // 'income' or 'expense'
-          if (type === 'both') {
-            row.style.display = '';
-          } else if (type === 'income' && rowType === 'income') {
-            row.style.display = '';
-          } else if (type === 'expenses' && rowType === 'expense') {
-            row.style.display = '';
-          } else {
-            row.style.display = 'none';
-          }
-        }
-      });
-    }
-
-    function loadFinance() {
-      if (!currentTerm || !currentSession) {
-        return setTimeout(loadFinance, 200);
-      }
-      // Load all payments to split pending vs approved for display
-      callServer('adminGetPayments', [AA.token], function(payments) {
-        callServer('adminGetExpenses', [AA.token], function(expenses) {
-          var pending = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'pending'; });
-          var approved = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'approved'; });
-
-          // Show pending payments card
-          if(pending.length > 0) {
-            document.getElementById('pendingPaymentsCard').style.display = 'block';
-            buildTable('pendingPaymentsTable', [
-              {key:'date', render:function(r){return formatDate(r.paymentDate||r.date);}},
-              {key:'studentId', render:function(r){
-                var s = globalStudents.find(function(st){ return (st.id||st.iD) == (r.studentID||r.studentId); });
-                return s ? s.fullName : (r.studentID||r.studentId);
-              }},
-              {key:'receiptRef'},
-              {key:'amount', render:function(r){return '<strong class="text-success">'+formatNaira(r.amount)+'</strong>';}},
-              {key:'method'}
-            ], pending, function(r){
-              return '<button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openReviewPaymentModal(\''+(r.id||r.iD)+'\')">Review</button>';
-            });
-          } else {
-            document.getElementById('pendingPaymentsCard').style.display = 'none';
-          }
-
-          // Build full transactions table
-          var tx = [];
-          var totalInc = 0;
-          approved.forEach(function(p) {
-            totalInc += safeFloat(p.amount);
-            tx.push({
-              date: p.paymentDate || p.date,
-              desc: 'Payment Ref: ' + p.receiptRef,
-              type: 'Income',
-              amount: p.amount,
-              status: 'Approved'
-            });
-          });
-          pending.forEach(function(p) {
-            tx.push({
-              date: p.paymentDate || p.date,
-              desc: 'Payment Ref: ' + p.receiptRef + ' (Pending Validation)',
-              type: 'Income',
-              amount: p.amount,
-              status: 'Pending'
-            });
-          });
-
-          var totalExp = 0;
-          expenses.forEach(function(e) {
-            totalExp += safeFloat(e.amount);
-            tx.push({
-              date: e.date,
-              desc: 'Expense: ' + (e.description || e.category),
-              type: 'Expense',
-              amount: e.amount,
-              status: 'Approved' // Expenses are considered approved once recorded
-            });
-          });
-
-          // Sort transactions by date descending
-          tx.sort(function(a, b) {
-            return new Date(b.date) - new Date(a.date);
-          });
-
-          var container = document.getElementById('finance-dynamic-container');
-          
-          if (institutionType === 'both') {
-            container.innerHTML = getFinanceHTML('primary', 'Primary School Finance') + getFinanceHTML('high', 'High School Finance');
-            fetchAndRenderFinance('primary');
-            fetchAndRenderFinance('high');
-          } else {
-            var section = (institutionType === 'secondary') ? 'high' : 'primary';
-            container.innerHTML = getFinanceHTML(section, '');
-            fetchAndRenderFinance(section);
-          }
-
-          // Show pending approval count separately
-          document.getElementById('fin-pending-approvals').textContent = pending.length > 0 ? pending.length : 0;
-
-          if(document.getElementById('finTxTable')) {
-            buildTable('finTxTable', [
-              {key:'date', render:function(r){return formatDate(r.date);}},
-              {key:'desc'},
-              {key:'type', render:function(r){
-                return r.type === 'Income' ? '<span class="text-success">Income</span>' : '<span class="text-danger">Expense</span>';
-              }},
-              {key:'amount', render:function(r){
-                var col = r.type === 'Expense' ? 'text-danger' : (r.status === 'Pending' ? 'text-warning' : 'text-success');
-                var prefix = r.type === 'Expense' ? '-' : '';
-                return '<strong class="'+col+'">'+prefix+formatNaira(r.amount)+'</strong>';
-              }},
-              {key:'status', render:function(r){
-                if(r.status==='Approved') return '<span class="aa-badge aa-badge-success">Approved</span>';
-                if(r.status==='Pending') return '<span class="aa-badge aa-badge-warning">Pending</span>';
-                return '<span class="aa-badge">'+r.status+'</span>';
-              }}
-            ], tx);
-          }
-        }, null, true);
-      }, null, true);
-    }
-
-    function fetchAndRenderFinance(prefix) {
+    }\n\n    function fetchAndRenderFinance(prefix) {
       var section = prefix === 'primary' ? 'primary' : 'high';
       // Fetch matched stats from backend for current term/session
       callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(statsRes) {
         if(document.getElementById(prefix + '-fin-billed')) {
-          document.getElementById(prefix + '-fin-billed').textContent = formatNaira(statsRes.totalBilled);
-          document.getElementById(prefix + '-fin-collected').textContent = formatNaira(statsRes.totalCollected);
-          document.getElementById(prefix + '-fin-outstanding').textContent = formatNaira(statsRes.totalOutstanding);
-          document.getElementById(prefix + '-fin-expense').textContent = formatNaira(statsRes.totalExpenses);
+          var billed = statsRes.totalBilled || 0;
+          var collected = statsRes.totalCollected || 0;
+          var outstanding = statsRes.totalOutstanding || 0;
+          var expense = statsRes.totalExpenses || 0;
+          var net = statsRes.netBalance || (collected - expense);
+          var rate = billed > 0 ? ((collected / billed) * 100).toFixed(1) : 0;
+
+          document.getElementById(prefix + '-fin-billed').textContent = formatNaira(billed);
+          document.getElementById(prefix + '-fin-collected').textContent = formatNaira(collected);
+          document.getElementById(prefix + '-fin-outstanding').textContent = formatNaira(outstanding);
+          document.getElementById(prefix + '-fin-expense').textContent = formatNaira(expense);
+          
+          var netEl = document.getElementById(prefix + '-fin-net');
+          netEl.textContent = formatNaira(net);
+          netEl.style.color = net >= 0 ? 'var(--aa-success)' : 'var(--aa-danger)';
+          
+          var rateEl = document.getElementById(prefix + '-fin-rate');
+          rateEl.textContent = rate + '%';
+          rateEl.style.color = rate >= 80 ? 'var(--aa-success)' : (rate >= 50 ? 'var(--aa-warning)' : 'var(--aa-danger)');
+
+          // Render Charts
+          if (typeof Chart !== 'undefined' && typeof chartInstances !== 'undefined') {
+            // Revenue Doughnut
+            if (chartInstances[prefix + '-revDoughnut']) chartInstances[prefix + '-revDoughnut'].destroy();
+            var revCtx = document.getElementById(prefix + '-chartRevenue');
+            if (revCtx) {
+              chartInstances[prefix + '-revDoughnut'] = new Chart(revCtx, {
+                type: 'doughnut',
+                data: {
+                  labels: ['Collected Revenue', 'Outstanding Debt'],
+                  datasets: [{
+                    data: [collected, outstanding],
+                    backgroundColor: ['#4ade80', '#ef4444'],
+                    borderWidth: 0
+                  }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+              });
+            }
+
+            // Cash Flow Bar
+            if (chartInstances[prefix + '-cashFlowBar']) chartInstances[prefix + '-cashFlowBar'].destroy();
+            var cashCtx = document.getElementById(prefix + '-chartCashFlow');
+            if (cashCtx) {
+              chartInstances[prefix + '-cashFlowBar'] = new Chart(cashCtx, {
+                type: 'bar',
+                data: {
+                  labels: ['Billed', 'Collected', 'Expenses', 'Net Flow'],
+                  datasets: [{
+                    label: 'Amount (₦)',
+                    data: [billed, collected, expense, net],
+                    backgroundColor: ['#3b82f6', '#4ade80', '#f59e0b', net >= 0 ? '#10b981' : '#ef4444'],
+                    borderRadius: 4
+                  }]
+                },
+                options: { 
+                  responsive: true, 
+                  maintainAspectRatio: false,
+                  scales: { y: { beginAtZero: true } },
+                  plugins: { legend: { display: false } }
+                }
+              });
+            }
+          }
         }
       });
 
@@ -2101,9 +2033,7 @@
           ], top);
         }
       });
-    }
-
-    function loadReports() {
+    }\n\n    function loadReports() {
       callServer('adminGetComplianceSummary', [AA.token, AA.settings.current_term, AA.settings.current_session], function(res) {
         var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
         
