@@ -2107,6 +2107,120 @@
       });
     }
 
+    function loadFinance() {
+      if (!currentTerm || !currentSession) {
+        return setTimeout(loadFinance, 200);
+      }
+      // Load all payments to split pending vs approved for display
+      callServer('adminGetPayments', [AA.token], function(payments) {
+        callServer('adminGetExpenses', [AA.token], function(expenses) {
+          var pending = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'pending'; });
+          var approved = payments.filter(function(p){ return String(p.status||'').toLowerCase() === 'approved'; });
+
+          // Render stats block
+          var container = document.getElementById('finance-stats-container');
+          var schoolType = (AA.settings && AA.settings.institution_type) ? String(AA.settings.institution_type).toLowerCase() : 'both';
+          
+          if(schoolType.indexOf('both') !== -1 || schoolType.indexOf('primary &') !== -1) {
+            container.innerHTML = getFinanceHTML('primary', 'Primary School Finance') + getFinanceHTML('high', 'High School Finance');
+            fetchAndRenderFinance('primary');
+            fetchAndRenderFinance('high');
+          } else {
+            // Determine default prefix based on school type
+            var prefix = schoolType.indexOf('primary') !== -1 ? 'primary' : 'high';
+            container.innerHTML = getFinanceHTML(prefix, '');
+            fetchAndRenderFinance(prefix);
+          }
+
+          // Show pending payments card
+          if(pending.length > 0) {
+            document.getElementById('pendingPaymentsCard').style.display = 'block';
+            buildTable('pendingPaymentsTable', [
+              {key:'date', render:function(r){return formatDate(r.paymentDate||r.date);}},
+              {key:'studentId', render:function(r){
+                var s = globalStudents.find(function(st){ return (st.id||st.iD) == (r.studentID||r.studentId); });
+                return s ? s.fullName : (r.studentID||r.studentId);
+              }},
+              {key:'receiptRef'},
+              {key:'amount', render:function(r){return '<strong class="text-success">'+formatNaira(r.amount)+'</strong>';}},
+              {key:'method'}
+            ], pending, function(r){
+              return '<button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openReviewPaymentModal(\''+(r.id||r.iD)+'\')">Review</button>';
+            });
+          } else {
+            document.getElementById('pendingPaymentsCard').style.display = 'none';
+          }
+
+          // Build full transactions table
+          var tx = [];
+          var totalInc = 0;
+          approved.forEach(function(p) {
+            totalInc += safeFloat(p.amount);
+            tx.push({
+              date: p.paymentDate || p.date,
+              desc: 'Payment Ref: ' + p.receiptRef,
+              type: 'Income',
+              amount: p.amount,
+              status: 'Approved'
+            });
+          });
+          pending.forEach(function(p) {
+            tx.push({
+              date: p.paymentDate || p.date,
+              desc: 'Payment Ref: ' + p.receiptRef + ' (Pending Validation)',
+              type: 'Income',
+              amount: p.amount,
+              status: 'Pending'
+            });
+          });
+
+          var totalExp = 0;
+          expenses.forEach(function(e) {
+            totalExp += safeFloat(e.amount);
+            tx.push({
+              date: e.date,
+              desc: 'Expense: ' + (e.description || e.category),
+              type: 'Expense',
+              amount: e.amount,
+              status: 'Approved' // Expenses are considered approved once recorded
+            });
+          });
+
+          // Sort transactions by date descending
+          tx.sort(function(a, b) {
+            return new Date(b.date) - new Date(a.date);
+          });
+
+          // (Stats are now fetched dynamically via fetchAndRenderFinance)
+
+          // Show pending approval count separately
+          document.getElementById('fin-pending-approvals').textContent = pending.length > 0 ? pending.length : 0;
+
+          
+
+          if(document.getElementById('finTxTable')) {
+            buildTable('finTxTable', [
+              {key:'date', render:function(r){return formatDate(r.date);}},
+              {key:'desc'},
+              {key:'type', render:function(r){
+                return r.type === 'Income' ? '<span class="text-success">Income</span>' : '<span class="text-danger">Expense</span>';
+              }},
+              {key:'amount', render:function(r){
+                var col = r.type === 'Expense' ? 'text-danger' : (r.status === 'Pending' ? 'text-warning' : 'text-success');
+                var prefix = r.type === 'Expense' ? '-' : '';
+                return '<strong class="'+col+'">'+prefix+formatNaira(r.amount)+'</strong>';
+              }},
+              {key:'status', render:function(r){
+                if(r.status==='Approved') return '<span class="aa-badge aa-badge-success">Approved</span>';
+                if(r.status==='Pending') return '<span class="aa-badge aa-badge-warning">Pending</span>';
+                return '<span class="aa-badge">'+r.status+'</span>';
+              }}
+            ], tx);
+          }
+        }, null, true);
+      }, null, true);
+    }
+
     function loadReports() {
       callServer('adminGetComplianceSummary', [AA.token, AA.settings.current_term, AA.settings.current_session], function(res) {
         var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
