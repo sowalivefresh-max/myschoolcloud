@@ -327,14 +327,27 @@
         document.getElementById('finContent').style.display='block';
         buildTable('myBillsTable', [
           {key:'term', render:function(r){return r.term+' '+r.session;}},
-          {key:'totalBilled', render:function(r){return formatNaira(r.totalBilled);}},
+          {key:'totalBilled', render:function(r){
+            var html = formatNaira(r.totalBilled);
+            if (r.arrears > 0) html += '<br><small class="text-danger">+ ' + formatNaira(r.arrears) + ' Arrears</small>';
+            return html;
+          }},
           {key:'totalPaid', render:function(r){return '<span class="text-success">'+formatNaira(r.totalPaid)+'</span>';}},
           {key:'balance', render:function(r){
             var bal = parseFloat(r.balance) || 0;
-            if (bal < 0) return '<span class="text-success">'+formatNaira(Math.abs(bal))+' (Credit)</span>';
-            return '<span class="text-danger">'+formatNaira(bal)+'</span>';
+            var arr = parseFloat(r.arrears) || 0;
+            var totalDue = bal + arr;
+            if (totalDue <= 0) return '<span class="text-success">Cleared</span>';
+            return '<span class="text-danger" style="font-weight:bold;">'+formatNaira(totalDue)+'</span>';
           }},
-          {key:'status', render:function(r){return formatStatus(r.status);}}
+          {key:'status', render:function(r){
+             var bal = parseFloat(r.balance) || 0;
+             var arr = parseFloat(r.arrears) || 0;
+             var totalDue = bal + arr;
+             if (totalDue <= 0) return '<span class="aa-badge aa-badge-success">Paid</span>';
+             if (r.totalPaid > 0) return '<span class="aa-badge aa-badge-warning">Partial</span>';
+             return '<span class="aa-badge aa-badge-danger">Unpaid</span>';
+          }}
         ], bills);
       }, null, true);
 

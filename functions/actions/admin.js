@@ -752,6 +752,24 @@ module.exports = function(db, notificationsActions) {
         const parentsMap = {};
         parentsSnap.forEach(doc => { parentsMap[doc.id] = doc.data(); });
 
+        // Pre-fetch all past bills and payments to calculate global arrears
+        const allBillsSnap = await db.collection("bills").get();
+        const allPaymentsSnap = await db.collection("payments").where("status", "==", "Approved").get();
+        
+        let globalBalances = {};
+        allBillsSnap.forEach(doc => {
+          const b = doc.data();
+          if(!globalBalances[b.studentId]) globalBalances[b.studentId] = { billed: 0, paid: 0 };
+          // Calculate pure net fee to avoid double counting arrears
+          let pureFee = Number(b.originalFeeTotal || b.totalBilled || 0) - Number(b.discountAmount || 0);
+          globalBalances[b.studentId].billed += pureFee;
+        });
+        allPaymentsSnap.forEach(doc => {
+          const p = doc.data();
+          const sid = p.studentId || p.studentID;
+          if(globalBalances[sid]) globalBalances[sid].paid += Number(p.amount || 0);
+        });
+
         let emailPromises = [];
 
         let generated = 0;
@@ -803,6 +821,13 @@ module.exports = function(db, notificationsActions) {
           if (discountAmount > 0) {
             total = Math.max(0, total - discountAmount);
           }
+          
+          // Calculate arrears
+          let pastArrears = 0;
+          if (globalBalances[sid]) {
+             let owed = globalBalances[sid].billed - globalBalances[sid].paid;
+             if (owed > 0) pastArrears = owed;
+          }
 
           // For simplicity in this chunk, assuming 0 credit. Real implementation would fetch credit.
           const credit = 0; 
@@ -813,7 +838,7 @@ module.exports = function(db, notificationsActions) {
           const newBillRef = db.collection("bills").doc();
           currentBatch.set(newBillRef, {
             id: newBillRef.id, studentId: sid, studentName: student.fullName, className: className,
-            term: term, session: session, originalFeeTotal, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
+            term: term, session: session, originalFeeTotal, arrears: pastArrears, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
             balance: finalBalance, status: billStatus, createdAt: new Date().toISOString()
           });
           operationCount++;
@@ -825,7 +850,7 @@ module.exports = function(db, notificationsActions) {
             currentBatch.set(notifRef, {
               targetUserId: student.parentId,
               title: "New Bill Assigned",
-              message: `A new fee bill of ₦${total.toLocaleString()} for ${student.fullName || 'your child'} (${term}, ${session}) has been generated.`,
+              message: `A new fee bill of ₦${total.toLocaleString()} for ${student.fullName || 'your child'} (${term}, ${session}) has been generated.` + (pastArrears > 0 ? ` Outstanding Arrears: ₦${pastArrears.toLocaleString()}.` : ''),
               type: "BILL",
               isRead: false,
               createdAt: new Date().toISOString()
@@ -838,10 +863,11 @@ module.exports = function(db, notificationsActions) {
               const parent = parentsMap[student.parentId];
               if (parent.email) {
                 const parentName = parent.fullName || "Parent/Guardian";
+                let totalAmountDue = total + pastArrears;
                 const mailOptions = {
                   from: `"${settings.school_name || 'School Administration'}" <${settings.smtp_email}>`,
                   to: parent.email,
-                  subject: `New Bill Generated: ₦${Number(total).toLocaleString()} for ${student.fullName || 'your ward'}`,
+                  subject: `New Bill Generated: ₦${Number(totalAmountDue).toLocaleString()} for ${student.fullName || 'your ward'}`,
                   html: `
                     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
                       <div style="text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 15px; margin-bottom: 20px;">
@@ -871,9 +897,19 @@ module.exports = function(db, notificationsActions) {
                             <td style="padding: 8px 0; color: #1e293b; font-weight: 500;">${session || ''}</td>
                           </tr>
                           <tr>
-                            <td style="padding: 8px 0; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 15px;">Total Billed:</td>
+                            <td style="padding: 8px 0; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 15px;">Current Term Fee:</td>
                             <td style="padding: 8px 0; color: #1e293b; font-weight: 700; border-top: 1px dashed #cbd5e1; padding-top: 15px; font-size: 16px;">₦${Number(total).toLocaleString()}</td>
                           </tr>
+                          ${pastArrears > 0 ? `
+                          <tr>
+                            <td style="padding: 8px 0; color: #ef4444;">Arrears Brought Forward:</td>
+                            <td style="padding: 8px 0; color: #ef4444; font-weight: 700; font-size: 16px;">₦${Number(pastArrears).toLocaleString()}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 15px;">Total Amount Due:</td>
+                            <td style="padding: 8px 0; color: #1e293b; font-weight: 700; border-top: 1px dashed #cbd5e1; padding-top: 15px; font-size: 18px;">₦${Number(totalAmountDue).toLocaleString()}</td>
+                          </tr>
+                          ` : ''}
                         </table>
                       </div>
                       
@@ -1805,6 +1841,8 @@ module.exports = function(db, notificationsActions) {
         return res.json({
           success: true,
           totalBilled,
+          totalArrears,
+          totalExpectedIncome,
           totalCollected,
           totalOutstanding,
           totalExpenses,

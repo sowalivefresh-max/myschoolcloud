@@ -1959,11 +1959,21 @@
       var displayTitle = title ? '<h3 style="margin-bottom:1rem; border-bottom:2px solid var(--aa-primary); padding-bottom:5px; color:var(--aa-primary);">'+title+'</h3>' : '';
       return `
         ${displayTitle}
-        <div class="aa-grid-3 mb-4">
+        <div class="aa-grid-4 mb-4">
           <div class="aa-stat-card">
             <div class="aa-stat-icon bg-info"><i class="fa fa-file-invoice-dollar"></i></div>
             <div class="aa-stat-value" id="${prefix}-fin-billed">...0.00</div>
             <div class="aa-stat-label">Total Expected (Billed)</div>
+          </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-danger" style="background:#f43f5e; color:#fff;"><i class="fa fa-history"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-arrears">...0.00</div>
+            <div class="aa-stat-label">Arrears Brought Forward</div>
+          </div>
+          <div class="aa-stat-card">
+            <div class="aa-stat-icon bg-primary" style="background:#6366f1; color:#fff;"><i class="fa fa-sack-dollar"></i></div>
+            <div class="aa-stat-value" id="${prefix}-fin-expected-income">...0.00</div>
+            <div class="aa-stat-label">Total Expected Income</div>
           </div>
           <div class="aa-stat-card">
             <div class="aa-stat-icon bg-success"><i class="fa fa-wallet"></i></div>
@@ -2028,13 +2038,17 @@
       callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(statsRes) {
         if(document.getElementById(prefix + '-fin-billed')) {
           var billed = statsRes.totalBilled || 0;
+          var arrears = statsRes.totalArrears || 0;
+          var expectedIncome = statsRes.totalExpectedIncome || (billed + arrears);
           var collected = statsRes.totalCollected || 0;
           var outstanding = statsRes.totalOutstanding || 0;
           var expense = statsRes.totalExpenses || 0;
           var net = statsRes.netBalance || (collected - expense);
-          var rate = billed > 0 ? ((collected / billed) * 100).toFixed(1) : 0;
+          var rate = expectedIncome > 0 ? ((collected / expectedIncome) * 100).toFixed(1) : 0;
 
           document.getElementById(prefix + '-fin-billed').textContent = formatNaira(billed);
+          if (document.getElementById(prefix + '-fin-arrears')) document.getElementById(prefix + '-fin-arrears').textContent = formatNaira(arrears);
+          if (document.getElementById(prefix + '-fin-expected-income')) document.getElementById(prefix + '-fin-expected-income').textContent = formatNaira(expectedIncome);
           document.getElementById(prefix + '-fin-collected').textContent = formatNaira(collected);
           document.getElementById(prefix + '-fin-outstanding').textContent = formatNaira(outstanding);
           document.getElementById(prefix + '-fin-expense').textContent = formatNaira(expense);
@@ -2074,11 +2088,11 @@
               chartInstances[prefix + '-cashFlowBar'] = new Chart(cashCtx, {
                 type: 'bar',
                 data: {
-                  labels: ['Billed', 'Collected', 'Expenses', 'Net Flow'],
+                  labels: ['Income', 'Collected', 'Expenses', 'Net Flow'],
                   datasets: [{
                     label: 'Amount (₦)',
-                    data: [billed, collected, expense, net],
-                    backgroundColor: ['#3b82f6', '#4ade80', '#f59e0b', net >= 0 ? '#10b981' : '#ef4444'],
+                    data: [expectedIncome, collected, expense, net],
+                    backgroundColor: ['#6366f1', '#4ade80', '#f59e0b', net >= 0 ? '#10b981' : '#ef4444'],
                     borderRadius: 4
                   }]
                 },
