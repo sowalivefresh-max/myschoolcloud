@@ -2020,7 +2020,9 @@
           </div>
         </div>
       `;
-    }\n\n    function fetchAndRenderFinance(prefix) {
+    }
+
+    function fetchAndRenderFinance(prefix) {
       var section = prefix === 'primary' ? 'primary' : 'high';
       // Fetch matched stats from backend for current term/session
       callServer('adminGetFinancialStats', [AA.token, currentTerm, currentSession, section], function(statsRes) {
@@ -2103,7 +2105,9 @@
           ], top);
         }
       });
-    }\n\n    function loadReports() {
+    }
+
+    function loadReports() {
       callServer('adminGetComplianceSummary', [AA.token, AA.settings.current_term, AA.settings.current_session], function(res) {
         var html = '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
         
