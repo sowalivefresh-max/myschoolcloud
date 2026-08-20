@@ -2658,12 +2658,13 @@ module.exports = function(db, notificationsActions) {
     adminGetInstallmentPlans: async (req, res) => {
       try {
         const { status } = req.body;
-        let query = db.collection("installment_plans").orderBy("createdAt", "desc");
-        if (status) query = db.collection("installment_plans").where("status", "==", status).orderBy("createdAt", "desc");
-        const snap = await query.get();
-        const plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Simple fetch to avoid composite index requirement; filter + sort in memory
+        const snap = await db.collection("installment_plans").get();
+        let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (status) plans = plans.filter(p => p.status === status);
+        plans.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         return res.json({ success: true, data: plans });
-      } catch(err) { return res.json({ success: false, message: err.message }); }
+      } catch(err) { return res.json({ success: false, message: err.message || "Failed to load installment plans." }); }
     },
 
     adminApproveInstallmentPlan: async (req, res) => {
