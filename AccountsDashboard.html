@@ -1041,21 +1041,27 @@
     function loadInstallmentPlans() {
       var status = (document.getElementById('planFilterStatus') || {}).value || '';
       callServer('adminGetInstallmentPlans', [AA.token, status || null], function(res) {
-        if (!res.success) return showToast(res.message, 'error');
+        // api.js unwraps {success:true, data:[...]} → returns the array directly
+        var plans = Array.isArray(res) ? res : (res && res.data ? res.data : null);
+        if (plans === null) {
+          return showToast((res && res.message) || 'Failed to load plans.', 'error');
+        }
         var tbody = document.querySelector('#plansTable tbody');
         if (!tbody) return;
-        if (!res.data || res.data.length === 0) {
+        if (plans.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No installment plans found.</td></tr>';
           return;
         }
-        tbody.innerHTML = res.data.map(function(p) {
+        tbody.innerHTML = plans.map(function(p) {
           var statusBadge = p.status === 'pending' ? '<span class="aa-badge aa-badge-warning">Pending</span>'
             : p.status === 'approved' ? '<span class="aa-badge aa-badge-success">Approved</span>'
             : '<span class="aa-badge aa-badge-danger">Rejected</span>';
           var milestonesSummary = (p.milestones || []).map(function(m, i) {
             return '<small>' + (i+1) + '. ' + (m.dueDate||'') + ' — \u20a6' + Number(m.amount||0).toLocaleString() + (m.paid ? ' <i class="fa fa-check" style="color:#10b981;"></i>' : '') + '</small>';
           }).join('<br>');
-          var actions = p.status === 'pending' ? '<button class="aa-btn aa-btn-success aa-btn-xs" onclick="approvePlan(\'' + p.id + '\')"><i class="fa fa-check"></i> Approve</button> <button class="aa-btn aa-btn-xs" style="background:#ef4444;color:#fff;" onclick="rejectPlan(\'' + p.id + '\')"><i class="fa fa-times"></i> Reject</button>' : '<span style="color:#64748b;font-size:12px;">—</span>';
+          var actions = p.status === 'pending'
+            ? '<button class="aa-btn aa-btn-success aa-btn-xs" onclick="approvePlan(\'' + p.id + '\')" style="margin-right:4px;"><i class="fa fa-check"></i> Approve</button><button class="aa-btn aa-btn-xs" style="background:#ef4444;color:#fff;" onclick="rejectPlan(\'' + p.id + '\')" ><i class="fa fa-times"></i> Reject</button>'
+            : '<span style="color:#64748b;font-size:12px;">—</span>';
           return '<tr><td>' + (p.studentName||'') + '</td><td>' + (p.term||'') + ' ' + (p.session||'') + '</td><td>\u20a6' + Number(p.totalAmount||0).toLocaleString() + '</td><td>' + milestonesSummary + '</td><td>' + statusBadge + '</td><td>' + actions + '</td></tr>';
         }).join('');
       }, null, true);
@@ -1064,16 +1070,16 @@
     function approvePlan(planId) {
       if (!confirm('Approve this installment plan?')) return;
       callServer('adminApproveInstallmentPlan', [AA.token, planId], function(res) {
-        showToast(res.message, res.success ? 'success' : 'error');
-        if (res.success) loadInstallmentPlans();
+        showToast((res && res.message) || 'Done.', res && res.success ? 'success' : 'error');
+        if (res && res.success) loadInstallmentPlans();
       }, null, true);
     }
 
     function rejectPlan(planId) {
       var reason = prompt('Reason for rejection (optional):');
       callServer('adminRejectInstallmentPlan', [AA.token, planId, reason || ''], function(res) {
-        showToast(res.message, res.success ? 'success' : 'error');
-        if (res.success) loadInstallmentPlans();
+        showToast((res && res.message) || 'Done.', res && res.success ? 'success' : 'error');
+        if (res && res.success) loadInstallmentPlans();
       }, null, true);
     }
 
