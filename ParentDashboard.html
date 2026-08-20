@@ -361,6 +361,13 @@
         // Clearance badge
         document.getElementById('clearanceBadge').style.display = (totalOutstanding <= 0 && bills.length > 0) ? 'block' : 'none';
 
+        // Store unpaid bills for installment modal
+        window._activeFinBills = bills.filter(function(b) {
+          var bal = parseFloat(b.balance) || 0;
+          var arr = parseFloat(b.arrears) || 0;
+          return (bal + arr) > 0;
+        });
+
         // Show/hide plan button
         document.getElementById('requestPlanBtn').style.display = (totalOutstanding > 0) ? 'inline-flex' : 'none';
 
@@ -528,8 +535,28 @@
     function openInstallmentModal() {
       var sid = window._activeFinSid;
       if (!sid) return showToast('Please select a child first.', 'warning');
-      document.getElementById('installmentMilestones').innerHTML = '<div class="milestone-row" style="display:flex;gap:8px;margin-bottom:8px;"><input type="date" class="aa-input" placeholder="Due Date" style="flex:1;"><input type="number" class="aa-input" placeholder="Amount (₦)" style="flex:1;"><button type="button" onclick="addMilestoneRow()" class="aa-btn aa-btn-outline aa-btn-sm" style="flex:0 0 auto;"><i class="fa fa-plus"></i></button></div>';
+      var unpaidBills = window._activeFinBills || [];
+      if (unpaidBills.length === 0) return showToast('No outstanding bills found to create a plan for.', 'warning');
+
+      // Build bill selector
+      var billOptions = unpaidBills.map(function(b) {
+        var totalDue = (parseFloat(b.balance)||0) + (parseFloat(b.arrears)||0);
+        return '<option value="' + b.id + '" data-term="' + (b.term||'') + '" data-session="' + (b.session||'') + '" data-total="' + totalDue + '">' + b.term + ' ' + b.session + ' — ' + formatNaira(totalDue) + ' due</option>';
+      }).join('');
+      document.getElementById('installmentBillSelect').innerHTML = billOptions;
+      // Update total display when bill changes
+      updateInstallmentTotal();
+
+      document.getElementById('installmentMilestones').innerHTML = '<div class="milestone-row" style="display:flex;gap:8px;margin-bottom:8px;"><input type="date" class="aa-input" style="flex:1;"><input type="number" class="aa-input" placeholder="Amount (₦)" style="flex:1;"><button type="button" onclick="addMilestoneRow()" class="aa-btn aa-btn-outline aa-btn-sm" style="flex:0 0 auto;"><i class="fa fa-plus"></i></button></div>';
       openModal('installmentModal');
+    }
+    function updateInstallmentTotal() {
+      var sel = document.getElementById('installmentBillSelect');
+      if (!sel) return;
+      var opt = sel.options[sel.selectedIndex];
+      var total = opt ? parseFloat(opt.getAttribute('data-total') || 0) : 0;
+      var el = document.getElementById('installmentTotalDue');
+      if (el) el.textContent = formatNaira(total);
     }
     function addMilestoneRow() {
       var div = document.createElement('div');
@@ -552,7 +579,14 @@
         milestones.push({ dueDate: date, amount: amount });
       });
       if (!valid || milestones.length === 0) return showToast('Please fill in all milestone rows correctly.', 'warning');
-      callServer('parentRequestInstallmentPlan', [AA.token, sid, null, null, null, milestones], function(res) {
+      // Get the selected bill details
+      var sel = document.getElementById('installmentBillSelect');
+      var opt = sel ? sel.options[sel.selectedIndex] : null;
+      var billId = opt ? opt.value : null;
+      var term = opt ? opt.getAttribute('data-term') : null;
+      var session = opt ? opt.getAttribute('data-session') : null;
+      if (!billId) return showToast('Please select a bill to create the plan for.', 'warning');
+      callServer('parentRequestInstallmentPlan', [AA.token, sid, billId, term, session, milestones], function(res) {
         if (res.success) {
           showToast(res.message, 'success');
           closeModal('installmentModal');
@@ -574,7 +608,15 @@
       <div class="aa-modal-body">
         <div class="aa-alert aa-alert-info mb-3">
           <i class="fa fa-info-circle" style="margin-top:2px;"></i>
-          <div>Define your preferred payment milestones. The total of all milestones must equal your total amount due. The accounts office will review and approve your plan.</div>
+          <div>Define your preferred payment milestones. The <strong>total of all milestones must equal the total amount due</strong>. The accounts office will review and approve your plan.</div>
+        </div>
+        <div class="aa-form-group mb-3">
+          <label class="aa-label">Select Bill</label>
+          <select id="installmentBillSelect" class="aa-select" onchange="updateInstallmentTotal()"></select>
+        </div>
+        <div style="background:rgba(255,255,255,0.06); border-radius:8px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="color:#94a3b8; font-size:13px;">Total Amount Due:</span>
+          <strong id="installmentTotalDue" style="color:#f0a500; font-size:18px;">₦0.00</strong>
         </div>
         <label class="aa-label">Payment Milestones</label>
         <div id="installmentMilestones" class="mb-3"></div>
