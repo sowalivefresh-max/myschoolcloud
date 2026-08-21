@@ -814,7 +814,10 @@ Answer: A
         document.getElementById('stat-myclass-students').textContent = myClassStudents.length;
         buildTable('myClassTable', [
           { key: 'admissionNumber' },
-          { key: 'fullName' },
+          { key: 'fullName', render: function(r) {
+              var shield = r.isFinanciallyCleared ? ' <i class="fa fa-shield-alt text-gold" title="Financially Cleared" style="color:var(--aa-gold);"></i>' : '';
+              return AA.escapeHTML(r.fullName || '') + shield;
+          }},
           { key: 'status', render: function(r) { return formatStatus(r.status); } }
         ], myClassStudents, function(r) {
           return '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewStudentReport(\'' + (r.id||r.iD) + '\')">' +
@@ -967,7 +970,8 @@ Answer: A
         if(sc.id||sc.iD) anyScores = true;
 
         var tr = document.createElement('tr');
-        var trHtml = '<td>'+AA.escapeHTML(st.admissionNumber||'')+'</td><td>'+AA.escapeHTML(st.fullName)+'</td>';
+        var shield = st.isFinanciallyCleared ? ' <i class="fa fa-shield-alt text-gold" title="Financially Cleared" style="color:var(--aa-gold);"></i>' : '';
+        var trHtml = '<td>'+AA.escapeHTML(st.admissionNumber||'')+'</td><td>'+AA.escapeHTML(st.fullName)+shield+'</td>';
         
         format.forEach(function(col) {
           var val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);

@@ -295,8 +295,9 @@
           var card = document.createElement('div');
           card.className = 'aa-card text-center';
           card.style.padding = '24px 16px';
+          var shield = c.isFinanciallyCleared ? ' <i class="fa fa-shield-alt text-gold" title="Financially Cleared" style="color:var(--aa-gold);"></i>' : '';
           card.innerHTML = '<div style="width:64px;height:64px;background:var(--aa-navy);color:var(--aa-gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 12px;">'+c.fullName.charAt(0)+'</div>'+
-            '<h4 style="margin:0 0 4px;color:var(--aa-navy);">'+c.fullName+'</h4>'+
+            '<h4 style="margin:0 0 4px;color:var(--aa-navy);">'+c.fullName+shield+'</h4>'+
             '<div class="text-muted fs-12 mb-2">'+(c.class||c.className||'Unassigned')+'</div>'+
             '<div class="aa-badge aa-badge-success mb-3">'+formatStatus(c.status)+'</div>'+
             '<div class="d-flex gap-2 justify-content-center">'+

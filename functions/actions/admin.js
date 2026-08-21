@@ -64,8 +64,48 @@ module.exports = function(db, notificationsActions) {
     for (let key in classOrderMap) {
       if (normalized.startsWith(key)) return classOrderMap[key];
     }
-    return 999;
   }
+
+  // Gamification gameloop helper: Syncs the isFinanciallyCleared badge flag on a student
+  async function syncStudentFinancialClearance(studentId) {
+    if (!studentId) return;
+    try {
+      // 1. Get all bills for this student (handle legacy schema studentId vs studentID)
+      const bills1 = await db.collection("bills").where("studentId", "==", studentId).get();
+      const bills2 = await db.collection("bills").where("studentID", "==", studentId).get();
+      
+      let totalBilled = 0;
+      const seenDocs = new Set();
+      const processBill = (doc) => {
+        if (seenDocs.has(doc.id)) return;
+        seenDocs.add(doc.id);
+        let b = doc.data();
+        totalBilled += Number(b.totalBilled || 0) + Number(b.arrears || 0);
+      };
+      bills1.forEach(processBill);
+      bills2.forEach(processBill);
+
+      // 2. Get all approved payments for this student
+      const pays1 = await db.collection("payments").where("studentId", "==", studentId).where("status", "==", "Approved").get();
+      const pays2 = await db.collection("payments").where("studentID", "==", studentId).where("status", "==", "Approved").get();
+      
+      let totalPaid = 0;
+      const processPay = (doc) => {
+        if (seenDocs.has(doc.id)) return;
+        seenDocs.add(doc.id);
+        totalPaid += Number(doc.data().amount || 0);
+      };
+      pays1.forEach(processPay);
+      pays2.forEach(processPay);
+
+      // 3. Compare and update
+      const isFinanciallyCleared = (totalBilled > 0 && totalPaid >= totalBilled);
+      await db.collection("students").doc(studentId).update({ isFinanciallyCleared });
+    } catch(err) {
+      console.error("Error syncing financial clearance for student:", studentId, err);
+    }
+  }
+
   return {
     adminGetStats: async (req, res) => {
       // Middleware ensures req.session exists and role is admin/admin_assistant
@@ -778,6 +818,7 @@ module.exports = function(db, notificationsActions) {
 
         let generated = 0;
         let skipped = 0;
+        let generatedStudentIds = [];
         
         const batches = [];
         let currentBatch = db.batch();
@@ -858,12 +899,14 @@ module.exports = function(db, notificationsActions) {
           currentBatch.set(newBillRef, {
             id: newBillRef.id, studentId: sid, studentName: student.fullName, className: className,
             term: term, session: session, originalFeeTotal, arrears: pastArrears, totalBilled: total, discountAmount: discountAmount, totalPaid: appliedCredit,
-            balance: finalBalance, status: billStatus, createdAt: new Date().toISOString(),
+            balance: finalBalance, status: billStatus, lineItems: fee.lineItems,
+            createdAt: new Date().toISOString(),
             earlyBirdDeadline: earlyBirdDeadline,
             earlyBirdDiscountPercent: earlyBirdDiscountPercent,
             earlyBirdSavings: earlyBirdSavings || 0,
             earlyBirdApplied: false
           });
+          generatedStudentIds.push(sid);
           operationCount++;
           commitBatchIfNeeded();
 
@@ -969,6 +1012,12 @@ module.exports = function(db, notificationsActions) {
         }
         
         await Promise.all(batches);
+        
+        // Gamification: Background sync zero-debt shield for all affected students
+        if (typeof syncStudentFinancialClearance === 'function') {
+           // We don't await this so the API response isn't blocked
+           Promise.allSettled(generatedStudentIds.map(sid => syncStudentFinancialClearance(sid))).catch(e => console.error("Error in background gamification sync", e));
+        }
         
         if (emailPromises.length > 0) {
           Promise.allSettled(emailPromises).catch(e => console.error("Error sending bill emails:", e));
@@ -1427,6 +1476,9 @@ module.exports = function(db, notificationsActions) {
           action: "APPROVE_PAYMENT",
           details: `Approved payment ${pid} for ${payment.amount || 'an unknown amount'}.`
         });
+        
+        // Gamification: Background sync zero-debt shield
+        await syncStudentFinancialClearance(payment.studentId || payment.studentID);
         
         // ---- BEGIN SEND RECEIPT EMAIL ----
         try {

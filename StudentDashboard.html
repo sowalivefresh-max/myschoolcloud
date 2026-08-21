@@ -261,7 +261,8 @@ function applyBranding(){
 }
 function updateUserUI(){
   var u=AA.user;
-  document.getElementById('sidebarUserName').textContent=u.fullName||'Student';
+  var shield = u.isFinanciallyCleared ? ' <i class="fa fa-shield-alt text-gold" title="Financially Cleared" style="color:var(--aa-gold);"></i>' : '';
+  document.getElementById('sidebarUserName').innerHTML = (u.fullName||'Student') + shield;
   document.getElementById('sidebarUserClass').textContent=u.className||'No Class';
   document.getElementById('userAvatar').textContent=(u.fullName||'S').charAt(0).toUpperCase();
 }

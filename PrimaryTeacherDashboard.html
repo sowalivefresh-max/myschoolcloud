@@ -494,7 +494,12 @@
         myStudents = data;
         document.getElementById('stat-students').textContent = data.length;
         buildTable('rosterTable', [
-          {key:'admissionNumber'},{key:'fullName'},{key:'gender'},{key:'status', render:function(r){return formatStatus(r.status);}}
+          {key:'admissionNumber'},
+          {key:'fullName', render: function(r){
+            var shield = r.isFinanciallyCleared ? ' <i class="fa fa-shield-alt text-gold" title="Financially Cleared" style="color:var(--aa-gold);"></i>' : '';
+            return AA.escapeHTML(r.fullName||'') + shield;
+          }},
+          {key:'gender'},{key:'status', render:function(r){return formatStatus(r.status);}}
         ], data, function(r) {
           return '<button class="aa-btn aa-btn-success aa-btn-xs" title="Subjects" onclick="manageEnrollment(\'' + (r.id||r.iD) + '\', \'' + (r.fullName||'').replace(/'/g, "\\'") + '\')">' +
                  '<i class="fa fa-book"></i> Subjects</button>';
@@ -587,7 +592,8 @@
           if(sc.id||sc.iD) anyScores = true;
 
           var tr = document.createElement('tr');
-          var trHtml = '<td>'+AA.escapeHTML(st.fullName)+'</td>';
+          var shield = st.isFinanciallyCleared ? ' <i class="fa fa-shield-alt text-gold" title="Financially Cleared" style="color:var(--aa-gold);"></i>' : '';
+          var trHtml = '<td>'+AA.escapeHTML(st.fullName)+shield+'</td>';
           
           format.forEach(function(col) {
             var val = sc[col.id] !== undefined ? sc[col.id] : (sc[col.id.toUpperCase()] || 0);
