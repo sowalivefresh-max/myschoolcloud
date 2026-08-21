@@ -177,14 +177,22 @@ body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:ce
     <input type="hidden" id="cpwToken">
     <div class="form-group">
       <label class="form-label">New Password <small style="color:rgba(255,255,255,0.4);font-weight:400;">(min. 6 characters)</small></label>
-      <div class="input-wrap"><i class="fa fa-lock prefix"></i>
-        <input class="form-input" type="password" id="cpwNew" placeholder="Enter new password" style="padding-left:38px;">
+      <div class="input-wrap" style="position:relative;">
+        <i class="fa fa-lock prefix"></i>
+        <input class="form-input" type="password" id="cpwNew" placeholder="Enter new password" style="padding-left:38px;padding-right:42px;">
+        <button type="button" class="eye-toggle" onclick="toggleCpwNew()" title="Toggle visibility">
+          <i class="fa fa-eye" id="cpwNewEye"></i>
+        </button>
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Confirm Password</label>
-      <div class="input-wrap"><i class="fa fa-lock prefix"></i>
-        <input class="form-input" type="password" id="cpwConfirm" placeholder="Confirm new password" style="padding-left:38px;">
+      <div class="input-wrap" style="position:relative;">
+        <i class="fa fa-lock prefix"></i>
+        <input class="form-input" type="password" id="cpwConfirm" placeholder="Confirm new password" style="padding-left:38px;padding-right:42px;">
+        <button type="button" class="eye-toggle" onclick="toggleCpwConfirm()" title="Toggle visibility">
+          <i class="fa fa-eye" id="cpwConfirmEye"></i>
+        </button>
       </div>
     </div>
     <button class="login-btn" id="cpwBtn" onclick="doChangePassword()">Set Password &amp; Continue</button>
@@ -261,6 +269,20 @@ function switchLoginType(type) {
 function togglePwd() {
   var inp = document.getElementById('loginPassword');
   var icon = document.getElementById('eyeIcon');
+  if (inp.type === 'password') { inp.type = 'text'; icon.className = 'fa fa-eye-slash'; }
+  else { inp.type = 'password'; icon.className = 'fa fa-eye'; }
+}
+
+function toggleCpwNew() {
+  var inp = document.getElementById('cpwNew');
+  var icon = document.getElementById('cpwNewEye');
+  if (inp.type === 'password') { inp.type = 'text'; icon.className = 'fa fa-eye-slash'; }
+  else { inp.type = 'password'; icon.className = 'fa fa-eye'; }
+}
+
+function toggleCpwConfirm() {
+  var inp = document.getElementById('cpwConfirm');
+  var icon = document.getElementById('cpwConfirmEye');
   if (inp.type === 'password') { inp.type = 'text'; icon.className = 'fa fa-eye-slash'; }
   else { inp.type = 'password'; icon.className = 'fa fa-eye'; }
 }
