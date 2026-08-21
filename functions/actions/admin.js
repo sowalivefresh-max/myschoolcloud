@@ -2658,9 +2658,17 @@ module.exports = function(db, notificationsActions) {
     adminGetInstallmentPlans: async (req, res) => {
       try {
         const { status } = req.body;
-        // Simple fetch to avoid composite index requirement; filter + sort in memory
+        const sessionCampusId = req.session.campusId || null;
+
+        // Simple fetch; filter + sort in memory to avoid composite index requirement
         const snap = await db.collection("installment_plans").get();
         let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Campus isolation: only return plans belonging to this accounts officer's campus
+        if (sessionCampusId) {
+          plans = plans.filter(p => (p.campusId || null) === sessionCampusId);
+        }
+
         if (status) plans = plans.filter(p => p.status === status);
         plans.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         return res.json({ success: true, data: plans });

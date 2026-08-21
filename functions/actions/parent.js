@@ -463,12 +463,15 @@ module.exports = function(db) {
           }
         }
         const studentDoc = await db.collection("students").doc(studentId).get();
-        const studentName = studentDoc.exists ? studentDoc.data().fullName : "Unknown";
+        const studentData = studentDoc.exists ? studentDoc.data() : {};
+        const studentName = studentData.fullName || "Unknown";
+        const campusId = studentData.campusId || bill.campusId || null;
+        const className = studentData.className || bill.className || null;
         const planRef = db.collection("installment_plans").doc();
         await planRef.set({
           id: planRef.id, studentId, studentName, billId, parentId,
           term: term || bill.term, session: session || bill.session,
-          totalAmount: billTotal,
+          totalAmount: billTotal, campusId, className,
           milestones: milestones.map(m => ({ ...m, amount: Number(m.amount), paid: false })),
           status: "pending", createdAt: new Date().toISOString()
         });
