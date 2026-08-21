@@ -2658,16 +2658,30 @@ module.exports = function(db, notificationsActions) {
     adminGetInstallmentPlans: async (req, res) => {
       try {
         const { status } = req.body;
+
+        // Read section + campus from the logged-in officer's session
         const sessionCampusId = req.session.campusId || null;
+        let sessionSection = (req.session.section || "both").toLowerCase();
+        if (sessionSection === "secondary") sessionSection = "high_school";
+
+        // Unified match filter — mirrors the pattern used throughout admin.js
+        const matchFilter = (p) => {
+          // Section isolation (primary vs high_school)
+          if (sessionSection && sessionSection !== "both") {
+            let planSec = (p.section || "both").toLowerCase();
+            if (planSec === "secondary") planSec = "high_school";
+            if (planSec !== sessionSection && planSec !== "both") return false;
+          }
+          // Campus isolation
+          if (sessionCampusId) {
+            if ((p.campusId || null) !== sessionCampusId) return false;
+          }
+          return true;
+        };
 
         // Simple fetch; filter + sort in memory to avoid composite index requirement
         const snap = await db.collection("installment_plans").get();
-        let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Campus isolation: only return plans belonging to this accounts officer's campus
-        if (sessionCampusId) {
-          plans = plans.filter(p => (p.campusId || null) === sessionCampusId);
-        }
+        let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(matchFilter);
 
         if (status) plans = plans.filter(p => p.status === status);
         plans.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));

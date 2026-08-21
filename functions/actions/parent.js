@@ -467,11 +467,14 @@ module.exports = function(db) {
         const studentName = studentData.fullName || "Unknown";
         const campusId = studentData.campusId || bill.campusId || null;
         const className = studentData.className || bill.className || null;
+        // Normalize section value
+        let section = (studentData.section || bill.section || "both").toLowerCase();
+        if (section === "secondary") section = "high_school";
         const planRef = db.collection("installment_plans").doc();
         await planRef.set({
           id: planRef.id, studentId, studentName, billId, parentId,
           term: term || bill.term, session: session || bill.session,
-          totalAmount: billTotal, campusId, className,
+          totalAmount: billTotal, campusId, className, section,
           milestones: milestones.map(m => ({ ...m, amount: Number(m.amount), paid: false })),
           status: "pending", createdAt: new Date().toISOString()
         });
