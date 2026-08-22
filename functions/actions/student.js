@@ -314,11 +314,43 @@ module.exports = function(db) {
                 .where("status", "==", "Approved").get();
               let paid = 0;
               paidSnap.forEach(d => paid += Number(d.data().amount || 0));
-              const outstanding = Math.max(0, (billed + arrears) - paid);
+              let outstanding = Math.max(0, (billed + arrears) - paid);
               const totalDue = billed + arrears;
               const threshold = rules.cbt_lock_threshold || 0.5;
+              let lockMessage = `CBT access is restricted. You have an outstanding fee balance of ₦${outstanding.toLocaleString()}. Please contact the accounts office.`;
+              
               if (totalDue > 0 && (outstanding / totalDue) > threshold) {
-                return res.json({ success: false, financeLocked: true, outstandingAmount: outstanding, message: `CBT access is restricted. You have an outstanding fee balance of ₦${outstanding.toLocaleString()}. Please contact the accounts office.` });
+                if (studentData.lockOverride) {
+                  outstanding = 0;
+                } else {
+                  const planSnap = await db.collection("installment_plans")
+                    .where("studentId", "==", userId)
+                    .where("status", "==", "Approved")
+                    .get();
+                  if (!planSnap.empty) {
+                    let plan = planSnap.docs[0].data();
+                    let expectedPaid = 0;
+                    const nowMs = new Date().getTime();
+                    const gracePeriodMs = 3 * 24 * 60 * 60 * 1000;
+                    if (plan.milestones && Array.isArray(plan.milestones)) {
+                      plan.milestones.forEach(m => {
+                        const dueMs = new Date(m.dueDate).getTime();
+                        if ((dueMs + gracePeriodMs) <= nowMs) {
+                          expectedPaid += Number(m.amount || 0);
+                        }
+                      });
+                    }
+                    if (paid >= expectedPaid) {
+                      outstanding = 0;
+                    } else {
+                      lockMessage = `Installment Plan Defaulted! You missed a payment milestone. CBT access is restricted.`;
+                    }
+                  }
+                }
+              }
+              
+              if (totalDue > 0 && (outstanding / totalDue) > threshold) {
+                return res.json({ success: false, financeLocked: true, outstandingAmount: outstanding, message: lockMessage });
               }
             }
           }

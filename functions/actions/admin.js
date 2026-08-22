@@ -2479,6 +2479,26 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    adminToggleStudentLockOverride: async (req, res) => {
+      const { studentId, lockOverride } = req.body;
+      if (!studentId) return res.json({ success: false, message: "Student ID required." });
+      try {
+        await db.collection("students").doc(studentId).update({ lockOverride: !!lockOverride });
+        
+        await db.collection("audit_logs").add({
+          timestamp: new Date().toISOString(),
+          userId: req.session.userId,
+          userName: req.session.fullName || 'Admin',
+          action: "TOGGLE_LOCK_OVERRIDE",
+          details: `Set finance lock override to ${!!lockOverride} for student ${studentId}.`
+        });
+        
+        return res.json({ success: true, message: "Lock override toggled successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: "Error toggling lock override: " + err.message });
+      }
+    },
+
     adminSetStudentDiscount: async (req, res) => {
       const { studentId, discountConfig } = req.body;
       if (!studentId || !discountConfig) return res.json({ success: false, message: "Student ID and config required." });
@@ -2731,9 +2751,21 @@ module.exports = function(db, notificationsActions) {
           return true;
         };
 
-        // Simple fetch; filter + sort in memory to avoid composite index requirement
         const snap = await db.collection("installment_plans").get();
         let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(matchFilter);
+
+        // Attach lockOverride from student docs
+        const lockMap = {};
+        
+        // Fetch all students since it's simple
+        const allStudentsSnap = await db.collection("students").get();
+        allStudentsSnap.forEach(doc => {
+           lockMap[doc.id] = !!(doc.data().lockOverride);
+        });
+        
+        plans.forEach(p => {
+           p.lockOverride = lockMap[p.studentId] || false;
+        });
 
         if (status) plans = plans.filter(p => p.status === status);
         plans.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));

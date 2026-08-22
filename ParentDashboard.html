@@ -422,7 +422,21 @@
               var plan = planMap[r.id];
               if (!plan) return '<span style="color:#64748b;font-size:12px;">—</span>';
               if (plan.status === 'pending') return '<span class="aa-badge aa-badge-warning">Plan Pending</span>';
-              if (plan.status === 'approved') return '<span class="aa-badge aa-badge-success"><i class="fa fa-check"></i> Plan Active</span>';
+              if (plan.status === 'approved') {
+                var expectedPaid = 0;
+                var nowMs = new Date().getTime();
+                var gracePeriodMs = 3 * 24 * 60 * 60 * 1000;
+                (plan.milestones || []).forEach(function(m) {
+                  var dueMs = new Date(m.dueDate).getTime();
+                  if ((dueMs + gracePeriodMs) <= nowMs) {
+                    expectedPaid += Number(m.amount || 0);
+                  }
+                });
+                if (r.totalPaid < expectedPaid) {
+                  return '<span class="aa-badge aa-badge-danger" style="animation: pulse 2s infinite;"><i class="fa fa-exclamation-triangle"></i> Plan Defaulted</span>';
+                }
+                return '<span class="aa-badge aa-badge-success"><i class="fa fa-check"></i> Plan Active</span>';
+              }
               if (plan.status === 'rejected') return '<span class="aa-badge aa-badge-danger">Plan Rejected</span>';
               return '';
             }}

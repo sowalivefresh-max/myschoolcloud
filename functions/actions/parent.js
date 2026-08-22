@@ -123,10 +123,42 @@ module.exports = function(db) {
               .where("status", "==", "Approved").get();
             let paid = 0;
             paidSnap.forEach(d => paid += Number(d.data().amount || 0));
-            const outstanding = Math.max(0, (billed + arrears) - paid);
+            let outstanding = Math.max(0, (billed + arrears) - paid);
             const minBalance = Number(compRules.report_lock_min_balance || 0);
+            let lockMessage = `Report download is restricted. Outstanding fee balance: ₦${outstanding.toLocaleString()}. Please contact the accounts office.`;
+            
             if (outstanding > minBalance) {
-              return res.json({ success: false, financeLocked: true, outstandingAmount: outstanding, message: `Report download is restricted. Outstanding fee balance: ₦${outstanding.toLocaleString()}. Please contact the accounts office.` });
+              if (student.lockOverride) {
+                outstanding = 0;
+              } else {
+                const planSnap = await db.collection("installment_plans")
+                  .where("studentId", "==", studentId)
+                  .where("status", "==", "Approved")
+                  .get();
+                if (!planSnap.empty) {
+                  let plan = planSnap.docs[0].data();
+                  let expectedPaid = 0;
+                  const nowMs = new Date().getTime();
+                  const gracePeriodMs = 3 * 24 * 60 * 60 * 1000;
+                  if (plan.milestones && Array.isArray(plan.milestones)) {
+                    plan.milestones.forEach(m => {
+                      const dueMs = new Date(m.dueDate).getTime();
+                      if ((dueMs + gracePeriodMs) <= nowMs) {
+                        expectedPaid += Number(m.amount || 0);
+                      }
+                    });
+                  }
+                  if (paid >= expectedPaid) {
+                    outstanding = 0;
+                  } else {
+                    lockMessage = `Installment Plan Defaulted! You missed a payment milestone. Report access is restricted.`;
+                  }
+                }
+              }
+            }
+            
+            if (outstanding > minBalance) {
+              return res.json({ success: false, financeLocked: true, outstandingAmount: outstanding, message: lockMessage });
             }
           }
         }

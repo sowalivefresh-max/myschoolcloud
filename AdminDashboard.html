@@ -1525,9 +1525,13 @@
           { key: 'status', render: function(r){ return formatStatus(r.status); } }
         ], data, function(r) {
           var id = r.id || r.iD;
+          var lockBtnClass = r.lockOverride ? 'aa-btn-success' : 'aa-btn-warning';
+          var lockIcon = r.lockOverride ? 'fa-unlock' : 'fa-lock';
+          var lockTitle = r.lockOverride ? 'Remove Finance Lock Override' : 'Grant Finance Lock Override';
           return '<button class="aa-btn aa-btn-outline aa-btn-xs" title="Edit" onclick="editStudent(\''+id+'\')"><i class="fa fa-edit"></i></button> ' +
                  '<button class="aa-btn aa-btn-success aa-btn-xs" title="Subjects" onclick="manageEnrollment(\''+id+'\', \''+r.fullName+'\')"><i class="fa fa-book"></i></button> ' +
                  '<button class="aa-btn aa-btn-info aa-btn-xs" title="Generate ID Card" onclick="generateIDCard(\''+id+'\')"><i class="fa fa-id-card"></i></button> ' +
+                 '<button class="aa-btn ' + lockBtnClass + ' aa-btn-xs" title="' + lockTitle + '" onclick="toggleLockOverride(\''+id+'\', ' + !r.lockOverride + ')"><i class="fa ' + lockIcon + '"></i></button> ' +
                  '<button class="aa-btn aa-btn-danger aa-btn-xs" title="Delete" onclick="deleteStudent(\''+id+'\')"><i class="fa fa-trash"></i></button>';
         });
       }, null, true);
@@ -1621,6 +1625,16 @@
     function deleteStudent(id) {
       aaConfirm('Are you sure you want to delete this student?', function() {
         callServer('adminDeleteStudent', [AA.token, id], function(res){ showToast(res.message, res.success?'success':'error'); if(res.success)loadStudents(); }, null, true);
+      });
+    }
+    
+    function toggleLockOverride(id, newState) {
+      var actionStr = newState ? 'grant' : 'remove';
+      aaConfirm('Are you sure you want to ' + actionStr + ' the finance lock override for this student?', function() {
+        callServer('adminToggleStudentLockOverride', [AA.token, id, newState], function(res){
+          showToast(res.message, res.success ? 'success' : 'error');
+          if(res.success) loadStudents();
+        }, null, true);
       });
     }
 
