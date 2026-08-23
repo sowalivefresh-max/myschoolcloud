@@ -863,6 +863,8 @@ module.exports = function(db, notificationsActions) {
           term: data.term || s.current_term || "",
           session: data.session || s.current_session || "",
           isPublished: data.isPublished || false,
+          availableFrom: data.availableFrom || null,
+          availableTo: data.availableTo || null,
           createdAt: new Date().toISOString()
         };
         if (data.id) {
@@ -906,12 +908,14 @@ module.exports = function(db, notificationsActions) {
         const batch = db.batch();
         existSnap.docs.forEach(doc => batch.delete(doc.ref));
 
+        const answerKey = {};
         questions.forEach(q => {
           if (!q.question || !q.correctAnswer) return;
           const ref = db.collection("cbt_questions").doc();
           batch.set(ref, {
             quizId,
             question: q.question,
+            imageUrl: q.imageUrl || "",
             optionA: q.optionA || "",
             optionB: q.optionB || "",
             optionC: q.optionC || "",
@@ -919,8 +923,10 @@ module.exports = function(db, notificationsActions) {
             correctAnswer: q.correctAnswer.toUpperCase(),
             createdAt: new Date().toISOString()
           });
+          answerKey[ref.id] = q.correctAnswer.toUpperCase();
         });
 
+        batch.update(db.collection("cbt_quizzes").doc(quizId), { answerKey });
         await batch.commit();
         return res.json({ success: true, message: `${questions.length} question(s) saved.` });
       } catch (err) {

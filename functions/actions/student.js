@@ -389,7 +389,17 @@ module.exports = function(db) {
             isTarget = parts.includes(sClass) || parts.includes("all") || d.className.trim().toLowerCase() === sClass;
           }
           if (!d.className || isTarget) {
-            results.push({ id: doc.id, ...d, attemptResult: attemptedMap[doc.id] || null });
+            const now = new Date().getTime();
+            let timeLocked = false;
+            let timeLockedReason = "";
+            if (d.availableFrom && now < new Date(d.availableFrom).getTime()) {
+              timeLocked = true;
+              timeLockedReason = "starts_later";
+            } else if (d.availableTo && now > new Date(d.availableTo).getTime()) {
+              timeLocked = true;
+              timeLockedReason = "ended";
+            }
+            results.push({ id: doc.id, ...d, timeLocked, timeLockedReason, attemptResult: attemptedMap[doc.id] || null });
           }
         });
         return res.json({ success: true, data: results });
@@ -431,13 +441,27 @@ module.exports = function(db) {
                 if (a.selectedOption) savedAnswers[a.questionId] = a.selectedOption;
               });
             }
-            if (att.remainingSeconds !== undefined) savedSecs = att.remainingSeconds;
+            // Use wall-clock time for strict enforcement
+            if (att.startedAt) {
+              const quizDoc = await db.collection("cbt_quizzes").doc(quizId).get();
+              const durationMin = Number(quizDoc.exists ? quizDoc.data().durationMinutes || 30 : 30);
+              const elapsedSecs = Math.floor((new Date().getTime() - new Date(att.startedAt).getTime()) / 1000);
+              savedSecs = Math.max(0, (durationMin * 60) - elapsedSecs);
+            }
           }
         }
 
         const quizDoc = await db.collection("cbt_quizzes").doc(quizId).get();
         if (!quizDoc.exists) return res.json({ success: false, message: "Quiz not found." });
         const quiz = quizDoc.data();
+        
+        const now = new Date().getTime();
+        if (quiz.availableFrom && now < new Date(quiz.availableFrom).getTime()) {
+           return res.json({ success: false, message: "Quiz is not yet available." });
+        }
+        if (quiz.availableTo && now > new Date(quiz.availableTo).getTime()) {
+           return res.json({ success: false, message: "Quiz has ended." });
+        }
 
         const qSnap = await db.collection("cbt_questions").where("quizId", "==", quizId).get();
         const questions = [];
@@ -520,10 +544,20 @@ module.exports = function(db) {
           return res.json({ success: false, message: "Quiz already submitted." });
         }
 
-        const { quizId } = attemptDoc.data();
-        const qSnap = await db.collection("cbt_questions").where("quizId", "==", quizId).get();
-        const correctMap = {};
-        qSnap.forEach(doc => { correctMap[doc.id] = doc.data().correctAnswer; });
+        const { quizId, startedAt } = attemptDoc.data();
+        const quizDoc = await db.collection("cbt_quizzes").doc(quizId).get();
+        if (!quizDoc.exists) return res.json({ success: false, message: "Quiz not found." });
+        const correctMap = quizDoc.data().answerKey || {};
+
+        // Server-Side Time Enforcement
+        const durationMin = Number(quizDoc.data().durationMinutes || 30);
+        if (startedAt) {
+          const elapsedSecs = (new Date().getTime() - new Date(startedAt).getTime()) / 1000;
+          const bufferSecs = 120; // 2 minutes grace period for network latency
+          if (elapsedSecs > (durationMin * 60) + bufferSecs) {
+            return res.json({ success: false, message: `Time expired! Your submission was rejected because it exceeded the allowed ${durationMin} minutes.` });
+          }
+        }
 
         let score = 0;
         const total = Object.keys(correctMap).length;

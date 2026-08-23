@@ -418,11 +418,21 @@ function renderQuizzes(){
     html+='<div class="quiz-card"><div class="quiz-icon"><i class="fa fa-tasks"></i></div>';
     html+='<div style="flex:1;"><div style="font-size:15px;font-weight:700;">'+escHtml(q.title)+'</div>';
     html+='<div style="font-size:12px;color:var(--muted);margin-top:3px;">'+escHtml(q.subjectName||'')+' &bull; '+(q.durationMinutes||30)+' mins</div>';
-    if(!q.isPublished)html+='<span class="badge badge-warning" style="margin-top:4px;">Not Available Yet</span>';
-    if(q.attemptResult)html+='<span class="badge badge-success" style="margin-top:4px;"><i class="fa fa-check"></i> Score: '+q.attemptResult.score+'/'+q.attemptResult.total+' ('+q.attemptResult.percentage+'%)</span>';
+    if(!q.isPublished) html+='<span class="badge badge-warning" style="margin-top:4px;">Not Available Yet</span>';
+    if(q.attemptResult) html+='<span class="badge badge-success" style="margin-top:4px;"><i class="fa fa-check"></i> Score: '+q.attemptResult.score+'/'+q.attemptResult.total+' ('+q.attemptResult.percentage+'%)</span>';
+    else if(q.timeLocked) {
+      if(q.timeLockedReason === 'starts_later') {
+        var startStr = new Date(q.availableFrom).toLocaleString();
+        html+='<span class="badge badge-primary" style="margin-top:4px;"><i class="fa fa-clock"></i> Starts: '+startStr+'</span>';
+      } else {
+        html+='<span class="badge badge-danger" style="margin-top:4px;"><i class="fa fa-times"></i> Quiz Ended</span>';
+      }
+    }
+    
     html+='</div><div class="quiz-actions">';
-    if(q.isPublished&&!q.attemptResult)html+='<button class="btn btn-primary btn-sm" onclick="startQuiz(\''+q.id+'\')"><i class="fa fa-play"></i> Take Quiz</button>';
-    else if(!q.isPublished)html+='<button class="btn btn-outline btn-sm" disabled><i class="fa fa-lock"></i> Locked</button>';
+    if(q.isPublished && !q.attemptResult && !q.timeLocked) html+='<button class="btn btn-primary btn-sm" onclick="startQuiz(\''+q.id+'\')"><i class="fa fa-play"></i> Take Quiz</button>';
+    else if(!q.isPublished || (q.timeLocked && q.timeLockedReason === 'starts_later')) html+='<button class="btn btn-outline btn-sm" disabled><i class="fa fa-lock"></i> Locked</button>';
+    else if(q.timeLocked && q.timeLockedReason === 'ended' && !q.attemptResult) html+='<button class="btn btn-outline btn-sm" disabled><i class="fa fa-times"></i> Missed</button>';
     else html+='<button class="btn btn-outline btn-sm" disabled><i class="fa fa-check"></i> Completed</button>';
     html+='</div></div>';
   });
@@ -512,6 +522,12 @@ function renderCBTQuestion(){
   }
   var html='<div class="cbt-q-num">Question '+(_cbtIdx+1)+' of '+_cbtQuestions.length+'</div>';
   html+='<div class="cbt-q-text">'+escHtml(q.question)+'</div>';
+  
+  if(q.imageUrl) {
+    var displaySrc = q.imageUrl.startsWith('data:image') ? q.imageUrl : ('data:image/jpeg;base64,' + q.imageUrl);
+    if(q.imageUrl.startsWith('http')) displaySrc = q.imageUrl;
+    html+='<div style="margin:16px 0;text-align:center;"><img src="'+displaySrc+'" style="max-width:100%;max-height:200px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>';
+  }
   opts.forEach(function(o){
     var origLetter=o[0]; var displayLabel=o[1]; var text=o[2];
     var sel=_cbtAnswers[q.id]===origLetter?'selected':'';
