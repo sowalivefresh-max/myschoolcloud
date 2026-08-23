@@ -326,6 +326,8 @@ module.exports = function(db) {
                   const planSnap = await db.collection("installment_plans")
                     .where("studentId", "==", userId)
                     .where("status", "==", "Approved")
+                    .where("term", "==", currentTerm)
+                    .where("session", "==", currentSession)
                     .get();
                   if (!planSnap.empty) {
                     let plan = planSnap.docs[0].data();
