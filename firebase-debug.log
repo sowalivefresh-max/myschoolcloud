@@ -1,17 +1,34 @@
-[debug] [2026-08-23T21:30:10.157Z] ----------------------------------------------------------------------
-[debug] [2026-08-23T21:30:10.176Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions hosting
-[debug] [2026-08-23T21:30:10.178Z] CLI Version:   15.24.0
-[debug] [2026-08-23T21:30:10.178Z] Platform:      win32
-[debug] [2026-08-23T21:30:10.178Z] Node Version:  v24.18.0
-[debug] [2026-08-23T21:30:10.178Z] Detected Agent: antigravity
-[debug] [2026-08-23T21:30:10.179Z] Time:          Sun Aug 23 2026 22:30:10 GMT+0100 (West Africa Time)
-[debug] [2026-08-23T21:30:10.179Z] ----------------------------------------------------------------------
+[debug] [2026-08-24T06:53:53.901Z] ----------------------------------------------------------------------
+[debug] [2026-08-24T06:53:53.921Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-08-24T06:53:53.922Z] CLI Version:   15.24.0
+[debug] [2026-08-24T06:53:53.922Z] Platform:      win32
+[debug] [2026-08-24T06:53:53.922Z] Node Version:  v24.18.0
+[debug] [2026-08-24T06:53:53.922Z] Detected Agent: antigravity
+[debug] [2026-08-24T06:53:53.923Z] Time:          Mon Aug 24 2026 07:53:53 GMT+0100 (West Africa Time)
+[debug] [2026-08-24T06:53:53.923Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2026-08-23T21:30:14.426Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2026-08-23T21:30:14.426Z] > authorizing via signed-in user (faith4grtns@gmail.com)
-[debug] [2026-08-23T21:30:14.427Z] [iam] checking project cloudschool-3c1d4 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
-[debug] [2026-08-23T21:30:14.464Z] Checked if tokens are valid: false, expires at: 1787521018290
-[debug] [2026-08-23T21:30:14.465Z] Checked if tokens are valid: false, expires at: 1787521018290
-[debug] [2026-08-23T21:30:14.465Z] > refreshing access token with scopes: []
-[debug] [2026-08-23T21:30:14.471Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
-[debug] [2026-08-23T21:30:14.471Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-24T06:53:53.966Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-08-24T06:53:58.417Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-24T06:53:58.418Z] > authorizing via signed-in user (faith4grtns@gmail.com)
+[debug] [2026-08-24T06:53:58.418Z] [iam] checking project cloudschool-3c1d4 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-08-24T06:53:58.419Z] Checked if tokens are valid: false, expires at: 1787524215111
+[debug] [2026-08-24T06:53:58.419Z] Checked if tokens are valid: false, expires at: 1787524215111
+[debug] [2026-08-24T06:53:58.419Z] > refreshing access token with scopes: []
+[debug] [2026-08-24T06:53:58.422Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-24T06:53:58.422Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-24T06:54:01.256Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-24T06:54:01.258Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-24T06:54:01.285Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions [none]
+[debug] [2026-08-24T06:54:01.285Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions  x-goog-user-project=cloudschool-3c1d4
+[debug] [2026-08-24T06:54:01.286Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-24T06:54:01.319Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-08-24T06:54:01.320Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-08-24T06:54:02.687Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions 200
+[debug] [2026-08-24T06:54:02.687Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-24T06:54:02.688Z] Checked if tokens are valid: true, expires at: 1787558040259
+[debug] [2026-08-24T06:54:02.688Z] Checked if tokens are valid: true, expires at: 1787558040259
+[debug] [2026-08-24T06:54:02.689Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 [none]
+[debug] [2026-08-24T06:54:13.318Z] *** [apiv2] error from fetch(https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4, {"headers":{},"method":"GET","signal":{}}): ConnectTimeoutError: Connect Timeout Error (attempted addresses: 172.217.115.4:443, timeout: 10000ms)
+[debug] [2026-08-24T06:54:13.322Z] Failed to make request to https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 (original: Connect Timeout Error (attempted addresses: 172.217.115.4:443, timeout: 10000ms))
+[error] 
+[error] Error: Assertion failed: resolving hosting target of a site with no site name or target name. This should have caused an error earlier

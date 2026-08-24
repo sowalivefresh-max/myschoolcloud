@@ -499,11 +499,36 @@ Answer: A
         </div>
         <!-- Questions List -->
         <div id="questionEditorList"></div>
-        <button class="aa-btn aa-btn-outline" onclick="addBlankQuestion()" style="width:100%;margin-top:8px;"><i class="fa fa-plus"></i> Add Question Manually</button>
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button class="aa-btn aa-btn-outline" onclick="addBlankQuestion()" style="flex:1;"><i class="fa fa-plus"></i> Add Question Manually</button>
+          <button class="aa-btn aa-btn-secondary" onclick="openQuestionBankModal()" style="flex:1;"><i class="fa fa-book"></i> Import from Past Quiz</button>
+        </div>
       </div>
       <div class="aa-modal-footer">
         <button class="aa-btn aa-btn-outline" onclick="closeModal('questionsModal')">Close</button>
         <button class="aa-btn aa-btn-primary" id="btnSaveQuestions" onclick="saveQuestions()"><i class="fa fa-save"></i> Save All Questions</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Question Bank -->
+  <div class="aa-modal-backdrop" id="questionBankModal">
+    <div class="aa-modal" style="max-width:600px; max-height:85vh; overflow-y:auto;">
+      <div class="aa-modal-header"><h5 class="aa-modal-title"><i class="fa fa-book"></i> Question Bank</h5><button class="aa-modal-close" onclick="closeModal('questionBankModal')">&#215;</button></div>
+      <div class="aa-modal-body">
+        <div class="aa-form-group">
+          <label class="aa-label">Select a Past Quiz</label>
+          <select class="aa-input" id="qbQuizSelect" onchange="loadPastQuizQuestions()">
+            <option value="">-- Choose Quiz --</option>
+          </select>
+        </div>
+        <div id="qbQuestionsList" style="margin-top:10px; max-height:400px; overflow-y:auto; border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:10px; display:none;">
+          <!-- Questions populated here -->
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-outline" onclick="closeModal('questionBankModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" onclick="importSelectedQuestions()" id="btnImportQb"><i class="fa fa-download"></i> Import Selected</button>
       </div>
     </div>
   </div>
@@ -1938,6 +1963,87 @@ Answer: A
         if (res.success) { showToast(res.message, 'success'); closeModal('questionsModal'); loadMyQuizzes(); }
         else showToast(res.message, 'error');
       });
+    }
+
+    // -- Question Bank (Import Past Questions) --
+    var qbLoadedQuestions = [];
+    function openQuestionBankModal() {
+      var select = document.getElementById('qbQuizSelect');
+      select.innerHTML = '<option value="">-- Choose Quiz --</option>';
+      document.getElementById('qbQuestionsList').style.display = 'none';
+      
+      callServer('teacherGetMyQuizzes', [AA.token], function(res) {
+        var data = Array.isArray(res) ? res : (res && res.data ? res.data : []);
+        data.forEach(function(q) {
+          if (q.id === editQuizId) return; // don't show current quiz
+          var opt = document.createElement('option');
+          opt.value = q.id;
+          opt.textContent = q.title + ' (' + (q.subjectName||'All') + ' - ' + (q.className||'All') + ')';
+          select.appendChild(opt);
+        });
+        openModal('questionBankModal');
+      });
+    }
+    
+    function loadPastQuizQuestions() {
+      var quizId = document.getElementById('qbQuizSelect').value;
+      var listDiv = document.getElementById('qbQuestionsList');
+      if (!quizId) {
+        listDiv.style.display = 'none';
+        return;
+      }
+      
+      listDiv.style.display = 'block';
+      listDiv.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
+      
+      callServer('teacherGetQuizQuestions', [AA.token, quizId], function(res) {
+        if (!res || !res.success) {
+          listDiv.innerHTML = '<div class="aa-empty-state text-danger">Failed to load questions.</div>';
+          return;
+        }
+        qbLoadedQuestions = res.data || [];
+        if (qbLoadedQuestions.length === 0) {
+          listDiv.innerHTML = '<div class="aa-empty-state">No questions found in this quiz.</div>';
+          return;
+        }
+        
+        var html = '<div style="margin-bottom:10px;"><label><input type="checkbox" onchange="toggleAllQb(this)"> <strong>Select All</strong></label></div>';
+        qbLoadedQuestions.forEach(function(q, i) {
+          var excerpt = (q.question || '').substring(0, 100);
+          if ((q.question || '').length > 100) excerpt += '...';
+          html += '<div style="padding:8px; border-bottom:1px solid #eee; display:flex; gap:10px;">';
+          html += '<input type="checkbox" class="qb-cb" value="' + i + '" style="margin-top:4px;">';
+          html += '<div style="font-size:13px;">' + AA.escapeHTML(excerpt) + '</div>';
+          html += '</div>';
+        });
+        listDiv.innerHTML = html;
+      });
+    }
+    
+    window.toggleAllQb = function(el) {
+      var cbs = document.querySelectorAll('.qb-cb');
+      cbs.forEach(function(cb) { cb.checked = el.checked; });
+    };
+    
+    function importSelectedQuestions() {
+      var cbs = document.querySelectorAll('.qb-cb:checked');
+      if (cbs.length === 0) {
+        showToast('Please select at least one question.', 'error');
+        return;
+      }
+      var added = 0;
+      cbs.forEach(function(cb) {
+        var idx = parseInt(cb.value);
+        var q = Object.assign({}, qbLoadedQuestions[idx]); // clone
+        delete q.id;
+        delete q.quizId;
+        delete q.createdAt;
+        currentQuizQuestions.push(q);
+        added++;
+      });
+      renderQuestionEditor();
+      showToast(added + ' question(s) imported successfully!', 'success');
+      closeModal('questionBankModal');
     }
 
     // -- Bulk Upload --
