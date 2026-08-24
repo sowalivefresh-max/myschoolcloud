@@ -1997,11 +1997,11 @@ Answer: A
       listDiv.innerHTML = '<div class="aa-empty-state"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
       
       callServer('teacherGetQuizQuestions', [AA.token, quizId], function(res) {
-        if (!res || !res.success) {
-          listDiv.innerHTML = '<div class="aa-empty-state text-danger">Failed to load questions.</div>';
+        if (!res || (res.success === false)) {
+          listDiv.innerHTML = '<div class="aa-empty-state text-danger">Failed to load questions. ' + (res ? res.message : '') + '</div>';
           return;
         }
-        qbLoadedQuestions = res.data || [];
+        qbLoadedQuestions = Array.isArray(res) ? res : (res.data || []);
         if (qbLoadedQuestions.length === 0) {
           listDiv.innerHTML = '<div class="aa-empty-state">No questions found in this quiz.</div>';
           return;
