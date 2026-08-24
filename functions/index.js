@@ -52,6 +52,7 @@ const adminActions = require("./actions/admin")(db, notificationsActions);
 const teacherActions = require("./actions/teacher")(db, notificationsActions);
 const parentActions = require("./actions/parent")(db);
 const studentActions = require("./actions/student")(db);
+const storeActions = require("./actions/store")(db);
 
 async function requireRole(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -78,6 +79,7 @@ async function requireRole(req, res, next) {
       const teacherRoles = ["teacher", "primary_teacher", "headteacher", "admin", "developer", "principal", "vp"];
       const parentRoles = ["parent", "admin", "developer"];
       const studentRoles = ["student"];
+      const storeRoles = ["storekeeper", "admin", "developer", "principal"];
 
       if (action.startsWith("admin")) {
         isAllowed = adminRoles.includes(role);
@@ -87,6 +89,8 @@ async function requireRole(req, res, next) {
         isAllowed = parentRoles.includes(role);
       } else if (action.startsWith("student") && action !== "studentLogin") {
         isAllowed = studentRoles.includes(role) || adminRoles.includes(role);
+      } else if (action.startsWith("store")) {
+        isAllowed = storeRoles.includes(role);
       } else {
         // Explicitly allow general authenticated actions
         const generalAuthActions = ["userUpdateProfile", "userChangePassword", "markNotificationRead", "getGradingSystems"];
@@ -294,6 +298,14 @@ app.post("/api", async (req, res) => {
         if (action === "teacherDeleteQuiz") { req.body.quizId = args[1]; }
         if (action === "teacherGetQuizResults") { req.body.quizId = args[1]; }
         if (action === "teacherPublishQuiz") { req.body.quizId = args[1]; req.body.publish = args[2]; }
+
+        // Store Mappings
+        if (action === "storeGetInventory") { req.body.section = args[1] || null; }
+        if (action === "storeReceiveItem") { req.body.data = args[1]; }
+        if (action === "storeIssueItem") { req.body.data = args[1]; }
+        if (action === "storeGetRecords") { req.body.section = args[1] || null; }
+        if (action === "storeGetStudents") { req.body.section = args[1] || null; }
+        if (action === "storeGetPaidItems") { req.body.section = args[1] || null; }
       }
     }
   }
@@ -616,6 +628,20 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => teacherActions.teacherGetQuizResults(req, res));
       case "teacherPublishQuiz":
         return requireRole(req, res, () => teacherActions.teacherPublishQuiz(req, res));
+
+      // --- STORE ACTIONS ---
+      case "storeGetInventory":
+        return requireRole(req, res, () => storeActions.storeGetInventory(req, res));
+      case "storeReceiveItem":
+        return requireRole(req, res, () => storeActions.storeReceiveItem(req, res));
+      case "storeIssueItem":
+        return requireRole(req, res, () => storeActions.storeIssueItem(req, res));
+      case "storeGetRecords":
+        return requireRole(req, res, () => storeActions.storeGetRecords(req, res));
+      case "storeGetStudents":
+        return requireRole(req, res, () => storeActions.storeGetStudents(req, res));
+      case "storeGetPaidItems":
+        return requireRole(req, res, () => storeActions.storeGetPaidItems(req, res));
 
       // Add more routes here as we build chunks...
 
