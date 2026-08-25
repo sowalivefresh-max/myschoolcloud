@@ -2813,5 +2813,58 @@ module.exports = function(db, notificationsActions) {
       } catch(err) { return res.json({ success: false, message: err.message }); }
     },
 
+    adminGetStoreItems: async (req, res) => {
+      try {
+        const { section } = req.body;
+        let query = db.collection("store_items");
+        if (section && section !== "both" && section !== "") {
+          query = query.where("section", "in", [section, "both", ""]);
+        }
+        const snap = await query.get();
+        const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return res.json({ success: true, data: items });
+      } catch (e) {
+        console.error("adminGetStoreItems Error:", e);
+        return res.json({ success: false, message: e.message });
+      }
+    },
+
+    adminCreateStoreOrder: async (req, res) => {
+      try {
+        const { data } = req.body; // { studentId, studentName, itemId, itemName, quantity, amountPaid, paymentMethod }
+        if (!data.studentId || !data.itemId || !data.quantity) {
+          return res.json({ success: false, message: "Missing required fields." });
+        }
+        
+        await db.collection("store_orders").add({
+           studentId: data.studentId,
+           studentName: data.studentName,
+           itemId: data.itemId,
+           itemName: data.itemName,
+           quantity: Number(data.quantity),
+           amountPaid: Number(data.amountPaid || 0),
+           paymentMethod: data.paymentMethod || "Cash",
+           status: "Paid",
+           recordedBy: req.session.userId || req.session.name || "Accounts",
+           createdAt: new Date().toISOString()
+        });
+
+        // Also add to audit logs or general payments if desired, for now just store_orders is enough
+        // to trigger the storekeeper.
+        await db.collection("audit_logs").add({ 
+           timestamp: new Date().toISOString(), 
+           userId: req.session.userId, 
+           userName: req.session.fullName || "Accounts", 
+           action: "RECORD_STORE_PAYMENT", 
+           details: `Recorded store payment for ${data.studentName}: ${data.quantity}x ${data.itemName}` 
+        });
+
+        return res.json({ success: true, message: "Store payment recorded and forwarded to storekeeper." });
+      } catch (e) {
+        console.error("adminCreateStoreOrder Error:", e);
+        return res.json({ success: false, message: e.message });
+      }
+    },
+
   };
 };

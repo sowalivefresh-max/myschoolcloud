@@ -32,6 +32,9 @@
         <button class="aa-nav-item" id="nav-expenses" onclick="switchTab('acc-tabs', 'tab-expenses'); setActiveNav('nav-expenses')">
           <i class="fa fa-receipt"></i> Expenses
         </button>
+        <button class="aa-nav-item" id="nav-store-payments" onclick="switchTab('acc-tabs', 'tab-store-payments'); setActiveNav('nav-store-payments'); loadStorePaymentsTab();">
+          <i class="fa fa-shopping-cart"></i> Store Payments
+        </button>
         <button class="aa-nav-item" id="nav-plans" onclick="switchTab('acc-tabs', 'tab-plans'); setActiveNav('nav-plans'); loadInstallmentPlans();">
           <i class="fa fa-calendar-alt"></i> Payment Plans
         </button>
@@ -72,6 +75,7 @@
           <div class="aa-tab" data-tab="tab-fees" data-onload="loadFeeStructures"></div>
           <div class="aa-tab" data-tab="tab-bills" data-onload="loadBills"></div>
           <div class="aa-tab" data-tab="tab-expenses" data-onload="loadExpenses"></div>
+          <div class="aa-tab" data-tab="tab-store-payments" data-onload="loadStorePaymentsTab"></div>
           <div class="aa-tab" data-tab="tab-plans"></div>
           <div class="aa-tab" data-tab="tab-compliance"></div>
         </div>
@@ -189,6 +193,49 @@
                 <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
                 <tbody></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Store Payments -->
+        <div class="aa-tab-content" data-group="acc-tabs" data-id="tab-store-payments">
+          <div class="aa-card">
+            <div class="aa-card-header">
+              <h3 class="aa-card-title">Record Store Payment</h3>
+              <p class="text-muted" style="margin:0; font-size:13px;">Logging a payment here will automatically notify the Storekeeper to issue the item(s) to the student.</p>
+            </div>
+            <div class="aa-card-body">
+              <form id="storePaymentForm" onsubmit="event.preventDefault(); saveStorePayment();">
+                <div class="aa-grid-2">
+                  <div class="aa-form-group">
+                    <label class="aa-label">Student (Select or Search)</label>
+                    <select id="spStudentSelect" class="aa-select" required></select>
+                  </div>
+                  <div class="aa-form-group">
+                    <label class="aa-label">Store Item</label>
+                    <select id="spItemSelect" class="aa-select" required onchange="updateStorePaymentAmount()"></select>
+                  </div>
+                </div>
+                <div class="aa-grid-3">
+                  <div class="aa-form-group">
+                    <label class="aa-label">Quantity</label>
+                    <input type="number" id="spQuantity" class="aa-input" min="1" value="1" required oninput="updateStorePaymentAmount()">
+                  </div>
+                  <div class="aa-form-group">
+                    <label class="aa-label">Amount Paid (₦)</label>
+                    <input type="number" id="spAmount" class="aa-input" min="0" required>
+                  </div>
+                  <div class="aa-form-group">
+                    <label class="aa-label">Payment Method</label>
+                    <select id="spMethod" class="aa-select">
+                      <option value="Cash">Cash</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="POS">POS</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" class="aa-btn aa-btn-success"><i class="fa fa-check"></i> Record & Notify Storekeeper</button>
+              </form>
             </div>
           </div>
         </div>
@@ -476,6 +523,7 @@
   <script>
     var currentTerm = ''; var currentSession = '';
     var globalStudents = [];
+    var globalStoreItems = [];
 
     document.addEventListener('DOMContentLoaded', function() {
       initTabs('acc-tabs'); AA.init();
@@ -797,6 +845,73 @@
         }, null, true);
       });
     }
+
+    // -- Store Payments --
+    function loadStorePaymentsTab() {
+      // Ensure students dropdown is loaded in this form
+      var sel = document.getElementById('spStudentSelect');
+      if (sel.options.length <= 1) {
+         sel.innerHTML = '<option value="">-- Select Student --</option>';
+         globalStudents.forEach(function(s){ 
+            sel.innerHTML += '<option value="'+(s.id||s.iD)+'">'+s.fullName+' ('+(s.className||'')+')</option>'; 
+         });
+      }
+      
+      // Load store items
+      var section = getAccountOfficerSection();
+      callServer('adminGetStoreItems', [AA.token, section], function(items) {
+         globalStoreItems = items;
+         var itmSel = document.getElementById('spItemSelect');
+         itmSel.innerHTML = '<option value="">-- Select Item --</option>';
+         items.forEach(function(i){
+            itmSel.innerHTML += '<option value="'+i.id+'" data-price="'+(i.price||0)+'">'+i.name+' (₦'+formatNaira(i.price||0)+')</option>';
+         });
+      });
+    }
+
+    function updateStorePaymentAmount() {
+      var itemSelect = document.getElementById('spItemSelect');
+      var qty = parseInt(document.getElementById('spQuantity').value || 1);
+      if (itemSelect.selectedIndex > 0) {
+         var price = parseFloat(itemSelect.options[itemSelect.selectedIndex].getAttribute('data-price') || 0);
+         document.getElementById('spAmount').value = price * qty;
+      } else {
+         document.getElementById('spAmount').value = '';
+      }
+    }
+
+    function saveStorePayment() {
+      var sId = document.getElementById('spStudentSelect').value;
+      var iId = document.getElementById('spItemSelect').value;
+      var qty = document.getElementById('spQuantity').value;
+      var amt = document.getElementById('spAmount').value;
+      var method = document.getElementById('spMethod').value;
+      
+      if (!sId || !iId || !qty) return showToast('Please fill all required fields.', 'error');
+      
+      var student = globalStudents.find(function(s){ return String(s.id||s.iD) === String(sId); });
+      var item = globalStoreItems.find(function(i){ return String(i.id) === String(iId); });
+      
+      var data = {
+         studentId: sId,
+         studentName: student ? student.fullName : 'Unknown',
+         itemId: iId,
+         itemName: item ? item.name : 'Unknown Item',
+         quantity: qty,
+         amountPaid: amt,
+         paymentMethod: method
+      };
+
+      callServer('adminCreateStoreOrder', [AA.token, data], function(res) {
+         if (res.success) {
+            showToast('Payment recorded! Storekeeper has been notified.', 'success');
+            document.getElementById('storePaymentForm').reset();
+         } else {
+            showToast(res.message, 'error');
+         }
+      }, null, true);
+    }
+
 
     function saveFeeStructure() {
       var feeClassSelect = document.getElementById('feeClassName');

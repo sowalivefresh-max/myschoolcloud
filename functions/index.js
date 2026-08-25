@@ -221,6 +221,8 @@ app.post("/api", async (req, res) => {
         if (action === "adminGetYearGroupRanking") { req.body.term = args[1]; req.body.session = args[2]; req.body.yearGroup = args[3]; }
         if (action === "adminGenerateReceipt") { req.body.paymentId = args[1]; }
         if (action === "adminManageCampuses") { req.body.campuses = args[1]; }
+        if (action === "adminGetStoreItems") { req.body.section = args[1] || null; }
+        if (action === "adminCreateStoreOrder") { req.body.data = args[1]; }
         
         // Teacher Subject Assignment Mappings
         if (action === "teacherGetStudentSubjects") { req.body.studentId = args[1]; }
@@ -448,6 +450,10 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetEarlyBirdConfig(req, res));
       case "adminSetEarlyBirdConfig":
         return requireRole(req, res, () => adminActions.adminSetEarlyBirdConfig(req, res));
+      case "adminGetStoreItems":
+        return requireRole(req, res, () => adminActions.adminGetStoreItems(req, res));
+      case "adminCreateStoreOrder":
+        return requireRole(req, res, () => adminActions.adminCreateStoreOrder(req, res));
       case "adminGetInstallmentPlans":
         return requireRole(req, res, () => adminActions.adminGetInstallmentPlans(req, res));
       case "adminApproveInstallmentPlan":
