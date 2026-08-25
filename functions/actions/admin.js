@@ -2369,6 +2369,24 @@ module.exports = function(db, notificationsActions) {
       }
     },
     
+    adminSetPromotionStatus: async (req, res) => {
+      try {
+        const { studentId, session, status } = req.body;
+        if (!studentId || !session) {
+          return res.json({ success: false, message: "Student ID and Session are required." });
+        }
+        
+        await db.collection("students").doc(studentId).update({
+          promotionStatus: status || "",
+          promotionSession: session
+        });
+        
+        return res.json({ success: true, message: "Promotion status updated successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
     adminGetStudentResultPDF: async (req, res) => {
       try {
         const { studentId, term, session, rptType } = req.body;

@@ -173,6 +173,10 @@ module.exports = {
       html += '<div class="comment-box"><strong>Principal\'s Comment:</strong> <span style="color:#555;font-style:italic;">' + (report.principalComment || '') + '</span></div>';
     }
 
+    if (term && term.toLowerCase() === 'third term' && s.promotionStatus && s.promotionSession === session) {
+      html += '<div class="comment-box" style="margin-top:15px; border-color:#2a75d3; background-color:#eef5fc;"><strong>Promotion Status:</strong> <span style="color:#0f172a; font-weight:bold; font-size:15px; text-transform:uppercase;">' + s.promotionStatus + '</span></div>';
+    }
+
     html += '<div class="sig-row">';
     
     let ctSig = cfg.class_teacher_signature ? '<img src="' + cfg.class_teacher_signature + '" style="max-height:30px; object-fit:contain; display:block; margin: 0 auto;">' : '<div style="height:30px;"></div>';

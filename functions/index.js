@@ -207,6 +207,7 @@ app.post("/api", async (req, res) => {
         if (action === "adminRejectTask") { req.body.taskId = args[1]; req.body.note = args[2]; }
         if (action === "adminProcessPasswordReset") { req.body.requestId = args[1]; req.body.newPassword = args[2]; }
         if (action === "adminGetStudentResultPDF") { req.body.studentId = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.rptType = args[4]; }
+        if (action === "adminSetPromotionStatus") { req.body.studentId = args[1]; req.body.session = args[2]; req.body.status = args[3]; }
         if (action === "teacherGenerateLessonPlanPDF") { req.body.planId = args[1]; }
         
         // Additional Accounts Mappings
@@ -474,6 +475,8 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminGetStudents(req, res)); // Alias to existing
       case "adminGetStudentResultPDF":
         return requireRole(req, res, () => adminActions.adminGetStudentResultPDF(req, res));
+      case "adminSetPromotionStatus":
+        return requireRole(req, res, () => adminActions.adminSetPromotionStatus(req, res));
       case "teacherGenerateLessonPlanPDF":
         // Allow teachers and principals
         return requireRole(req, res, () => teacherActions.teacherGenerateLessonPlanPDF(req, res));
