@@ -181,9 +181,12 @@ module.exports = function(db) {
       try {
         // Allows Accounts to prompt the storekeeper
         // Fetch items from store_orders where status is 'Paid' (Pending issuance)
-        const snap = await db.collection("store_orders")
-          .where("status", "==", "Paid")
-          .get();
+        const { section } = req.body;
+        let query = db.collection("store_orders").where("status", "==", "Paid");
+        if (section && section !== "both" && section !== "") {
+          query = query.where("section", "in", [section, "both", ""]);
+        }
+        const snap = await query.get();
         const orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         return res.json({ success: true, data: orders });
       } catch (e) {

@@ -904,7 +904,8 @@
          itemName: item ? item.name : 'Unknown Item',
          quantity: qty,
          amountPaid: amt,
-         paymentMethod: method
+         paymentMethod: method,
+         section: item ? (item.section || 'both') : 'both'
       };
 
       callServer('adminCreateStoreOrder', [AA.token, data], function(res) {

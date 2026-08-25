@@ -2844,6 +2844,7 @@ module.exports = function(db, notificationsActions) {
            quantity: Number(data.quantity),
            amountPaid: Number(data.amountPaid || 0),
            paymentMethod: data.paymentMethod || "Cash",
+           section: data.section || "both",
            status: "Paid",
            recordedBy: req.session.userId || req.session.name || "Accounts",
            createdAt: new Date().toISOString()
