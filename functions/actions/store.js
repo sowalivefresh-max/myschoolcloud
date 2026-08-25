@@ -44,6 +44,7 @@ module.exports = function(db) {
             stock: Number(data.quantity),
             price: Number(data.price || 0),
             section: data.section || "both",
+            size: data.size || "",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           });
@@ -51,6 +52,35 @@ module.exports = function(db) {
         return res.json({ success: true, message: "Item stock updated successfully." });
       } catch (e) {
         console.error("storeReceiveItem Error:", e);
+        return res.json({ success: false, message: e.message });
+      }
+    },
+
+    storeEditItem: async (req, res) => {
+      try {
+        const { data } = req.body;
+        if (!data.id) return res.json({ success: false, message: "Missing item ID." });
+        await db.collection("store_items").doc(data.id).update({
+          name: data.name,
+          category: data.category,
+          price: Number(data.price || 0),
+          section: data.section || "both",
+          size: data.size || "",
+          updatedAt: new Date().toISOString()
+        });
+        return res.json({ success: true, message: "Item updated successfully." });
+      } catch (e) {
+        return res.json({ success: false, message: e.message });
+      }
+    },
+
+    storeDeleteItem: async (req, res) => {
+      try {
+        const { itemId } = req.body;
+        if (!itemId) return res.json({ success: false, message: "Missing item ID." });
+        await db.collection("store_items").doc(itemId).delete();
+        return res.json({ success: true, message: "Item deleted successfully." });
+      } catch (e) {
         return res.json({ success: false, message: e.message });
       }
     },

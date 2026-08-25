@@ -640,6 +640,10 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => storeActions.storeGetInventory(req, res));
       case "storeReceiveItem":
         return requireRole(req, res, () => storeActions.storeReceiveItem(req, res));
+      case "storeEditItem":
+        return requireRole(req, res, () => storeActions.storeEditItem(req, res));
+      case "storeDeleteItem":
+        return requireRole(req, res, () => storeActions.storeDeleteItem(req, res));
       case "storeIssueItem":
         return requireRole(req, res, () => storeActions.storeIssueItem(req, res));
       case "storeGetRecords":

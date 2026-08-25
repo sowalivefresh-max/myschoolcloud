@@ -200,7 +200,7 @@
         <button class="aa-modal-close" onclick="closeModal('receiveModal')">×</button>
       </div>
       <div class="aa-modal-body">
-        <form id="receiveForm" onsubmit="event.preventDefault(); saveReceivedStock();">
+        <form id="receiveForm">
           <input type="hidden" id="receiveItemId">
           <div class="aa-form-group">
             <label class="aa-label">Item Name</label>
@@ -229,6 +229,10 @@
                 <option value="high">High School</option>
               </select>
             </div>
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Size (Optional - for uniforms)</label>
+            <input type="text" id="receiveSize" class="aa-input" placeholder="e.g. Size 10, Medium">
           </div>
           <div class="d-flex justify-content-end mt-3 gap-2">
             <button type="button" class="aa-btn aa-btn-outline" onclick="closeModal('receiveModal')">Cancel</button>
@@ -338,7 +342,7 @@
       callServer('storeGetInventory', [AA.token, section], function(items) {
         globalInventory = items;
         buildTable('inventoryTable', [
-          {key:'name'},
+          {key:'name', render: function(r){ return r.name + (r.size ? ' <small class="text-muted">('+r.size+')</small>' : ''); }},
           {key:'category'},
           {key:'price', render: function(r){ return formatNaira(r.price || 0); }},
           {key:'stock', render: function(r){ 
@@ -347,7 +351,11 @@
              return s;
           }}
         ], items, function(r) {
-           return '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="addStock(\''+r.id+'\', \''+r.name+'\', \''+r.category+'\', \''+r.price+'\', \''+r.section+'\')"><i class="fa fa-plus"></i> Add Stock</button>';
+           return '<div class="d-flex gap-2">' +
+                  '<button class="aa-btn aa-btn-outline aa-btn-xs" onclick="addStock(\''+r.id+'\', \''+r.name+'\', \''+r.category+'\', \''+r.price+'\', \''+r.section+'\')"><i class="fa fa-plus"></i> Stock</button>' +
+                  '<button class="aa-btn aa-btn-primary aa-btn-xs" onclick="editItem(\''+r.id+'\')"><i class="fa fa-edit"></i> Edit</button>' +
+                  '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="deleteItem(\''+r.id+'\')"><i class="fa fa-trash"></i></button>' +
+                  '</div>';
         });
 
         // Update issue item select dropdown
@@ -371,6 +379,17 @@
       document.getElementById('receivePrice').value = price;
       document.getElementById('receiveSection').value = itemSection || 'both';
       document.getElementById('receiveQuantity').value = 1;
+      
+      // Hide size field and quantity becomes required for addStock
+      document.getElementById('receiveQuantity').disabled = false;
+      document.getElementById('receiveQuantity').min = 1;
+      
+      var item = globalInventory.find(function(i) { return i.id === id; });
+      if(item) {
+        document.getElementById('receiveSize').value = item.size || '';
+      }
+      document.getElementById('receiveSize').readOnly = true;
+      document.getElementById('receiveForm').onsubmit = function(event) { event.preventDefault(); saveReceivedStock(); };
       openModal('receiveModal');
     }
 
@@ -379,9 +398,51 @@
       document.getElementById('receiveItemId').value = '';
       document.getElementById('receiveItemName').readOnly = false;
       document.getElementById('receiveCategory').readOnly = false;
+      document.getElementById('receiveSize').readOnly = false;
+      document.getElementById('receiveQuantity').disabled = false;
+      document.getElementById('receiveQuantity').min = 1;
+      document.getElementById('receiveQuantity').value = 1;
       var sec = getSection();
       if(sec !== 'both') document.getElementById('receiveSection').value = sec;
+      document.getElementById('receiveForm').onsubmit = function(event) { event.preventDefault(); saveReceivedStock(); };
       openModal('receiveModal');
+    }
+    
+    function editItem(id) {
+      var item = globalInventory.find(function(i) { return i.id === id; });
+      if(!item) return;
+      document.getElementById('receiveForm').reset();
+      document.getElementById('receiveItemId').value = item.id;
+      document.getElementById('receiveItemName').value = item.name;
+      document.getElementById('receiveItemName').readOnly = false;
+      document.getElementById('receiveCategory').value = item.category;
+      document.getElementById('receiveCategory').readOnly = false;
+      document.getElementById('receivePrice').value = item.price;
+      document.getElementById('receiveSection').value = item.section || 'both';
+      document.getElementById('receiveSize').value = item.size || '';
+      document.getElementById('receiveSize').readOnly = false;
+      
+      // For editing, we don't change stock here.
+      document.getElementById('receiveQuantity').value = 0;
+      document.getElementById('receiveQuantity').disabled = true;
+      document.getElementById('receiveQuantity').min = 0;
+      
+      document.getElementById('receiveForm').onsubmit = function(event) { event.preventDefault(); saveEditedItem(); };
+      openModal('receiveModal');
+    }
+
+    function deleteItem(id) {
+      if(confirm('Are you sure you want to delete this item?')) {
+        callServer('storeDeleteItem', [AA.token, { itemId: id }], function(res) {
+          if(res.success) {
+            showToast(res.message, 'success');
+            loadInventory();
+            loadDashboard();
+          } else {
+            showToast(res.message, 'error');
+          }
+        }, null, true);
+      }
     }
 
     function saveReceivedStock() {
@@ -392,10 +453,32 @@
         category: document.getElementById('receiveCategory').value,
         price: document.getElementById('receivePrice').value,
         quantity: document.getElementById('receiveQuantity').value,
-        section: document.getElementById('receiveSection').value
+        section: document.getElementById('receiveSection').value,
+        size: document.getElementById('receiveSize').value
       };
 
       callServer('storeReceiveItem', [AA.token, data], function(res) {
+        if(res.success) {
+          showToast(res.message, 'success');
+          closeModal('receiveModal');
+          loadInventory();
+        } else {
+          showToast(res.message, 'error');
+        }
+      }, null, true);
+    }
+    
+    function saveEditedItem() {
+      var data = {
+        id: document.getElementById('receiveItemId').value,
+        name: document.getElementById('receiveItemName').value,
+        category: document.getElementById('receiveCategory').value,
+        price: document.getElementById('receivePrice').value,
+        section: document.getElementById('receiveSection').value,
+        size: document.getElementById('receiveSize').value
+      };
+
+      callServer('storeEditItem', [AA.token, data], function(res) {
         if(res.success) {
           showToast(res.message, 'success');
           closeModal('receiveModal');
