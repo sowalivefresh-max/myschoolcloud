@@ -1891,6 +1891,7 @@ module.exports = function(db, notificationsActions) {
         const billsSnap = await db.collection("bills").where("term", "==", term).where("session", "==", session).get();
         let totalBilled = 0;
         let totalOutstanding = 0;
+        let totalArrears = 0;
         billsSnap.forEach(doc => {
           const data = doc.data();
           if (section && section !== "both") {
@@ -1898,13 +1899,14 @@ module.exports = function(db, notificationsActions) {
             if (studentSection !== section.toLowerCase() && studentSection !== "both") return;
           }
           let billed = Number(data.totalBilled || 0);
+          let arrears = Number(data.arrears || 0);
           let paid = paidMap[data.studentId] || 0;
           totalBilled += billed;
-          totalOutstanding += Math.max(0, billed - paid);
+          totalArrears += arrears;
+          totalOutstanding += Math.max(0, (billed + arrears) - paid);
         });
 
-        // Compute outstanding (now calculated directly from bills)
-        // let totalOutstanding = Math.max(0, totalBilled - totalCollected);
+        let totalExpectedIncome = totalBilled + totalArrears;
 
         // Total expenses
         const expensesSnap = await db.collection("expenses").get();
