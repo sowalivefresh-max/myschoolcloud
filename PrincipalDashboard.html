@@ -243,6 +243,28 @@
     </main>
   </div>
 
+  <!-- Promotion Status Modal -->
+  <div class="aa-modal-backdrop" id="promotionModal">
+    <div class="aa-modal">
+      <div class="aa-modal-header">
+        <h5 class="aa-modal-title">Declare Promotion Status</h5>
+        <button class="aa-modal-close" onclick="closeModal('promotionModal')">×</button>
+      </div>
+      <div class="aa-modal-body">
+        <input type="hidden" id="promoStudentId">
+        <div class="aa-form-group">
+          <label class="aa-label">Promotion Status (Third Term Only)</label>
+          <input type="text" id="promoStatusInput" class="aa-input" placeholder="e.g., Promoted to SS 1">
+          <small style="color:#666; font-size:12px; margin-top:5px; display:block;">This status will automatically be printed at the bottom of the student's Third Term report card.</small>
+        </div>
+      </div>
+      <div class="aa-modal-footer">
+        <button class="aa-btn aa-btn-secondary" onclick="closeModal('promotionModal')">Cancel</button>
+        <button class="aa-btn aa-btn-primary" onclick="savePromotionStatus()">Save Status</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Lesson Plan Review Modal -->
   <div class="aa-modal-backdrop" id="reviewModal">
     <div class="aa-modal">
@@ -364,8 +386,10 @@
           { key:'status', render: function(r){ return formatStatus(r.status); } }
         ], filtered, function(r) {
           var id = r.id || r.iD;
+          var promo = r.promotionStatus || '';
           return '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewReport(\''+id+'\')" title="View Report"><i class="fa fa-eye"></i> View Report</button> ' +
-                 '<button class="aa-btn aa-btn-info aa-btn-xs" onclick="generateIDCard(\''+id+'\')" title="Generate ID Card"><i class="fa fa-id-card"></i> ID Card</button>';
+                 '<button class="aa-btn aa-btn-info aa-btn-xs" onclick="generateIDCard(\''+id+'\')" title="Generate ID Card"><i class="fa fa-id-card"></i> ID Card</button> ' +
+                 '<button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openPromotionModal(\''+id+'\', \''+promo.replace(/'/g,"\\'")+'\')" title="Set Promotion Status"><i class="fa fa-level-up-alt"></i> Set Promotion</button>';
         });
       }, null, true);
     }
@@ -570,6 +594,25 @@
           }
         }, null, true);
       });
+    }
+    function openPromotionModal(sid, currentStatus) {
+      document.getElementById('promoStudentId').value = sid;
+      document.getElementById('promoStatusInput').value = currentStatus || '';
+      openModal('promotionModal');
+    }
+
+    function savePromotionStatus() {
+      var sid = document.getElementById('promoStudentId').value;
+      var status = document.getElementById('promoStatusInput').value;
+      
+      callServer('adminSetPromotionStatus', [AA.token, { studentId: sid, session: currentSession, status: status }], function(res) {
+        showToast(res.message, res.success ? 'success' : 'error');
+        if (res.success) {
+          closeModal('promotionModal');
+          var cls = document.getElementById('rptClassSelect').value;
+          if (cls) loadStudentsForClass(cls);
+        }
+      }, null, true);
     }
   </script>
 </body>
