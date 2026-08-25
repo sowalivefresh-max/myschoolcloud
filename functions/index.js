@@ -304,6 +304,8 @@ app.post("/api", async (req, res) => {
         // Store Mappings
         if (action === "storeGetInventory") { req.body.section = args[1] || null; }
         if (action === "storeReceiveItem") { req.body.data = args[1]; }
+        if (action === "storeEditItem") { req.body.data = args[1]; }
+        if (action === "storeDeleteItem") { req.body.itemId = args[1].itemId; }
         if (action === "storeIssueItem") { req.body.data = args[1]; }
         if (action === "storeGetRecords") { req.body.section = args[1] || null; }
         if (action === "storeGetStudents") { req.body.section = args[1] || null; }
