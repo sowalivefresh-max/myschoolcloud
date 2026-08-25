@@ -869,7 +869,7 @@
          var itmSel = document.getElementById('spItemSelect');
          itmSel.innerHTML = '<option value="">-- Select Item --</option>';
          items.forEach(function(i){
-            itmSel.innerHTML += '<option value="'+i.id+'" data-price="'+(i.price||0)+'">'+i.name+' (₦'+formatNaira(i.price||0)+')</option>';
+            itmSel.innerHTML += '<option value="'+i.id+'" data-price="'+(i.price||0)+'">'+i.name+' ('+formatNaira(i.price||0)+')</option>';
          });
       });
     }
