@@ -368,7 +368,7 @@ module.exports = function(db, notificationsActions) {
           
           // Section Filtering
           const studentSection = studentSectionMap[data.studentId] || (data.section || "").toLowerCase();
-          if (section && section !== "both" && studentSection !== section.toLowerCase()) {
+          if (section && section !== "both" && studentSection !== section.toLowerCase() && studentSection !== "both") {
             return; // Skip this assessment as it doesn't belong to the requested section
           }
 
@@ -1875,7 +1875,7 @@ module.exports = function(db, notificationsActions) {
           if (section && section !== "both") {
             const sid = d.studentId || d.studentID;
             const studentSection = studentSectionMap[sid] || (d.section || "").toLowerCase();
-            if (studentSection !== section.toLowerCase()) return;
+            if (studentSection !== section.toLowerCase() && studentSection !== "both") return;
           }
           if (d.status === "Approved") {
             const amount = Number(d.amount || 0);
@@ -1895,7 +1895,7 @@ module.exports = function(db, notificationsActions) {
           const data = doc.data();
           if (section && section !== "both") {
             const studentSection = studentSectionMap[data.studentId] || (data.section || "").toLowerCase();
-            if (studentSection !== section.toLowerCase()) return;
+            if (studentSection !== section.toLowerCase() && studentSection !== "both") return;
           }
           let billed = Number(data.totalBilled || 0);
           let paid = paidMap[data.studentId] || 0;
@@ -1951,7 +1951,7 @@ module.exports = function(db, notificationsActions) {
           const b = doc.data();
           if (section && section !== "both") {
             const studentSection = studentSectionMap[b.studentId] || (b.section || "").toLowerCase();
-            if (studentSection !== section.toLowerCase()) return;
+            if (studentSection !== section.toLowerCase() && studentSection !== "both") return;
           }
           if(!studentBalances[b.studentId]) studentBalances[b.studentId] = { studentName: b.studentName, class: b.className, totalBilled: 0, totalPaid: 0 };
           studentBalances[b.studentId].totalBilled += Number(b.totalBilled || 0);
