@@ -401,6 +401,7 @@ module.exports = function(db) {
           amount: Number(data.amount),
           method: data.method || 'Bank Transfer',
           proofOfPayment: data.proofOfPayment,
+          comment: data.comment || "",
           term: data.term,
           session: data.session,
           status: "Pending",  // Needs approval from accounts

@@ -502,6 +502,10 @@
           </div>
         </div>
         <div class="aa-form-group">
+          <label class="aa-label">Parent's Comment / Note</label>
+          <textarea id="revPayComment" class="aa-input" readonly rows="2" placeholder="No comment provided"></textarea>
+        </div>
+        <div class="aa-form-group">
           <label class="aa-label">Proof of Payment</label>
           <div id="revPayProofContainer" style="border:1px solid #ccc; border-radius:6px; overflow:hidden; text-align:center; padding:10px; background:#f9f9f9;">
             <a id="revPayProofLink" href="#" target="_blank">
@@ -689,6 +693,7 @@
       document.getElementById('revPayStudent').value = p.studentName || (globalStudents.find(function(st){ return String(st.id||st.iD) === String(p.studentID||p.studentId); }) || {}).fullName || (p.studentID||p.studentId||'Unknown');
       document.getElementById('revPayAmount').value = formatNaira(p.amount);
       document.getElementById('revPayMethod').value = p.method || '';
+      document.getElementById('revPayComment').value = p.comment || '';
       
       var proofLink = document.getElementById('revPayProofLink');
       var proofImg = document.getElementById('revPayProofImg');

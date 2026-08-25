@@ -202,6 +202,10 @@
             <option value="Cash">Cash</option>
           </select>
         </div>
+        <div class="aa-form-group">
+          <label class="aa-label">Comment/Note (Optional)</label>
+          <input type="text" id="payComment" class="aa-input" placeholder="e.g. Paying for John and Jane, or paying for books">
+        </div>
         <div class="aa-form-group" id="proofContainer">
           <label class="aa-label">Proof of Payment (Image/Screenshot)</label>
           <input type="file" id="payProofInput" class="aa-input" accept="image/*" onchange="previewReceiptPhoto(this)">
@@ -500,6 +504,7 @@
       var amt = document.getElementById('payAmount').value;
       var method = document.getElementById('payMethod').value;
       var proof = document.getElementById('payProofBase64').value;
+      var comment = document.getElementById('payComment') ? document.getElementById('payComment').value : '';
       
       console.log('Submitting payment for:', sid, amt, method);
       if(!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
@@ -508,7 +513,7 @@
 
       callServer('parentSubmitPaymentData', [AA.token, {
         studentId: sid, term: currentTerm, session: currentSession, 
-        amount: amt, method: method, proofOfPayment: proof
+        amount: amt, method: method, proofOfPayment: proof, comment: comment
       }], function(res) {
         console.log('Payment submit response:', res);
         if(res.success) {
