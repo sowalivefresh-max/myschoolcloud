@@ -2887,5 +2887,165 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+    adminGetTimetableConfig: async (req, res) => {
+      try {
+        const snap = await db.collection("settings").doc("timetable_config").get();
+        if (!snap.exists) {
+          return res.json({ success: true, data: { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], periods: [] } });
+        }
+        return res.json({ success: true, data: snap.data() });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    adminSaveTimetableConfig: async (req, res) => {
+      try {
+        const { data } = req.body;
+        await db.collection("settings").doc("timetable_config").set(data, { merge: true });
+        return res.json({ success: true, message: "Timetable configuration saved." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    adminGenerateTimetable: async (req, res) => {
+      try {
+        const { classes, term, session, config } = req.body;
+        if (!classes || !classes.length || !term || !session || !config) {
+          return res.json({ success: false, message: "Missing required parameters." });
+        }
+        
+        const subjectsSnap = await db.collection("subjects").get();
+        const allSubjects = subjectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const teacherBusySlots = {};
+        const generatedTimetables = [];
+        
+        for (const className of classes) {
+          const timetable = {
+            className,
+            term,
+            session,
+            schedule: {}, 
+            updatedAt: new Date().toISOString()
+          };
+          
+          config.days.forEach(day => {
+            timetable.schedule[day] = new Array(config.periods.length).fill(null);
+          });
+          
+          const isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("playgroup") || className.toLowerCase().includes("year");
+          
+          let classSubjects = [];
+          if (isPrimary) {
+             classSubjects = allSubjects.filter(s => String(s.section).toLowerCase() === 'primary');
+          } else {
+             const studentsSnap = await db.collection("students").where("className", "==", className).get();
+             const studentIds = studentsSnap.docs.map(d => d.id);
+             if (studentIds.length > 0) {
+               const enrollments = [];
+               for(let i=0; i<studentIds.length; i+=30) {
+                 const chunk = studentIds.slice(i, i+30);
+                 const eSnap = await db.collection("student_subjects").where("studentId", "in", chunk).get();
+                 eSnap.forEach(d => enrollments.push(d.data().subjectId));
+               }
+               const uniqueSubjectIds = [...new Set(enrollments)];
+               classSubjects = allSubjects.filter(s => uniqueSubjectIds.includes(s.id));
+             } else {
+               classSubjects = allSubjects.filter(s => String(s.section).toLowerCase() === 'high' || String(s.section).toLowerCase() === 'secondary');
+             }
+          }
+          
+          if (classSubjects.length === 0) {
+            generatedTimetables.push(timetable);
+            continue;
+          }
+          
+          for (let d = 0; d < config.days.length; d++) {
+            const day = config.days[d];
+            for (let p = 0; p < config.periods.length; p++) {
+               const periodConfig = config.periods[p];
+               if (periodConfig.isBreak) {
+                 timetable.schedule[day][p] = { type: "Break", label: periodConfig.label || "Break" };
+                 continue;
+               }
+               
+               let assigned = false;
+               const shuffledSubjects = [...classSubjects].sort(() => 0.5 - Math.random());
+               
+               for (const subject of shuffledSubjects) {
+                 if (isPrimary) {
+                   timetable.schedule[day][p] = { type: "Subject", subjectId: subject.id, subjectName: subject.subjectName };
+                   assigned = true;
+                   break;
+                 } else {
+                   const teacherId = subject.assignedTeacherId;
+                   const timeKey = `${day}_${p}`;
+                   
+                   if (!teacherId || !teacherBusySlots[teacherId]) {
+                      if(teacherId) teacherBusySlots[teacherId] = {};
+                   }
+                   
+                   if (!teacherId || !teacherBusySlots[teacherId][timeKey]) {
+                     timetable.schedule[day][p] = { type: "Subject", subjectId: subject.id, subjectName: subject.subjectName, teacherId };
+                     if (teacherId) teacherBusySlots[teacherId][timeKey] = true;
+                     assigned = true;
+                     break;
+                   }
+                 }
+               }
+               
+               if (!assigned) {
+                 timetable.schedule[day][p] = { type: "Free", label: "Free Period" };
+               }
+            }
+          }
+          generatedTimetables.push(timetable);
+        }
+        
+        const batch = db.batch();
+        for (const tt of generatedTimetables) {
+          const id = `${tt.className}_${tt.term}_${tt.session}`.replace(/[^a-zA-Z0-9_]/g, "_");
+          const ref = db.collection("timetables").doc(id);
+          batch.set(ref, tt);
+        }
+        await batch.commit();
+        
+        return res.json({ success: true, message: "Timetables generated successfully." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    adminGetTimetables: async (req, res) => {
+      try {
+        const { term, session } = req.body;
+        let query = db.collection("timetables");
+        if (term) query = query.where("term", "==", term);
+        if (session) query = query.where("session", "==", session);
+        
+        const snap = await query.get();
+        const timetables = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return res.json({ success: true, data: timetables });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
+
+    adminSaveTimetable: async (req, res) => {
+      try {
+        const { data } = req.body;
+        if (!data.className || !data.term || !data.session) {
+          return res.json({ success: false, message: "Missing required fields." });
+        }
+        const id = `${data.className}_${data.term}_${data.session}`.replace(/[^a-zA-Z0-9_]/g, "_");
+        data.updatedAt = new Date().toISOString();
+        await db.collection("timetables").doc(id).set(data, { merge: true });
+        return res.json({ success: true, message: "Timetable saved." });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    }
   };
 };

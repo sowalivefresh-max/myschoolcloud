@@ -234,6 +234,11 @@ app.post("/api", async (req, res) => {
         if (action === "adminDeleteBill") { req.body.billId = args[1]; }
         if (action === "adminSendReminders") { req.body.term = args[1]; req.body.session = args[2]; req.body.batchSize = args[3]; }
         if (action === "adminGetSubjects") { /* no args */ }
+        if (action === "adminGetTimetableConfig") { /* no args */ }
+        if (action === "adminSaveTimetableConfig") { req.body.data = args[1]; }
+        if (action === "adminGenerateTimetable") { req.body.classes = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.config = args[4]; }
+        if (action === "adminGetTimetables") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminSaveTimetable") { req.body.data = args[1]; }
         if (action === "adminSetComplianceRules") { req.body.rules = args[1]; }
         if (action === "adminSetEarlyBirdConfig") { req.body.config = args[1]; }
         if (action === "adminGetInstallmentPlans") { req.body.status = args[1] || null; }
@@ -385,6 +390,11 @@ app.post("/api", async (req, res) => {
         return requireRole(req, res, () => adminActions.adminDeleteSubject(req, res));
 
       // --- SECONDARY ADMIN ACTIONS ---
+      case "adminGetTimetableConfig": return requireRole(req, res, () => adminActions.adminGetTimetableConfig(req, res));
+      case "adminSaveTimetableConfig": return requireRole(req, res, () => adminActions.adminSaveTimetableConfig(req, res));
+      case "adminGenerateTimetable": return requireRole(req, res, () => adminActions.adminGenerateTimetable(req, res));
+      case "adminGetTimetables": return requireRole(req, res, () => adminActions.adminGetTimetables(req, res));
+      case "adminSaveTimetable": return requireRole(req, res, () => adminActions.adminSaveTimetable(req, res));
       case "adminGetAuditLogs": return requireRole(req, res, () => adminActions.adminGetAuditLogs(req, res));
       case "adminGetPasswordRequests": return requireRole(req, res, () => adminActions.adminGetPasswordRequests(req, res));
       case "adminGetPayments": return requireRole(req, res, () => adminActions.adminGetPayments(req, res));

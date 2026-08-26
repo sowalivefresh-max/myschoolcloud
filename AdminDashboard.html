@@ -66,7 +66,10 @@
         </button>
         
         <div class="aa-nav-section">System</div>
-        <button class="aa-nav-item" id="nav-audit" style="display: flex !important; visibility: visible !important;" onclick="switchTab('admin-tabs', 'tab-audit'); setActiveNav('nav-audit')">
+                <button class="aa-nav-item" id="nav-timetable" onclick="switchTab('admin-tabs', 'tab-timetable'); setActiveNav('nav-timetable')">
+          <i class="fa fa-calendar-alt"></i> Timetable
+        </button>
+<button class="aa-nav-item" id="nav-audit" style="display: flex !important; visibility: visible !important;" onclick="switchTab('admin-tabs', 'tab-audit'); setActiveNav('nav-audit')">
           <i class="fa fa-history"></i> Audit Logs
         </button>
         <button class="aa-nav-item" id="nav-settings" onclick="switchTab('admin-tabs', 'tab-settings'); setActiveNav('nav-settings')">
@@ -114,7 +117,8 @@
           <div class="aa-tab" data-tab="tab-analytics" data-onload="loadAnalytics"></div>
           <div class="aa-tab" data-tab="tab-finance" data-onload="loadFinance"></div>
           <div class="aa-tab" data-tab="tab-reports" data-onload="loadReports"></div>
-          <div class="aa-tab" data-tab="tab-audit" data-onload="loadAuditLogs"></div>
+                    <div class="aa-tab" data-tab="tab-timetable" data-onload="loadTimetable"></div>
+<div class="aa-tab" data-tab="tab-audit" data-onload="loadAuditLogs"></div>
           <div class="aa-tab" data-tab="tab-settings" data-onload="loadSettings"></div>
         </div>
 
@@ -439,6 +443,40 @@
               <div class="aa-card-body" style="border-top: 1px solid var(--aa-gray-100); padding-top: 15px;">
                 <button class="aa-btn aa-btn-primary w-100" style="width:100%;" onclick="switchTab('admin-tabs', 'tab-analytics'); setActiveNav('nav-analytics')">View Full Analytics</button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        
+        <!-- TAB: Timetable -->
+        <div class="aa-tab-content" data-group="admin-tabs" data-id="tab-timetable">
+          <div class="aa-header-between mb-3">
+            <h2 class="aa-section-title">Class Timetables</h2>
+            <div>
+              <button class="aa-btn aa-btn-primary" onclick="openTimetableConfigModal()">Configure Format</button>
+              <button class="aa-btn aa-btn-success" onclick="openTimetableGenerateModal()">Generate Timetable</button>
+            </div>
+          </div>
+          
+          <div class="aa-card">
+            <div class="aa-card-header">
+              <h3>View Timetable</h3>
+            </div>
+            <div class="aa-card-body" style="display:flex; gap:15px; margin-bottom:15px; flex-wrap:wrap;">
+              <select class="aa-input" id="timetable-term-select" style="max-width:200px;">
+                <option value="1">First Term</option>
+                <option value="2">Second Term</option>
+                <option value="3">Third Term</option>
+              </select>
+              <select class="aa-input" id="timetable-session-select" style="max-width:200px;">
+              </select>
+              <select class="aa-input" id="timetable-class-select" style="max-width:200px;">
+                <option value="">Select Class...</option>
+              </select>
+              <button class="aa-btn aa-btn-navy" onclick="loadTimetableData()">View</button>
+            </div>
+            <div id="timetable-display-area" style="overflow-x:auto;">
+              <p class="text-muted">Select a class to view its timetable.</p>
             </div>
           </div>
         </div>
@@ -3343,6 +3381,55 @@
     }
 
   </script>
+
+    <!-- Timetable Config Modal -->
+    <div class="aa-modal" id="modal-timetable-config">
+      <div class="aa-modal-content" style="max-width: 600px;">
+        <div class="aa-modal-header">
+          <h3>Configure Timetable Format</h3>
+          <button class="aa-modal-close" onclick="closeModal('modal-timetable-config')"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="aa-modal-body">
+          <div class="aa-form-group">
+            <label>Days of the Week (Comma separated)</label>
+            <input type="text" id="tt-cfg-days" class="aa-input" value="Monday, Tuesday, Wednesday, Thursday, Friday">
+          </div>
+          <div class="aa-header-between mb-2">
+            <label style="margin:0;">Time Slots / Periods</label>
+            <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="addTimetableSlot()"><i class="fa fa-plus"></i> Add Slot</button>
+          </div>
+          <div id="tt-cfg-slots"></div>
+          <div class="mt-3">
+            <button class="aa-btn aa-btn-primary w-100" onclick="saveTimetableConfig()">Save Configuration</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timetable Generate Modal -->
+    <div class="aa-modal" id="modal-timetable-generate">
+      <div class="aa-modal-content">
+        <div class="aa-modal-header">
+          <h3>Generate Timetables</h3>
+          <button class="aa-modal-close" onclick="closeModal('modal-timetable-generate')"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="aa-modal-body">
+          <p class="text-muted mb-3">Select the classes you want to generate a timetable for. The system will avoid scheduling conflicts for teachers.</p>
+          <div class="aa-form-group">
+            <label>Select Classes</label>
+            <div id="tt-gen-classes" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;"></div>
+            <div class="mt-2">
+              <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="selectAllTtClasses(true)">Select All</button>
+              <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="selectAllTtClasses(false)">Deselect All</button>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button class="aa-btn aa-btn-success w-100" id="btn-generate-timetable" onclick="generateTimetable()">Generate Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>
 
