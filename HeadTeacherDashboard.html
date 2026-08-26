@@ -378,8 +378,11 @@
           { key:'admissionNumber' }, { key:'fullName' }, { key:'status', render: function(r){ return formatStatus(r.status); } }
         ], filtered, function(r) { 
           var promo = r.promotionStatus || '';
-          return '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewReport(\''+(r.id||r.iD)+'\')"><i class="fa fa-eye"></i> View Report</button> ' + 
-                 '<button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openPromotionModal(\''+(r.id||r.iD)+'\', \''+promo.replace(/'/g,"\\'")+'\')" title="Set Promotion Status"><i class="fa fa-level-up-alt"></i> Set Promotion</button>'; 
+          var html = '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewReport(\''+(r.id||r.iD)+'\')"><i class="fa fa-eye"></i> View Report</button>'; 
+          if (currentTerm && currentTerm.toLowerCase() === 'third term') {
+            html += ' <button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openPromotionModal(\''+(r.id||r.iD)+'\', \''+promo.replace(/'/g,"\\'")+'\')" title="Set Promotion Status"><i class="fa fa-level-up-alt"></i> Set Promotion</button>'; 
+          }
+          return html;
         });
       }, null, true);
     }

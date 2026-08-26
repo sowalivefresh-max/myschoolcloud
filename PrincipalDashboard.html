@@ -387,9 +387,12 @@
         ], filtered, function(r) {
           var id = r.id || r.iD;
           var promo = r.promotionStatus || '';
-          return '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewReport(\''+id+'\')" title="View Report"><i class="fa fa-eye"></i> View Report</button> ' +
-                 '<button class="aa-btn aa-btn-info aa-btn-xs" onclick="generateIDCard(\''+id+'\')" title="Generate ID Card"><i class="fa fa-id-card"></i> ID Card</button> ' +
-                 '<button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openPromotionModal(\''+id+'\', \''+promo.replace(/'/g,"\\'")+'\')" title="Set Promotion Status"><i class="fa fa-level-up-alt"></i> Set Promotion</button>';
+          var html = '<button class="aa-btn aa-btn-gold aa-btn-xs" onclick="viewReport(\''+id+'\')" title="View Report"><i class="fa fa-eye"></i> View Report</button> ' +
+                     '<button class="aa-btn aa-btn-info aa-btn-xs" onclick="generateIDCard(\''+id+'\')" title="Generate ID Card"><i class="fa fa-id-card"></i> ID Card</button>';
+          if (currentTerm && currentTerm.toLowerCase() === 'third term') {
+            html += ' <button class="aa-btn aa-btn-primary aa-btn-xs" onclick="openPromotionModal(\''+id+'\', \''+promo.replace(/'/g,"\\'")+'\')" title="Set Promotion Status"><i class="fa fa-level-up-alt"></i> Set Promotion</button>';
+          }
+          return html;
         });
       }, null, true);
     }
