@@ -1299,9 +1299,13 @@ function loadTimetableData() {
                     html += '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF(\'' + secType + '\')" style="margin-right:10px;"><i class="fa fa-file-excel"></i> Export Master ('+secType+')</button>';
                     html += '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')"><i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
                     
+                    var firstDay = config.days[0];
+                    var headerPeriods = (config.scheduleTemplate && config.scheduleTemplate[firstDay]) ? config.scheduleTemplate[firstDay] : (config.periods || []);
+                    
                     html += '<table class="aa-table" id="timetable-pdf-table"><thead><tr><th>Day</th>';
-                    for (var i = 1; i <= maxPeriods; i++) {
-                        html += '<th>Period ' + i + '</th>';
+                    for (var i = 0; i < maxPeriods; i++) {
+                        var headTime = headerPeriods[i] ? headerPeriods[i].label : ('Period ' + (i+1));
+                        html += '<th>' + headTime + '</th>';
                     }
                     html += '</tr></thead><tbody>';
                     
@@ -1310,24 +1314,24 @@ function loadTimetableData() {
                         if (tt.schedule && tt.schedule[day]) {
                             for (var pIdx = 0; pIdx < maxPeriods; pIdx++) {
                                 var period = tt.schedule[day][pIdx];
-                                var timeLabel = '';
-                                if (config.scheduleTemplate && config.scheduleTemplate[day] && config.scheduleTemplate[day][pIdx]) {
-                                    timeLabel = '<div style="font-size:0.8em; color:#64748b; margin-bottom:4px;">' + config.scheduleTemplate[day][pIdx].label + '</div>';
-                                } else if (config.periods && config.periods[pIdx]) {
-                                    timeLabel = '<div style="font-size:0.8em; color:#64748b; margin-bottom:4px;">' + config.periods[pIdx].label + '</div>';
-                                }
                                 
-                                if (!period && timeLabel === '') {
+                                if (!period) {
                                     html += '<td>-</td>';
                                     continue;
                                 }
                                 
-                                if (period && (period.type === 'Break' || period.type === 'Event')) {
-                                    html += '<td style="background:#f1f5f9; text-align:center;">' + timeLabel + '<strong>' + period.label + '</strong></td>';
-                                } else if (period && period.type === 'Subject') {
-                                    html += '<td>' + timeLabel + '<strong>' + period.subjectName + '</strong></td>';
+                                if (period.type === 'Break' || period.type === 'Event') {
+                                    var displayLabel = period.label;
+                                    var timeLbl = (config.scheduleTemplate && config.scheduleTemplate[day] && config.scheduleTemplate[day][pIdx]) ? config.scheduleTemplate[day][pIdx].label : '';
+                                    if (displayLabel === timeLbl) {
+                                        // Fix for older generated timetables where the break label was mistakenly set to the time
+                                        displayLabel = "Break";
+                                    }
+                                    html += '<td style="background:#f1f5f9; text-align:center;"><strong>' + displayLabel + '</strong></td>';
+                                } else if (period.type === 'Subject') {
+                                    html += '<td>' + period.subjectName + '</td>';
                                 } else {
-                                    html += '<td style="color:#94a3b8;">' + timeLabel + 'Free</td>';
+                                    html += '<td style="color:#94a3b8;">Free</td>';
                                 }
                             }
                         } else {
