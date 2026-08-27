@@ -660,8 +660,6 @@
           </div>
         </div>
 
-      </div>
-    
         <!-- TAB: Timetable -->
         <div class="aa-tab-content" data-group="admin-tabs" data-id="tab-timetable">
           <div class="aa-header-between mb-3">
@@ -695,12 +693,60 @@
           </div>
         </div>
 
+      </div>
     </main>
   </div>
 
   <!-- MODALS -->
   
-  <!-- User Modal -->
+  <!-- Timetable Config Modal -->
+  <div class="aa-modal-backdrop" id="modal-timetable-config">
+    <div class="aa-modal" style="max-width: 600px;">
+      <div class="aa-modal-header">
+        <h3>Configure Timetable Format</h3>
+        <button class="aa-modal-close" onclick="closeModal('modal-timetable-config')"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="aa-modal-body">
+        <div class="aa-form-group">
+          <label>Days of the Week (Comma separated)</label>
+          <input type="text" id="tt-cfg-days" class="aa-input" value="Monday, Tuesday, Wednesday, Thursday, Friday">
+        </div>
+        <div class="aa-header-between mb-2">
+          <label style="margin:0;">Time Slots / Periods</label>
+          <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="addTimetableSlot()"><i class="fa fa-plus"></i> Add Slot</button>
+        </div>
+        <div id="tt-cfg-slots"></div>
+        <div class="mt-3">
+          <button class="aa-btn aa-btn-primary w-100" onclick="saveTimetableConfig()">Save Configuration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timetable Generate Modal -->
+  <div class="aa-modal-backdrop" id="modal-timetable-generate">
+    <div class="aa-modal">
+      <div class="aa-modal-header">
+        <h3>Generate Timetables</h3>
+        <button class="aa-modal-close" onclick="closeModal('modal-timetable-generate')"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="aa-modal-body">
+        <p class="text-muted mb-3">Select the classes you want to generate a timetable for. The system will avoid scheduling conflicts for teachers.</p>
+        <div class="aa-form-group">
+          <label>Select Classes</label>
+          <div id="tt-gen-classes" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;"></div>
+          <div class="mt-2">
+            <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="selectAllTtClasses(true)">Select All</button>
+            <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="selectAllTtClasses(false)">Deselect All</button>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="aa-btn aa-btn-success w-100" id="btn-generate-timetable" onclick="generateTimetable()">Generate Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="aa-modal-backdrop" id="userModal">
     <div class="aa-modal">
       <div class="aa-modal-header">
@@ -1274,7 +1320,7 @@
   </div>
 
   <script src="api.js?v=2"></script>
-  <script src="scripts.js?v=6"></script>
+  <script src="scripts.js?v=7"></script>
   <script>
     var globalUsers = [];
     var globalStudents = [];
@@ -1364,6 +1410,22 @@
       filteredClasses.forEach(function(c){ options += '<option value="'+c.className+'">'+c.className+'</option>'; });
       document.getElementById('studentClassSelect').innerHTML = options;
       document.getElementById('subjectClassSelect').innerHTML = '<option value="">All Classes</option>' + options;
+      // Also populate the timetable class select dropdown
+      var ttClsSel = document.getElementById('timetable-class-select');
+      if (ttClsSel) {
+        var ttOptions = '<option value="">Select Class...</option>';
+        filteredClasses.forEach(function(c){ ttOptions += '<option value="'+c.className+'">'+c.className+'</option>'; });
+        ttClsSel.innerHTML = ttOptions;
+      }
+      // Also populate the generate-timetable class checkboxes if visible
+      var ttGenClasses = document.getElementById('tt-gen-classes');
+      if (ttGenClasses) {
+        var chkHtml = '';
+        filteredClasses.forEach(function(c) {
+          chkHtml += '<div><label><input type="checkbox" class="tt-class-chk" value="'+c.className+'"> '+c.className+'</label></div>';
+        });
+        if (chkHtml) ttGenClasses.innerHTML = chkHtml;
+      }
     }
 
     function loadDashboard() {
@@ -3447,58 +3509,5 @@
 
   </script>
 
-    <!-- Timetable Config Modal -->
-    <div class="aa-modal-backdrop" id="modal-timetable-config">
-      <div class="aa-modal" style="max-width: 600px;">
-        <div class="aa-modal-header">
-          <h3>Configure Timetable Format</h3>
-          <button class="aa-modal-close" onclick="closeModal('modal-timetable-config')"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="aa-modal-body">
-          <div class="aa-form-group">
-            <label>Days of the Week (Comma separated)</label>
-            <input type="text" id="tt-cfg-days" class="aa-input" value="Monday, Tuesday, Wednesday, Thursday, Friday">
-          </div>
-          <div class="aa-header-between mb-2">
-            <label style="margin:0;">Time Slots / Periods</label>
-            <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="addTimetableSlot()"><i class="fa fa-plus"></i> Add Slot</button>
-          </div>
-          <div id="tt-cfg-slots"></div>
-          <div class="mt-3">
-            <button class="aa-btn aa-btn-primary w-100" onclick="saveTimetableConfig()">Save Configuration</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Timetable Generate Modal -->
-    <div class="aa-modal-backdrop" id="modal-timetable-generate">
-      <div class="aa-modal">
-        <div class="aa-modal-header">
-          <h3>Generate Timetables</h3>
-          <button class="aa-modal-close" onclick="closeModal('modal-timetable-generate')"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="aa-modal-body">
-          <p class="text-muted mb-3">Select the classes you want to generate a timetable for. The system will avoid scheduling conflicts for teachers.</p>
-          <div class="aa-form-group">
-            <label>Select Classes</label>
-            <div id="tt-gen-classes" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;"></div>
-            <div class="mt-2">
-              <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="selectAllTtClasses(true)">Select All</button>
-              <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="selectAllTtClasses(false)">Deselect All</button>
-            </div>
-          </div>
-          <div class="mt-3">
-            <button class="aa-btn aa-btn-success w-100" id="btn-generate-timetable" onclick="generateTimetable()">Generate Now</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
 </body>
 </html>
-
-
-
-
-

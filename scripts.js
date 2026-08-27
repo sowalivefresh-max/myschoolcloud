@@ -1021,6 +1021,201 @@ function generateBroadsheet() {
         body: body,
         theme: 'grid',
         styles: { fontSize: 8 },
+    if (res.success && res.notifications) {
+      renderNotifications(res.notifications);
+    }
+  } catch (err) {
+    console.error("Failed to fetch notifications", err);
+  }
+}
+
+function renderNotifications(notifications) {
+  const dropdown = document.getElementById('notification-dropdown');
+  const badge = document.getElementById('notification-badge');
+  if (!dropdown || !badge) return;
+
+  // Clear existing items but keep header
+  const header = dropdown.querySelector('.notification-header');
+  dropdown.innerHTML = '';
+  if (header) dropdown.appendChild(header);
+
+  let unreadCount = 0;
+
+  if (notifications.length === 0) {
+    dropdown.innerHTML += '<div class="notif-empty">No notifications yet.</div>';
+  } else {
+    notifications.forEach(n => {
+      if (!n.isRead) unreadCount++;
+      const item = document.createElement('div');
+      item.className = 'notification-item' + (n.isRead ? '' : ' unread');
+      
+      const dateStr = new Date(n.createdAt).toLocaleString();
+      
+      item.innerHTML = `
+        <div class="notif-title">${n.title}</div>
+        <div class="notif-msg">${n.message}</div>
+        <div class="notif-time">${dateStr}</div>
+      `;
+
+      item.onclick = async () => {
+        if (!n.isRead) {
+          item.classList.remove('unread');
+          unreadCount = Math.max(0, unreadCount - 1);
+          updateBadge(badge, unreadCount);
+          await runBackendAction("markNotificationRead", []); // Note: the backend expects { notificationId: n.id } in args? No, in Express body. 
+          // Wait, our runBackendAction wraps args in an array. 
+          // Express backend receives: { action, args: [...] }
+          // Let's modify the runBackendAction call to pass the notificationId in args.
+          await runBackendAction("markNotificationRead", [{ notificationId: n.id }]);
+        }
+      };
+
+      dropdown.appendChild(item);
+    });
+  }
+
+  updateBadge(badge, unreadCount);
+}
+
+function updateBadge(badge, count) {
+  if (count > 0) {
+    badge.textContent = count > 9 ? '9+' : count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// --- Broadsheet Logic ---
+function openBroadsheetModal() {
+  var html = `
+    <div class="aa-modal-backdrop open" id="broadsheetModal" style="z-index: 99999 !important;">
+      <div class="aa-modal" style="max-width: 450px;">
+        <div class="aa-modal-header">
+          <h3 class="aa-modal-title">Download Broadsheet</h3>
+          <button class="aa-modal-close" onclick="document.body.removeChild(this.closest('.aa-modal-backdrop'))"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="aa-modal-body">
+          <div class="aa-form-group">
+            <label class="aa-label">Class</label>
+            <select id="bsClass" class="aa-input">
+              <option value="">Loading classes...</option>
+            </select>
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Term</label>
+            <select id="bsTerm" class="aa-input">
+              <option value="First Term">First Term</option>
+              <option value="Second Term">Second Term</option>
+              <option value="Third Term">Third Term</option>
+            </select>
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Session</label>
+            <input type="text" id="bsSession" class="aa-input" placeholder="e.g. 2024/2025" />
+          </div>
+          <div class="aa-form-group">
+            <label class="aa-label">Format</label>
+            <select id="bsFormat" class="aa-input">
+              <option value="csv">Excel / CSV</option>
+              <option value="pdf">PDF Document</option>
+            </select>
+          </div>
+          <button class="aa-btn aa-btn-primary" style="width:100%" onclick="generateBroadsheet()"><i class="fa fa-download"></i> Download</button>
+        </div>
+      </div>
+    </div>
+  `;
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstElementChild);
+  
+  if (AA.settings.current_session) document.getElementById('bsSession').value = AA.settings.current_session;
+  if (AA.settings.current_term) document.getElementById('bsTerm').value = AA.settings.current_term;
+  
+  // Fetch classes
+  callServer('adminGetClasses', [AA.token, ''], function(res) {
+    var sel = document.getElementById('bsClass');
+    if(!sel) return;
+    sel.innerHTML = '<option value="">-- Select Class --</option>';
+    if (res && res.length) { // API returns an array directly for adminGetClasses in scripts.js wrapper?
+      // Wait, let's check how callServer passes data. The callback receives `res.data` if success, or `res` if it's the raw payload. 
+      // Most places use data.forEach where callback argument is `data`.
+      var list = Array.isArray(res) ? res : (res.data || []);
+      list.forEach(function(c) {
+        sel.innerHTML += '<option value="'+c.className+'">'+c.className+' ('+(c.section || 'N/A')+')</option>';
+      });
+    }
+  }, null, true);
+}
+
+function generateBroadsheet() {
+  var cls = document.getElementById('bsClass').value;
+  var term = document.getElementById('bsTerm').value;
+  var session = document.getElementById('bsSession').value;
+  var format = document.getElementById('bsFormat').value;
+  
+  if (!cls || !term || !session) return showToast('Please fill all fields', 'error');
+  
+  showToast('Gathering broadsheet data...', 'info');
+  var btn = document.querySelector('#broadsheetModal .aa-btn-primary');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generating...';
+  
+  callServer('adminGetBroadsheetData', [AA.token, cls, term, session], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-download"></i> Download';
+    
+    if (res.success === false) return showToast(res.message || 'An error occurred.', 'error');
+    
+    var payload = res.success !== undefined ? res.data : res;
+    if (!payload || !payload.students || payload.students.length === 0) return showToast('No data found for this class.', 'warning');
+    
+    var subjects = payload.subjects;
+    var students = payload.students;
+    var schoolName = AA.settings.school_name || 'School';
+    
+    if (format === 'csv') {
+      var csv = "Student Name,";
+      csv += subjects.join(",") + ",Total,Average\n";
+      students.forEach(function(s) {
+        csv += '"' + s.fullName + '",';
+        subjects.forEach(function(sub) {
+          csv += (s.subjects[sub] || 0) + ",";
+        });
+        csv += s.totalScore + "," + s.average + "\n";
+      });
+      var link = document.createElement("a");
+      link.setAttribute("href", encodeURI("data:text/csv;charset=utf-8," + csv));
+      link.setAttribute("download", cls + "_Broadsheet_" + term + ".csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Broadsheet downloaded.', 'success');
+      document.querySelector('#broadsheetModal .aa-modal-close').click();
+    } else if (format === 'pdf') {
+      if (typeof window.jspdf === 'undefined') return showToast('PDF library not loaded.', 'error');
+      var doc = new window.jspdf.jsPDF({ orientation: 'landscape' });
+      doc.setFontSize(16);
+      doc.text(schoolName + ' - Broadsheet', 14, 15);
+      doc.setFontSize(10);
+      doc.text('Class: ' + cls + ' | Term: ' + term + ' | Session: ' + session, 14, 22);
+      
+      var head = [['Student Name'].concat(subjects).concat(['Total', 'Avg'])];
+      var body = students.map(function(s) {
+        var row = [s.fullName];
+        subjects.forEach(function(sub) { row.push(s.subjects[sub] || 0); });
+        row.push(s.totalScore);
+        row.push(s.average);
+        return row;
+      });
+      
+      doc.autoTable({
+        startY: 28,
+        head: head,
+        body: body,
+        theme: 'grid',
+        styles: { fontSize: 8 },
         headStyles: { fillColor: [30, 58, 95] }
       });
       
@@ -1031,79 +1226,94 @@ function generateBroadsheet() {
   });
 }
 
-
-
 // ==========================================
 // TIMETABLE GENERATOR FRONTEND LOGIC
 // ==========================================
 
-let timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
+var timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
 
 function loadTimetable() {
-    AA.api('adminGetClasses', { section: 'both', campusId: window.currentCampusId || null })
-    .then(res => {
-        if(res.success) {
-            let clsOpts = '<option value="">Select Class...</option>';
-            res.data.forEach(c => clsOpts += `<option value="${c.className}">${c.className}</option>`);
-            document.getElementById('timetable-class-select').innerHTML = clsOpts;
-            
-            let chkHtml = '';
-            res.data.forEach(c => {
-                chkHtml += `<div><label><input type="checkbox" class="tt-class-chk" value="${c.className}"> ${c.className}</label></div>`;
-            });
-            document.getElementById('tt-gen-classes').innerHTML = chkHtml;
-        }
-    });
+    // Populate class dropdowns from already-loaded globalClasses if available
+    var classes = (typeof globalClasses !== 'undefined' && globalClasses.length) ? globalClasses : [];
+    if (classes.length) {
+        _populateTimetableClassOptions(classes);
+    } else {
+        // Fall back to fetching if not yet loaded
+        callServer('adminGetClasses', [AA.token], function(data) {
+            var list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+            _populateTimetableClassOptions(list);
+        });
+    }
 
-    const sessionSelect = document.getElementById('timetable-session-select');
-    if (sessionSelect && window.schoolSettings) {
-        let currentYear = parseInt(window.schoolSettings.currentSession.split('/')[0]) || new Date().getFullYear();
-        let html = '';
-        for(let i=0; i<5; i++) {
-            let y1 = currentYear - i;
-            let y2 = y1 + 1;
-            let val = `${y1}/${y2}`;
-            let sel = (val === window.schoolSettings.currentSession) ? 'selected' : '';
-            html += `<option value="${val}" ${sel}>${val}</option>`;
+    // Populate session/term selectors
+    var sessionSelect = document.getElementById('timetable-session-select');
+    if (sessionSelect) {
+        var sessVal = (typeof currentSession !== 'undefined' && currentSession) ? currentSession :
+                      (AA.settings && AA.settings.current_session ? AA.settings.current_session : '');
+        var termVal = (typeof currentTerm !== 'undefined' && currentTerm) ? currentTerm :
+                      (AA.settings && AA.settings.current_term ? AA.settings.current_term : '');
+        var currentYear = parseInt((sessVal || '').split('/')[0]) || new Date().getFullYear();
+        var html = '';
+        for (var i = 0; i < 5; i++) {
+            var y1 = currentYear - i;
+            var y2 = y1 + 1;
+            var val = y1 + '/' + y2;
+            var sel = (val === sessVal) ? 'selected' : '';
+            html += '<option value="' + val + '" ' + sel + '>' + val + '</option>';
         }
         sessionSelect.innerHTML = html;
-        if(window.schoolSettings.currentTerm) {
-            document.getElementById('timetable-term-select').value = window.schoolSettings.currentTerm;
+        if (termVal) {
+            var termSelect = document.getElementById('timetable-term-select');
+            if (termSelect) termSelect.value = termVal;
         }
     }
 }
 
+function _populateTimetableClassOptions(classes) {
+    var clsOpts = '<option value="">Select Class...</option>';
+    classes.forEach(function(c) { clsOpts += '<option value="' + c.className + '">' + c.className + '</option>'; });
+    var clsSelect = document.getElementById('timetable-class-select');
+    if (clsSelect) clsSelect.innerHTML = clsOpts;
+
+    var chkHtml = '';
+    classes.forEach(function(c) {
+        chkHtml += '<div><label><input type="checkbox" class="tt-class-chk" value="' + c.className + '"> ' + c.className + '</label></div>';
+    });
+    var ttGenClasses = document.getElementById('tt-gen-classes');
+    if (ttGenClasses) ttGenClasses.innerHTML = chkHtml || '<p class="text-muted">No classes found.</p>';
+}
+
 function openTimetableConfigModal() {
-    AA.api('adminGetTimetableConfig', {})
-    .then(res => {
-        if(res.success && res.data) {
+    callServer('adminGetTimetableConfig', [AA.token], function(res) {
+        // The backend returns { success, data } via callServer
+        if (res && res.success && res.data) {
             timetableConfig = res.data;
-            if(!timetableConfig.days) timetableConfig.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-            if(!timetableConfig.periods) timetableConfig.periods = [];
-            
-            document.getElementById('tt-cfg-days').value = timetableConfig.days.join(', ');
-            renderTimetableSlots();
-            openModal('modal-timetable-config');
+        } else if (res && res.days) {
+            // Already unwrapped
+            timetableConfig = res;
         } else {
-            AA.showToast('Error loading config', 'error');
+            // No config yet — open with defaults so admin can create one
+            timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
         }
+        if (!timetableConfig.days) timetableConfig.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (!timetableConfig.periods) timetableConfig.periods = [];
+        document.getElementById('tt-cfg-days').value = timetableConfig.days.join(', ');
+        renderTimetableSlots();
+        openModal('modal-timetable-config');
     });
 }
 
 function renderTimetableSlots() {
-    let html = '';
-    timetableConfig.periods.forEach((p, idx) => {
-        html += `
-        <div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end;">
-            <div style="flex:1;">
-                <label>Period ${idx+1} Label/Time</label>
-                <input type="text" class="aa-input" value="${p.label || ''}" onchange="timetableConfig.periods[${idx}].label = this.value" placeholder="e.g. 08:00 - 08:40">
-            </div>
-            <div>
-                <label><input type="checkbox" ${p.isBreak ? 'checked' : ''} onchange="timetableConfig.periods[${idx}].isBreak = this.checked"> Is Break?</label>
-            </div>
-            <button class="aa-btn aa-btn-sm aa-btn-danger" onclick="removeTimetableSlot(${idx})"><i class="fa fa-trash"></i></button>
-        </div>`;
+    var html = '';
+    timetableConfig.periods.forEach(function(p, idx) {
+        html += '<div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end;">' +
+            '<div style="flex:1;">' +
+            '<label>Period ' + (idx + 1) + ' Label/Time</label>' +
+            '<input type="text" class="aa-input" value="' + (p.label || '') + '" onchange="timetableConfig.periods[' + idx + '].label = this.value" placeholder="e.g. 08:00 - 08:40">' +
+            '</div>' +
+            '<div><label><input type="checkbox" ' + (p.isBreak ? 'checked' : '') + ' onchange="timetableConfig.periods[' + idx + '].isBreak = this.checked"> Is Break?</label></div>' +
+            '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="removeTimetableSlot(' + idx + ')"><i class="fa fa-trash"></i></button>' +
+            '</div>';
     });
     document.getElementById('tt-cfg-slots').innerHTML = html;
 }
@@ -1119,149 +1329,131 @@ function removeTimetableSlot(idx) {
 }
 
 function saveTimetableConfig() {
-    timetableConfig.days = document.getElementById('tt-cfg-days').value.split(',').map(s => s.trim()).filter(Boolean);
-    AA.api('adminSaveTimetableConfig', { data: timetableConfig })
-    .then(res => {
-        if(res.success) {
-            AA.showToast(res.message, 'success');
+    timetableConfig.days = document.getElementById('tt-cfg-days').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    callServer('adminSaveTimetableConfig', [AA.token, timetableConfig], function(res) {
+        if (res && res.success) {
+            showToast(res.message || 'Configuration saved.', 'success');
             closeModal('modal-timetable-config');
         } else {
-            AA.showToast(res.message, 'error');
+            showToast((res && res.message) ? res.message : 'Failed to save configuration.', 'error');
         }
-    });
+    }, null, true);
 }
 
 function openTimetableGenerateModal() {
+    // Re-populate class list from latest globalClasses
+    loadTimetable();
     openModal('modal-timetable-generate');
 }
 
 function selectAllTtClasses(val) {
-    document.querySelectorAll('.tt-class-chk').forEach(c => c.checked = val);
+    document.querySelectorAll('.tt-class-chk').forEach(function(c) { c.checked = val; });
 }
 
 function generateTimetable() {
-    const classes = Array.from(document.querySelectorAll('.tt-class-chk:checked')).map(c => c.value);
-    if(classes.length === 0) return AA.showToast('Please select at least one class.', 'warning');
-    
-    const term = document.getElementById('timetable-term-select').value;
-    const session = document.getElementById('timetable-session-select').value;
-    
-    const btn = document.getElementById('btn-generate-timetable');
+    var classes = Array.from(document.querySelectorAll('.tt-class-chk:checked')).map(function(c) { return c.value; });
+    if (classes.length === 0) return showToast('Please select at least one class.', 'warning');
+
+    var term = document.getElementById('timetable-term-select').value;
+    var session = document.getElementById('timetable-session-select').value;
+
+    var btn = document.getElementById('btn-generate-timetable');
     btn.disabled = true;
     btn.innerHTML = 'Generating...';
-    
-    // Ensure we have config
-    AA.api('adminGetTimetableConfig', {})
-    .then(res => {
-        if(res.success && res.data) {
-            const config = res.data;
-            if(!config.days || !config.periods) {
-                btn.disabled = false; btn.innerHTML = 'Generate Now';
-                return AA.showToast('Please configure timetable format first.', 'error');
-            }
-            
-            AA.api('adminGenerateTimetable', { classes, term, session, config })
-            .then(resGen => {
-                btn.disabled = false; btn.innerHTML = 'Generate Now';
-                if(resGen.success) {
-                    AA.showToast(resGen.message, 'success');
-                    closeModal('modal-timetable-generate');
-                    if(document.getElementById('timetable-class-select').value) {
-                        loadTimetableData();
-                    }
-                } else {
-                    AA.showToast(resGen.message, 'error');
-                }
-            }).catch(e => {
-                btn.disabled = false; btn.innerHTML = 'Generate Now';
-                AA.showToast('Error generating timetable', 'error');
-            });
+
+    callServer('adminGetTimetableConfig', [AA.token], function(res) {
+        var config = (res && res.success && res.data) ? res.data : (res && res.days ? res : null);
+        if (!config || !config.days || !config.periods || config.periods.length === 0) {
+            btn.disabled = false; btn.innerHTML = 'Generate Now';
+            return showToast('Please configure timetable format first (add at least one time slot).', 'error');
         }
+        callServer('adminGenerateTimetable', [AA.token, classes, term, session, config], function(resGen) {
+            btn.disabled = false; btn.innerHTML = 'Generate Now';
+            if (resGen && resGen.success) {
+                showToast(resGen.message || 'Timetable generated successfully!', 'success');
+                closeModal('modal-timetable-generate');
+                var clsSel = document.getElementById('timetable-class-select');
+                if (clsSel && clsSel.value) loadTimetableData();
+            } else {
+                showToast((resGen && resGen.message) ? resGen.message : 'Error generating timetable.', 'error');
+            }
+        }, function() {
+            btn.disabled = false; btn.innerHTML = 'Generate Now';
+            showToast('Error generating timetable.', 'error');
+        }, true);
     });
 }
 
 function loadTimetableData() {
-    const className = document.getElementById('timetable-class-select').value;
-    const term = document.getElementById('timetable-term-select').value;
-    const session = document.getElementById('timetable-session-select').value;
-    
-    if(!className) return;
-    
-    const area = document.getElementById('timetable-display-area');
+    var className = document.getElementById('timetable-class-select').value;
+    var term = document.getElementById('timetable-term-select').value;
+    var session = document.getElementById('timetable-session-select').value;
+
+    if (!className) return showToast('Please select a class.', 'warning');
+
+    var area = document.getElementById('timetable-display-area');
     area.innerHTML = '<p>Loading...</p>';
-    
-    AA.api('adminGetTimetableConfig', {})
-    .then(resCfg => {
-        if(resCfg.success && resCfg.data && resCfg.data.days) {
-            const config = resCfg.data;
-            
-            AA.api('adminGetTimetables', { term, session })
-            .then(resTt => {
-                if(resTt.success) {
-                    const tt = resTt.data.find(t => t.className === className);
-                    if(!tt) {
+
+    callServer('adminGetTimetableConfig', [AA.token], function(resCfg) {
+        var config = (resCfg && resCfg.success && resCfg.data) ? resCfg.data : (resCfg && resCfg.days ? resCfg : null);
+        if (config && config.days) {
+            callServer('adminGetTimetables', [AA.token, term, session], function(resTt) {
+                var list = (resTt && resTt.success && resTt.data) ? resTt.data :
+                           (Array.isArray(resTt) ? resTt : null);
+                if (list && Array.isArray(list)) {
+                    var tt = list.find(function(t) { return t.className === className; });
+                    if (!tt) {
                         area.innerHTML = '<p class="text-muted">No timetable generated for this class yet.</p>';
                         return;
                     }
-                    
-                    let html = `<div style="text-align:right; margin-bottom:10px;"><button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF('${className}')"><i class="fa fa-file-pdf"></i> Export PDF</button></div>`;
-                    html += `<table class="aa-table" id="timetable-pdf-table"><thead><tr><th>Day</th>`;
-                    config.periods.forEach(p => {
-                        html += `<th>${p.label}</th>`;
-                    });
-                    html += `</tr></thead><tbody>`;
-                    
-                    config.days.forEach(day => {
-                        html += `<tr><td style="font-weight:bold;">${day}</td>`;
-                        if(tt.schedule && tt.schedule[day]) {
-                            tt.schedule[day].forEach(period => {
-                                if(period && period.type === 'Break') {
-                                    html += `<td style="background:#f1f5f9; text-align:center; font-style:italic;">${period.label}</td>`;
+                    var html = '<div style="text-align:right; margin-bottom:10px;"><button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')"><i class="fa fa-file-pdf"></i> Export PDF</button></div>';
+                    html += '<table class="aa-table" id="timetable-pdf-table"><thead><tr><th>Day</th>';
+                    config.periods.forEach(function(p) { html += '<th>' + p.label + '</th>'; });
+                    html += '</tr></thead><tbody>';
+                    config.days.forEach(function(day) {
+                        html += '<tr><td style="font-weight:bold;">' + day + '</td>';
+                        if (tt.schedule && tt.schedule[day]) {
+                            tt.schedule[day].forEach(function(period) {
+                                if (period && period.type === 'Break') {
+                                    html += '<td style="background:#f1f5f9; text-align:center; font-style:italic;">' + period.label + '</td>';
                                 } else if (period && period.type === 'Subject') {
-                                    html += `<td>${period.subjectName}</td>`;
+                                    html += '<td>' + period.subjectName + '</td>';
                                 } else {
-                                    html += `<td style="color:#94a3b8;">Free</td>`;
+                                    html += '<td style="color:#94a3b8;">Free</td>';
                                 }
                             });
                         } else {
-                            config.periods.forEach(() => html += `<td>-</td>`);
+                            config.periods.forEach(function() { html += '<td>-</td>'; });
                         }
-                        html += `</tr>`;
+                        html += '</tr>';
                     });
-                    
-                    html += `</tbody></table>`;
+                    html += '</tbody></table>';
                     area.innerHTML = html;
                 } else {
-                    area.innerHTML = '<p class="text-danger">Failed to load timetable.</p>';
+                    area.innerHTML = '<p class="text-danger">Failed to load timetable data.</p>';
                 }
             });
         } else {
-            area.innerHTML = '<p class="text-muted">Timetable config missing.</p>';
+            area.innerHTML = '<p class="text-muted">Timetable configuration is missing. Please configure the timetable format first.</p>';
         }
     });
 }
 
-// Add these to global window scope so HTML onclick handlers can see them
 function downloadTimetablePDF(className) {
     if (typeof window.jspdf === 'undefined') {
-        return AA.showToast("PDF generation library not loaded.", "error");
+        return showToast('PDF generation library not loaded.', 'error');
     }
-    
-    const jsPDF = window.jspdf.jsPDF;
-    const doc = new jsPDF('landscape');
-    
-    // Add school name if available
-    const schoolNameEl = document.getElementById('sb-school-name');
-    const schoolName = schoolNameEl ? schoolNameEl.innerText : 'School Timetable';
-    const term = document.getElementById('timetable-term-select').options[document.getElementById('timetable-term-select').selectedIndex].text;
-    const session = document.getElementById('timetable-session-select').value;
-    
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF('landscape');
+    var schoolNameEl = document.getElementById('sb-school-name');
+    var schoolName = schoolNameEl ? schoolNameEl.innerText : 'School Timetable';
+    var termSel = document.getElementById('timetable-term-select');
+    var term = termSel ? termSel.options[termSel.selectedIndex].text : '';
+    var session = document.getElementById('timetable-session-select').value;
     doc.setFontSize(18);
     doc.text(schoolName, 14, 20);
-    
     doc.setFontSize(14);
-    doc.text(`Class Timetable: ${className} (${term}, ${session})`, 14, 30);
-    
+    doc.text('Class Timetable: ' + className + ' (' + term + ', ' + session + ')', 14, 30);
     doc.autoTable({
         html: '#timetable-pdf-table',
         startY: 35,
@@ -1271,18 +1463,13 @@ function downloadTimetablePDF(className) {
         columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
         didParseCell: function(data) {
             if (data.cell.raw && data.cell.raw.innerText) {
-                const text = data.cell.raw.innerText.toLowerCase();
-                if (text.includes('break')) {
-                    data.cell.styles.fillColor = [241, 245, 249];
-                    data.cell.styles.fontStyle = 'italic';
-                } else if (text.includes('free')) {
-                    data.cell.styles.textColor = [148, 163, 184];
-                }
+                var text = data.cell.raw.innerText.toLowerCase();
+                if (text.includes('break')) { data.cell.styles.fillColor = [241, 245, 249]; data.cell.styles.fontStyle = 'italic'; }
+                else if (text.includes('free')) { data.cell.styles.textColor = [148, 163, 184]; }
             }
         }
     });
-    
-    doc.save(`Timetable_${className}.pdf`);
+    doc.save('Timetable_' + className + '.pdf');
 }
 
 window.downloadTimetablePDF = downloadTimetablePDF;
@@ -1296,4 +1483,3 @@ window.openTimetableGenerateModal = openTimetableGenerateModal;
 window.selectAllTtClasses = selectAllTtClasses;
 window.generateTimetable = generateTimetable;
 window.loadTimetableData = loadTimetableData;
-
