@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -709,10 +709,13 @@
       <div class="aa-modal-body">
         <div class="aa-form-group">
           <label>Days of the Week (Comma separated)</label>
-          <input type="text" id="tt-cfg-days" class="aa-input" value="Monday, Tuesday, Wednesday, Thursday, Friday">
+          <input type="text" id="tt-cfg-days" class="aa-input" value="Monday, Tuesday, Wednesday, Thursday, Friday" onchange="renderTimetableDayTabs()">
         </div>
+        
+        <div id="tt-cfg-day-tabs" style="display:flex; gap:10px; margin-bottom:15px; border-bottom:1px solid #e2e8f0; overflow-x:auto; padding-bottom:5px;"></div>
+        
         <div class="aa-header-between mb-2">
-          <label style="margin:0;">Time Slots / Periods</label>
+          <label style="margin:0;"><span id="tt-cfg-active-day" style="font-weight:bold; color:#1e3a8a;"></span> Time Slots</label>
           <button class="aa-btn aa-btn-sm aa-btn-outline" onclick="addTimetableSlot()"><i class="fa fa-plus"></i> Add Slot</button>
         </div>
         <div id="tt-cfg-slots"></div>
@@ -1320,7 +1323,7 @@
   </div>
 
   <script src="api.js?v=2"></script>
-  <script src="scripts.js?v=8"></script>
+  <script src="scripts.js?v=10"></script>
   <script>
     var globalUsers = [];
     var globalStudents = [];
@@ -2191,7 +2194,7 @@
                 data: {
                   labels: ['Income', 'Collected', 'Expenses', 'Net Flow'],
                   datasets: [{
-                    label: 'Amount (â‚¦)',
+                    label: 'Amount (?)',
                     data: [expectedIncome, collected, expense, net],
                     backgroundColor: ['#6366f1', '#4ade80', '#f59e0b', net >= 0 ? '#10b981' : '#ef4444'],
                     borderRadius: 4
@@ -3253,7 +3256,7 @@
         globalStudents.forEach(function(s) {
           var opt = document.createElement('option');
           opt.value = s.id || s.iD;
-          opt.textContent = (s.fullName || 'Student') + (s.className ? ' â€” ' + s.className : '');
+          opt.textContent = (s.fullName || 'Student') + (s.className ? ' — ' + s.className : '');
           sel.appendChild(opt);
         });
       }
@@ -3307,16 +3310,16 @@
 
     function shareViaEmail() {
       if (!currentInviteLink) return;
-      var subject = encodeURIComponent('Your Parent Portal Registration Invite â€” ' + currentInviteSchoolName);
+      var subject = encodeURIComponent('Your Parent Portal Registration Invite — ' + currentInviteSchoolName);
       var body = encodeURIComponent(
         'Dear Parent,\n\nYou have been invited to create your parent account on ' + currentInviteSchoolName + '\'s school portal.\n\n' +
         'Please click the link below to complete your registration (this link is valid for 48 hours):\n\n' +
         currentInviteLink + '\n\n' +
         'Once registered, you will be able to:\n' +
-        '  â€¢ View your child\'s academic results\n' +
-        '  â€¢ Track attendance records\n' +
-        '  â€¢ Pay school fees online\n' +
-        '  â€¢ Receive school announcements\n\n' +
+        '  • View your child\'s academic results\n' +
+        '  • Track attendance records\n' +
+        '  • Pay school fees online\n' +
+        '  • Receive school announcements\n\n' +
         'If you have any questions, please contact the school office.\n\nRegards,\n' + currentInviteSchoolName
       );
       window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
@@ -3340,15 +3343,15 @@
           }[inv.effectiveStatus || inv.status] || '<span class="aa-badge">Unknown</span>';
 
           var linkedName = inv.linkedStudentId ? (globalStudents || []).reduce(function(found, s) {
-            return (s.id === inv.linkedStudentId || s.iD === inv.linkedStudentId) ? (s.fullName || 'â€”') : found;
-          }, 'â€”') : 'â€”';
+            return (s.id === inv.linkedStudentId || s.iD === inv.linkedStudentId) ? (s.fullName || '—') : found;
+          }, '—') : '—';
 
           var created = new Date(inv.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
           var expires = new Date(inv.expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
           
           var revokeBtn = (inv.status === 'pending') 
             ? '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="revokeInvite(\'' + inv.id + '\')"><i class="fa fa-ban"></i></button>'
-            : 'â€”';
+            : '—';
 
           rows += '<tr><td>' + created + '</td><td>' + AA.escapeHTML(linkedName) + '</td><td>' + statusBadge + '</td><td>' + expires + '</td><td>' + revokeBtn + '</td></tr>';
         });
@@ -3511,5 +3514,6 @@
 
 </body>
 </html>
+
 
 

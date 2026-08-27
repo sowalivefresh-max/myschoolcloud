@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1184,7 +1184,7 @@
   </div>
 
   <script src="api.js?v=3"></script>
-  <script src="scripts.js?v=6"></script>
+  <script src="scripts.js?v=10"></script>
   <script>
     var globalUsers = [];
     var globalStudents = [];
@@ -2613,7 +2613,7 @@
         globalStudents.forEach(function(s) {
           var opt = document.createElement('option');
           opt.value = s.id || s.iD;
-          opt.textContent = (s.fullName || 'Student') + (s.className ? ' â€” ' + s.className : '');
+          opt.textContent = (s.fullName || 'Student') + (s.className ? ' — ' + s.className : '');
           sel.appendChild(opt);
         });
       }
@@ -2667,16 +2667,16 @@
 
     function shareViaEmail() {
       if (!currentInviteLink) return;
-      var subject = encodeURIComponent('Your Parent Portal Registration Invite â€” ' + currentInviteSchoolName);
+      var subject = encodeURIComponent('Your Parent Portal Registration Invite — ' + currentInviteSchoolName);
       var body = encodeURIComponent(
         'Dear Parent,\n\nYou have been invited to create your parent account on ' + currentInviteSchoolName + '\'s school portal.\n\n' +
         'Please click the link below to complete your registration (this link is valid for 48 hours):\n\n' +
         currentInviteLink + '\n\n' +
         'Once registered, you will be able to:\n' +
-        '  â€¢ View your child\'s academic results\n' +
-        '  â€¢ Track attendance records\n' +
-        '  â€¢ Pay school fees online\n' +
-        '  â€¢ Receive school announcements\n\n' +
+        '  • View your child\'s academic results\n' +
+        '  • Track attendance records\n' +
+        '  • Pay school fees online\n' +
+        '  • Receive school announcements\n\n' +
         'If you have any questions, please contact the school office.\n\nRegards,\n' + currentInviteSchoolName
       );
       window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
@@ -2700,15 +2700,15 @@
           }[inv.effectiveStatus || inv.status] || '<span class="aa-badge">Unknown</span>';
 
           var linkedName = inv.linkedStudentId ? (globalStudents || []).reduce(function(found, s) {
-            return (s.id === inv.linkedStudentId || s.iD === inv.linkedStudentId) ? (s.fullName || 'â€”') : found;
-          }, 'â€”') : 'â€”';
+            return (s.id === inv.linkedStudentId || s.iD === inv.linkedStudentId) ? (s.fullName || '—') : found;
+          }, '—') : '—';
 
           var created = new Date(inv.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
           var expires = new Date(inv.expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
           
           var revokeBtn = (inv.status === 'pending') 
             ? '<button class="aa-btn aa-btn-danger aa-btn-xs" onclick="revokeInvite(\'' + inv.id + '\')"><i class="fa fa-ban"></i></button>'
-            : 'â€”';
+            : '—';
 
           rows += '<tr><td>' + created + '</td><td>' + AA.escapeHTML(linkedName) + '</td><td>' + statusBadge + '</td><td>' + expires + '</td><td>' + revokeBtn + '</td></tr>';
         });
@@ -2919,6 +2919,8 @@
 
 </body>
 </html>
+
+
 
 
 

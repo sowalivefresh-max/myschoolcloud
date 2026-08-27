@@ -2912,9 +2912,10 @@ module.exports = function(db, notificationsActions) {
     adminGenerateTimetable: async (req, res) => {
       try {
         const { classes, term, session, config } = req.body;
-        if (!classes || !classes.length || !term || !session || !config) {
-          return res.json({ success: false, message: "Missing required parameters." });
-        }
+        if (!classes || !classes.length) return res.json({ success: false, message: "Missing parameter: classes" });
+        if (!term) return res.json({ success: false, message: "Missing parameter: term" });
+        if (!session) return res.json({ success: false, message: "Missing parameter: session" });
+        if (!config) return res.json({ success: false, message: "Missing parameter: config" });
         
         const subjectsSnap = await db.collection("subjects").get();
         const allSubjects = subjectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2930,10 +2931,6 @@ module.exports = function(db, notificationsActions) {
             schedule: {}, 
             updatedAt: new Date().toISOString()
           };
-          
-          config.days.forEach(day => {
-            timetable.schedule[day] = new Array(config.periods.length).fill(null);
-          });
           
           const isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("playgroup") || className.toLowerCase().includes("year");
           
@@ -2964,10 +2961,19 @@ module.exports = function(db, notificationsActions) {
           
           for (let d = 0; d < config.days.length; d++) {
             const day = config.days[d];
-            for (let p = 0; p < config.periods.length; p++) {
-               const periodConfig = config.periods[p];
-               if (periodConfig.isBreak) {
-                 timetable.schedule[day][p] = { type: "Break", label: periodConfig.label || "Break" };
+            const dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) 
+                                ? config.scheduleTemplate[day] 
+                                : (config.periods || []);
+            
+            timetable.schedule[day] = new Array(dayPeriods.length).fill(null);
+            
+            for (let p = 0; p < dayPeriods.length; p++) {
+               const periodConfig = dayPeriods[p];
+               if (periodConfig.isBreak || periodConfig.type === 'Break' || periodConfig.type === 'Event') {
+                 timetable.schedule[day][p] = { 
+                    type: periodConfig.type || (periodConfig.isBreak ? "Break" : "Event"), 
+                    label: periodConfig.customLabel || periodConfig.label || periodConfig.type || "Break" 
+                 };
                  continue;
                }
                

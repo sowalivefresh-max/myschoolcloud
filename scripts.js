@@ -1088,6 +1088,8 @@ function _populateTimetableClassOptions(classes) {
     if (ttGenClasses) ttGenClasses.innerHTML = chkHtml || '<p class="text-muted">No classes found.</p>';
 }
 
+var activeTimetableDay = '';
+
 function openTimetableConfigModal() {
     callServer('adminGetTimetableConfig', [AA.token], function(res) {
         if (res && res.success && res.data) {
@@ -1098,22 +1100,92 @@ function openTimetableConfigModal() {
             timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
         }
         if (!timetableConfig.days) timetableConfig.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        if (!timetableConfig.periods) timetableConfig.periods = [];
+        if (!timetableConfig.scheduleTemplate) timetableConfig.scheduleTemplate = {};
+        
+        // Migrate old periods format to new scheduleTemplate
+        if (timetableConfig.periods && timetableConfig.periods.length > 0 && Object.keys(timetableConfig.scheduleTemplate).length === 0) {
+            timetableConfig.days.forEach(function(day) {
+                timetableConfig.scheduleTemplate[day] = JSON.parse(JSON.stringify(timetableConfig.periods));
+            });
+        }
+        
         document.getElementById('tt-cfg-days').value = timetableConfig.days.join(', ');
-        renderTimetableSlots();
+        
+        if (timetableConfig.days.length > 0) {
+            activeTimetableDay = timetableConfig.days[0];
+        } else {
+            activeTimetableDay = '';
+        }
+        
+        renderTimetableDayTabs();
         openModal('modal-timetable-config');
     });
 }
 
-function renderTimetableSlots() {
+function renderTimetableDayTabs() {
+    timetableConfig.days = document.getElementById('tt-cfg-days').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    
+    if (timetableConfig.days.length > 0 && !timetableConfig.days.includes(activeTimetableDay)) {
+        activeTimetableDay = timetableConfig.days[0];
+    }
+    
     var html = '';
-    timetableConfig.periods.forEach(function(p, idx) {
-        html += '<div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end;">' +
+    timetableConfig.days.forEach(function(day) {
+        var isAct = day === activeTimetableDay;
+        var btnClass = isAct ? 'aa-btn-primary' : 'aa-btn-outline';
+        html += '<button class="aa-btn aa-btn-sm ' + btnClass + '" onclick="setActiveTimetableDay(\'' + day + '\')">' + day + '</button>';
+        
+        if (!timetableConfig.scheduleTemplate[day]) {
+            // Check if we can copy from the first day or fallback to empty
+            if (timetableConfig.days.length > 0 && timetableConfig.scheduleTemplate[timetableConfig.days[0]]) {
+               timetableConfig.scheduleTemplate[day] = JSON.parse(JSON.stringify(timetableConfig.scheduleTemplate[timetableConfig.days[0]]));
+            } else {
+               timetableConfig.scheduleTemplate[day] = [];
+            }
+        }
+    });
+    
+    var tabsEl = document.getElementById('tt-cfg-day-tabs');
+    if (tabsEl) tabsEl.innerHTML = html;
+    
+    renderTimetableSlots();
+}
+
+function setActiveTimetableDay(day) {
+    activeTimetableDay = day;
+    renderTimetableDayTabs();
+}
+
+function renderTimetableSlots() {
+    var actDayEl = document.getElementById('tt-cfg-active-day');
+    if (actDayEl) actDayEl.innerText = activeTimetableDay;
+    
+    if (!activeTimetableDay || !timetableConfig.scheduleTemplate[activeTimetableDay]) {
+        document.getElementById('tt-cfg-slots').innerHTML = '<p class="text-muted">No days configured.</p>';
+        return;
+    }
+    
+    var html = '';
+    timetableConfig.scheduleTemplate[activeTimetableDay].forEach(function(p, idx) {
+        var typeSel = '<select class="aa-input" onchange="timetableConfig.scheduleTemplate[\''+activeTimetableDay+'\']['+idx+'].type = this.value; renderTimetableSlots();">' +
+            '<option value="Subject" ' + (p.type === 'Subject' || (!p.type && !p.isBreak) ? 'selected' : '') + '>Subject</option>' +
+            '<option value="Break" ' + (p.type === 'Break' || p.isBreak ? 'selected' : '') + '>Break</option>' +
+            '<option value="Event" ' + (p.type === 'Event' ? 'selected' : '') + '>Event</option>' +
+            '</select>';
+            
+        var lblInput = (p.type === 'Break' || p.isBreak || p.type === 'Event') ? 
+            '<div><label>Custom Name</label><input type="text" class="aa-input" value="' + (p.customLabel || p.label || (p.isBreak ? 'Break' : '')) + '" onchange="timetableConfig.scheduleTemplate[\''+activeTimetableDay+'\']['+idx+'].customLabel = this.value" placeholder="e.g. Short Break"></div>' : '';
+
+        html += '<div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end; background:#f8fafc; padding:10px; border-radius:5px;">' +
             '<div style="flex:1;">' +
-            '<label>Period ' + (idx + 1) + ' Label/Time</label>' +
-            '<input type="text" class="aa-input" value="' + (p.label || '') + '" onchange="timetableConfig.periods[' + idx + '].label = this.value" placeholder="e.g. 08:00 - 08:40">' +
+            '<label>Period ' + (idx + 1) + ' Time/Label</label>' +
+            '<input type="text" class="aa-input" value="' + (p.label || '') + '" onchange="timetableConfig.scheduleTemplate[\''+activeTimetableDay+'\']['+idx+'].label = this.value" placeholder="e.g. 08:00 - 08:40">' +
             '</div>' +
-            '<div><label><input type="checkbox" ' + (p.isBreak ? 'checked' : '') + ' onchange="timetableConfig.periods[' + idx + '].isBreak = this.checked"> Is Break?</label></div>' +
+            '<div>' +
+            '<label>Type</label>' +
+            typeSel +
+            '</div>' +
+            lblInput +
             '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="removeTimetableSlot(' + idx + ')"><i class="fa fa-trash"></i></button>' +
             '</div>';
     });
@@ -1121,17 +1193,23 @@ function renderTimetableSlots() {
 }
 
 function addTimetableSlot() {
-    timetableConfig.periods.push({ label: '', isBreak: false });
+    if (!activeTimetableDay) return;
+    if (!timetableConfig.scheduleTemplate[activeTimetableDay]) timetableConfig.scheduleTemplate[activeTimetableDay] = [];
+    timetableConfig.scheduleTemplate[activeTimetableDay].push({ label: '', type: 'Subject' });
     renderTimetableSlots();
 }
 
 function removeTimetableSlot(idx) {
-    timetableConfig.periods.splice(idx, 1);
+    if (!activeTimetableDay) return;
+    timetableConfig.scheduleTemplate[activeTimetableDay].splice(idx, 1);
     renderTimetableSlots();
 }
 
 function saveTimetableConfig() {
     timetableConfig.days = document.getElementById('tt-cfg-days').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    // Legacy support just in case
+    timetableConfig.periods = timetableConfig.days.length > 0 ? (timetableConfig.scheduleTemplate[timetableConfig.days[0]] || []) : [];
+    
     callServer('adminSaveTimetableConfig', [AA.token, timetableConfig], function(res) {
         if (res && res.success) {
             showToast(res.message || 'Configuration saved.', 'success');
@@ -1207,29 +1285,61 @@ function loadTimetableData() {
                         area.innerHTML = '<p class="text-muted">No timetable generated for this class yet.</p>';
                         return;
                     }
-                    var html = '<div style="text-align:right; margin-bottom:10px;"><button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')"><i class="fa fa-file-pdf"></i> Export PDF</button></div>';
+                    
+                    var maxPeriods = 0;
+                    config.days.forEach(function(day) {
+                       var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day].length : (config.periods ? config.periods.length : 0);
+                       if (dayPeriods > maxPeriods) maxPeriods = dayPeriods;
+                    });
+                    
+                    var isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("year") || className.toLowerCase().includes("playgroup");
+                    var secType = isPrimary ? "Primary" : "High";
+                    
+                    var html = '<div style="text-align:right; margin-bottom:10px;">';
+                    html += '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF(\'' + secType + '\')" style="margin-right:10px;"><i class="fa fa-file-excel"></i> Export Master ('+secType+')</button>';
+                    html += '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')"><i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
+                    
                     html += '<table class="aa-table" id="timetable-pdf-table"><thead><tr><th>Day</th>';
-                    config.periods.forEach(function(p) { html += '<th>' + p.label + '</th>'; });
+                    for (var i = 1; i <= maxPeriods; i++) {
+                        html += '<th>Period ' + i + '</th>';
+                    }
                     html += '</tr></thead><tbody>';
+                    
                     config.days.forEach(function(day) {
                         html += '<tr><td style="font-weight:bold;">' + day + '</td>';
                         if (tt.schedule && tt.schedule[day]) {
-                            tt.schedule[day].forEach(function(period) {
-                                if (period && period.type === 'Break') {
-                                    html += '<td style="background:#f1f5f9; text-align:center; font-style:italic;">' + period.label + '</td>';
-                                } else if (period && period.type === 'Subject') {
-                                    html += '<td>' + period.subjectName + '</td>';
-                                } else {
-                                    html += '<td style="color:#94a3b8;">Free</td>';
+                            for (var pIdx = 0; pIdx < maxPeriods; pIdx++) {
+                                var period = tt.schedule[day][pIdx];
+                                var timeLabel = '';
+                                if (config.scheduleTemplate && config.scheduleTemplate[day] && config.scheduleTemplate[day][pIdx]) {
+                                    timeLabel = '<div style="font-size:0.8em; color:#64748b; margin-bottom:4px;">' + config.scheduleTemplate[day][pIdx].label + '</div>';
+                                } else if (config.periods && config.periods[pIdx]) {
+                                    timeLabel = '<div style="font-size:0.8em; color:#64748b; margin-bottom:4px;">' + config.periods[pIdx].label + '</div>';
                                 }
-                            });
+                                
+                                if (!period && timeLabel === '') {
+                                    html += '<td>-</td>';
+                                    continue;
+                                }
+                                
+                                if (period && (period.type === 'Break' || period.type === 'Event')) {
+                                    html += '<td style="background:#f1f5f9; text-align:center;">' + timeLabel + '<strong>' + period.label + '</strong></td>';
+                                } else if (period && period.type === 'Subject') {
+                                    html += '<td>' + timeLabel + '<strong>' + period.subjectName + '</strong></td>';
+                                } else {
+                                    html += '<td style="color:#94a3b8;">' + timeLabel + 'Free</td>';
+                                }
+                            }
                         } else {
-                            config.periods.forEach(function() { html += '<td>-</td>'; });
+                            for (var i = 0; i < maxPeriods; i++) html += '<td>-</td>';
                         }
                         html += '</tr>';
                     });
                     html += '</tbody></table>';
                     area.innerHTML = html;
+                    
+                    window.globalTimetableList = list;
+                    window.globalTimetableConfig = config;
                 } else {
                     area.innerHTML = '<p class="text-danger">Failed to load timetable data.</p>';
                 }
@@ -1251,10 +1361,13 @@ function downloadTimetablePDF(className) {
     var termSel = document.getElementById('timetable-term-select');
     var term = termSel ? termSel.options[termSel.selectedIndex].text : '';
     var session = document.getElementById('timetable-session-select').value;
+    
+    var pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(18);
-    doc.text(schoolName, 14, 20);
+    doc.text(schoolName, pageWidth / 2, 20, { align: 'center' });
     doc.setFontSize(14);
-    doc.text('Class Timetable: ' + className + ' (' + term + ', ' + session + ')', 14, 30);
+    doc.text('Class Timetable: ' + className + ' (' + term + ', ' + session + ')', pageWidth / 2, 30, { align: 'center' });
+    
     doc.autoTable({
         html: '#timetable-pdf-table',
         startY: 35,
@@ -1265,12 +1378,108 @@ function downloadTimetablePDF(className) {
         didParseCell: function(data) {
             if (data.cell.raw && data.cell.raw.innerText) {
                 var text = data.cell.raw.innerText.toLowerCase();
-                if (text.indexOf('break') !== -1) { data.cell.styles.fillColor = [241, 245, 249]; data.cell.styles.fontStyle = 'italic'; }
-                else if (text.indexOf('free') !== -1) { data.cell.styles.textColor = [148, 163, 184]; }
+                if (text.indexOf('break') !== -1 || text.indexOf('assembly') !== -1 || text.indexOf('event') !== -1) { 
+                    data.cell.styles.fillColor = [241, 245, 249]; 
+                }
+                else if (text.indexOf('free') !== -1) { 
+                    data.cell.styles.textColor = [148, 163, 184]; 
+                }
             }
         }
     });
     doc.save('Timetable_' + className + '.pdf');
+}
+
+function downloadMasterTimetablePDF(section) {
+    if (typeof window.jspdf === 'undefined') {
+        return showToast('PDF generation library not loaded.', 'error');
+    }
+    var list = window.globalTimetableList;
+    var config = window.globalTimetableConfig;
+    if (!list || !config) return showToast('Please load timetable data first.', 'error');
+    
+    var filteredList = list.filter(function(t) {
+       var cls = t.className.toLowerCase();
+       var isPri = cls.includes('primary') || cls.includes('nursery') || cls.includes('creche') || cls.includes('basic') || cls.includes('year') || cls.includes('playgroup');
+       if (section === 'Primary') return isPri;
+       if (section === 'High') return !isPri;
+       return true;
+    });
+    
+    if (filteredList.length === 0) return showToast('No timetables found for ' + section + ' section.', 'warning');
+    
+    // Sort classes (roughly)
+    filteredList.sort(function(a, b) { return a.className.localeCompare(b.className); });
+    
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF('landscape');
+    var schoolNameEl = document.getElementById('sb-school-name');
+    var schoolName = schoolNameEl ? schoolNameEl.innerText : 'School Timetable';
+    var termSel = document.getElementById('timetable-term-select');
+    var term = termSel ? termSel.options[termSel.selectedIndex].text : '';
+    var session = document.getElementById('timetable-session-select').value;
+    
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var currentY = 20;
+    
+    config.days.forEach(function(day, dayIdx) {
+        if (dayIdx > 0 && dayIdx % 2 === 0) {
+            doc.addPage();
+            currentY = 20;
+        }
+        
+        doc.setFontSize(16);
+        doc.text(schoolName, pageWidth / 2, currentY, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text('Master Timetable: ' + section + ' Section (' + term + ', ' + session + ') - ' + day.toUpperCase(), pageWidth / 2, currentY + 8, { align: 'center' });
+        
+        currentY += 15;
+        
+        var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day] : (config.periods || []);
+        var headRow = ['Class'];
+        dayPeriods.forEach(function(p) { headRow.push(p.label); });
+        
+        var bodyData = [];
+        filteredList.forEach(function(tt) {
+            var row = [tt.className];
+            for (var pIdx = 0; pIdx < dayPeriods.length; pIdx++) {
+                var period = tt.schedule && tt.schedule[day] ? tt.schedule[day][pIdx] : null;
+                if (!period) {
+                    row.push('-');
+                } else if (period.type === 'Break' || period.type === 'Event') {
+                    row.push(period.label);
+                } else if (period.type === 'Subject') {
+                    row.push(period.subjectName);
+                } else {
+                    row.push('Free');
+                }
+            }
+            bodyData.push(row);
+        });
+        
+        doc.autoTable({
+            head: [headRow],
+            body: bodyData,
+            startY: currentY,
+            theme: 'grid',
+            headStyles: { fillColor: [44, 62, 80], halign: 'center', fontSize: 9 },
+            styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
+            columnStyles: { 0: { fontStyle: 'bold', halign: 'left', cellWidth: 25 } },
+            didParseCell: function(data) {
+                if (data.row.section === 'body' && data.column.index > 0) {
+                    var text = String(data.cell.raw).toLowerCase();
+                    if (text.indexOf('break') !== -1 || text.indexOf('assembly') !== -1 || text.indexOf('event') !== -1) { 
+                        data.cell.styles.fillColor = [241, 245, 249]; 
+                        data.cell.styles.fontStyle = 'italic';
+                    }
+                }
+            }
+        });
+        
+        currentY = doc.lastAutoTable.finalY + 20;
+    });
+    
+    doc.save('Master_Timetable_' + section + '.pdf');
 }
 
 window.downloadTimetablePDF = downloadTimetablePDF;
