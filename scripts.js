@@ -29,7 +29,7 @@ var AA = {
     this.token = params.get('token');
 
     if (!this.token) {
-      // No token → go to login
+      // No token ΓåÆ go to login
       window.location.href = 'Login.html';
       return;
     }
@@ -281,13 +281,13 @@ function showToast(message, type, duration) {
     container.id = 'aa-toast-container';
     document.body.appendChild(container);
   }
-  var icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  var icons = { success: 'Γ£à', error: 'Γ¥î', warning: 'ΓÜá∩╕Å', info: 'Γä╣∩╕Å' };
   var t = type || 'info';
   var toast = document.createElement('div');
   toast.className = 'aa-toast ' + t;
-  toast.innerHTML = '<span class="aa-toast-icon">' + (icons[t] || 'ℹ️') + '</span>' +
+  toast.innerHTML = '<span class="aa-toast-icon">' + (icons[t] || 'Γä╣∩╕Å') + '</span>' +
     '<span class="aa-toast-msg">' + message + '</span>' +
-    '<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;padding:0 0 0 8px;color:#888;font-size:16px;">×</button>';
+    '<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;padding:0 0 0 8px;color:#888;font-size:16px;">├ù</button>';
   container.appendChild(toast);
   setTimeout(function() { if (toast.parentNode) toast.remove(); }, duration || 4000);
 }
@@ -482,7 +482,7 @@ function safeFloat(val, def) {
 
 function formatNaira(amount) {
   var n = parseFloat(amount) || 0;
-  return '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return 'Γéª' + n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatDate(dateStr) {
@@ -613,8 +613,8 @@ function renderPagination(containerId, total, pageSize, currentPage, onPage) {
   if (totalPages <= 1) { el.innerHTML = ''; return; }
   var html = '<div class="d-flex align-items-center gap-2" style="font-size:12px;">';
   html += '<span class="text-muted">Page ' + currentPage + ' of ' + totalPages + '</span>';
-  html += '<button class="aa-btn aa-btn-outline aa-btn-xs" ' + (currentPage <= 1 ? 'disabled' : '') + ' onclick="(' + onPage + ')(' + (currentPage - 1) + ')">‹ Prev</button>';
-  html += '<button class="aa-btn aa-btn-outline aa-btn-xs" ' + (currentPage >= totalPages ? 'disabled' : '') + ' onclick="(' + onPage + ')(' + (currentPage + 1) + ')">Next ›</button>';
+  html += '<button class="aa-btn aa-btn-outline aa-btn-xs" ' + (currentPage <= 1 ? 'disabled' : '') + ' onclick="(' + onPage + ')(' + (currentPage - 1) + ')">ΓÇ╣ Prev</button>';
+  html += '<button class="aa-btn aa-btn-outline aa-btn-xs" ' + (currentPage >= totalPages ? 'disabled' : '') + ' onclick="(' + onPage + ')(' + (currentPage + 1) + ')">Next ΓÇ║</button>';
   html += '</div>';
   el.innerHTML = html;
 }
@@ -651,8 +651,8 @@ function openPDFViewer(previewUrl, downloadUrl, title) {
   modal.className = 'aa-modal-backdrop open';
   modal.innerHTML = '<div class="aa-modal aa-modal-lg">' +
     '<div class="aa-modal-header">' +
-    '<h5 class="aa-modal-title">📄 ' + (title || 'Document Viewer') + '</h5>' +
-    '<button class="aa-modal-close" onclick="document.getElementById(\'aa-pdf-modal\').remove()">×</button></div>' +
+    '<h5 class="aa-modal-title">≡ƒôä ' + (title || 'Document Viewer') + '</h5>' +
+    '<button class="aa-modal-close" onclick="document.getElementById(\'aa-pdf-modal\').remove()">├ù</button></div>' +
     '<div class="aa-modal-body" style="padding:0;">' +
     '<iframe src="' + previewUrl + '" style="width:100%;height:70vh;border:none;"></iframe></div>' +
     '<div class="aa-modal-footer">' +
@@ -1021,201 +1021,6 @@ function generateBroadsheet() {
         body: body,
         theme: 'grid',
         styles: { fontSize: 8 },
-    if (res.success && res.notifications) {
-      renderNotifications(res.notifications);
-    }
-  } catch (err) {
-    console.error("Failed to fetch notifications", err);
-  }
-}
-
-function renderNotifications(notifications) {
-  const dropdown = document.getElementById('notification-dropdown');
-  const badge = document.getElementById('notification-badge');
-  if (!dropdown || !badge) return;
-
-  // Clear existing items but keep header
-  const header = dropdown.querySelector('.notification-header');
-  dropdown.innerHTML = '';
-  if (header) dropdown.appendChild(header);
-
-  let unreadCount = 0;
-
-  if (notifications.length === 0) {
-    dropdown.innerHTML += '<div class="notif-empty">No notifications yet.</div>';
-  } else {
-    notifications.forEach(n => {
-      if (!n.isRead) unreadCount++;
-      const item = document.createElement('div');
-      item.className = 'notification-item' + (n.isRead ? '' : ' unread');
-      
-      const dateStr = new Date(n.createdAt).toLocaleString();
-      
-      item.innerHTML = `
-        <div class="notif-title">${n.title}</div>
-        <div class="notif-msg">${n.message}</div>
-        <div class="notif-time">${dateStr}</div>
-      `;
-
-      item.onclick = async () => {
-        if (!n.isRead) {
-          item.classList.remove('unread');
-          unreadCount = Math.max(0, unreadCount - 1);
-          updateBadge(badge, unreadCount);
-          await runBackendAction("markNotificationRead", []); // Note: the backend expects { notificationId: n.id } in args? No, in Express body. 
-          // Wait, our runBackendAction wraps args in an array. 
-          // Express backend receives: { action, args: [...] }
-          // Let's modify the runBackendAction call to pass the notificationId in args.
-          await runBackendAction("markNotificationRead", [{ notificationId: n.id }]);
-        }
-      };
-
-      dropdown.appendChild(item);
-    });
-  }
-
-  updateBadge(badge, unreadCount);
-}
-
-function updateBadge(badge, count) {
-  if (count > 0) {
-    badge.textContent = count > 9 ? '9+' : count;
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-// --- Broadsheet Logic ---
-function openBroadsheetModal() {
-  var html = `
-    <div class="aa-modal-backdrop open" id="broadsheetModal" style="z-index: 99999 !important;">
-      <div class="aa-modal" style="max-width: 450px;">
-        <div class="aa-modal-header">
-          <h3 class="aa-modal-title">Download Broadsheet</h3>
-          <button class="aa-modal-close" onclick="document.body.removeChild(this.closest('.aa-modal-backdrop'))"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="aa-modal-body">
-          <div class="aa-form-group">
-            <label class="aa-label">Class</label>
-            <select id="bsClass" class="aa-input">
-              <option value="">Loading classes...</option>
-            </select>
-          </div>
-          <div class="aa-form-group">
-            <label class="aa-label">Term</label>
-            <select id="bsTerm" class="aa-input">
-              <option value="First Term">First Term</option>
-              <option value="Second Term">Second Term</option>
-              <option value="Third Term">Third Term</option>
-            </select>
-          </div>
-          <div class="aa-form-group">
-            <label class="aa-label">Session</label>
-            <input type="text" id="bsSession" class="aa-input" placeholder="e.g. 2024/2025" />
-          </div>
-          <div class="aa-form-group">
-            <label class="aa-label">Format</label>
-            <select id="bsFormat" class="aa-input">
-              <option value="csv">Excel / CSV</option>
-              <option value="pdf">PDF Document</option>
-            </select>
-          </div>
-          <button class="aa-btn aa-btn-primary" style="width:100%" onclick="generateBroadsheet()"><i class="fa fa-download"></i> Download</button>
-        </div>
-      </div>
-    </div>
-  `;
-  var div = document.createElement('div');
-  div.innerHTML = html;
-  document.body.appendChild(div.firstElementChild);
-  
-  if (AA.settings.current_session) document.getElementById('bsSession').value = AA.settings.current_session;
-  if (AA.settings.current_term) document.getElementById('bsTerm').value = AA.settings.current_term;
-  
-  // Fetch classes
-  callServer('adminGetClasses', [AA.token, ''], function(res) {
-    var sel = document.getElementById('bsClass');
-    if(!sel) return;
-    sel.innerHTML = '<option value="">-- Select Class --</option>';
-    if (res && res.length) { // API returns an array directly for adminGetClasses in scripts.js wrapper?
-      // Wait, let's check how callServer passes data. The callback receives `res.data` if success, or `res` if it's the raw payload. 
-      // Most places use data.forEach where callback argument is `data`.
-      var list = Array.isArray(res) ? res : (res.data || []);
-      list.forEach(function(c) {
-        sel.innerHTML += '<option value="'+c.className+'">'+c.className+' ('+(c.section || 'N/A')+')</option>';
-      });
-    }
-  }, null, true);
-}
-
-function generateBroadsheet() {
-  var cls = document.getElementById('bsClass').value;
-  var term = document.getElementById('bsTerm').value;
-  var session = document.getElementById('bsSession').value;
-  var format = document.getElementById('bsFormat').value;
-  
-  if (!cls || !term || !session) return showToast('Please fill all fields', 'error');
-  
-  showToast('Gathering broadsheet data...', 'info');
-  var btn = document.querySelector('#broadsheetModal .aa-btn-primary');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generating...';
-  
-  callServer('adminGetBroadsheetData', [AA.token, cls, term, session], function(res) {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa fa-download"></i> Download';
-    
-    if (res.success === false) return showToast(res.message || 'An error occurred.', 'error');
-    
-    var payload = res.success !== undefined ? res.data : res;
-    if (!payload || !payload.students || payload.students.length === 0) return showToast('No data found for this class.', 'warning');
-    
-    var subjects = payload.subjects;
-    var students = payload.students;
-    var schoolName = AA.settings.school_name || 'School';
-    
-    if (format === 'csv') {
-      var csv = "Student Name,";
-      csv += subjects.join(",") + ",Total,Average\n";
-      students.forEach(function(s) {
-        csv += '"' + s.fullName + '",';
-        subjects.forEach(function(sub) {
-          csv += (s.subjects[sub] || 0) + ",";
-        });
-        csv += s.totalScore + "," + s.average + "\n";
-      });
-      var link = document.createElement("a");
-      link.setAttribute("href", encodeURI("data:text/csv;charset=utf-8," + csv));
-      link.setAttribute("download", cls + "_Broadsheet_" + term + ".csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast('Broadsheet downloaded.', 'success');
-      document.querySelector('#broadsheetModal .aa-modal-close').click();
-    } else if (format === 'pdf') {
-      if (typeof window.jspdf === 'undefined') return showToast('PDF library not loaded.', 'error');
-      var doc = new window.jspdf.jsPDF({ orientation: 'landscape' });
-      doc.setFontSize(16);
-      doc.text(schoolName + ' - Broadsheet', 14, 15);
-      doc.setFontSize(10);
-      doc.text('Class: ' + cls + ' | Term: ' + term + ' | Session: ' + session, 14, 22);
-      
-      var head = [['Student Name'].concat(subjects).concat(['Total', 'Avg'])];
-      var body = students.map(function(s) {
-        var row = [s.fullName];
-        subjects.forEach(function(sub) { row.push(s.subjects[sub] || 0); });
-        row.push(s.totalScore);
-        row.push(s.average);
-        return row;
-      });
-      
-      doc.autoTable({
-        startY: 28,
-        head: head,
-        body: body,
-        theme: 'grid',
-        styles: { fontSize: 8 },
         headStyles: { fillColor: [30, 58, 95] }
       });
       
@@ -1226,6 +1031,8 @@ function generateBroadsheet() {
   });
 }
 
+
+
 // ==========================================
 // TIMETABLE GENERATOR FRONTEND LOGIC
 // ==========================================
@@ -1233,19 +1040,17 @@ function generateBroadsheet() {
 var timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
 
 function loadTimetable() {
-    // Populate class dropdowns from already-loaded globalClasses if available
+    // Use already-loaded globalClasses if available, else fetch
     var classes = (typeof globalClasses !== 'undefined' && globalClasses.length) ? globalClasses : [];
     if (classes.length) {
         _populateTimetableClassOptions(classes);
     } else {
-        // Fall back to fetching if not yet loaded
         callServer('adminGetClasses', [AA.token], function(data) {
             var list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
             _populateTimetableClassOptions(list);
         });
     }
 
-    // Populate session/term selectors
     var sessionSelect = document.getElementById('timetable-session-select');
     if (sessionSelect) {
         var sessVal = (typeof currentSession !== 'undefined' && currentSession) ? currentSession :
@@ -1285,14 +1090,11 @@ function _populateTimetableClassOptions(classes) {
 
 function openTimetableConfigModal() {
     callServer('adminGetTimetableConfig', [AA.token], function(res) {
-        // The backend returns { success, data } via callServer
         if (res && res.success && res.data) {
             timetableConfig = res.data;
         } else if (res && res.days) {
-            // Already unwrapped
             timetableConfig = res;
         } else {
-            // No config yet — open with defaults so admin can create one
             timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
         }
         if (!timetableConfig.days) timetableConfig.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -1341,7 +1143,6 @@ function saveTimetableConfig() {
 }
 
 function openTimetableGenerateModal() {
-    // Re-populate class list from latest globalClasses
     loadTimetable();
     openModal('modal-timetable-generate');
 }
@@ -1464,8 +1265,8 @@ function downloadTimetablePDF(className) {
         didParseCell: function(data) {
             if (data.cell.raw && data.cell.raw.innerText) {
                 var text = data.cell.raw.innerText.toLowerCase();
-                if (text.includes('break')) { data.cell.styles.fillColor = [241, 245, 249]; data.cell.styles.fontStyle = 'italic'; }
-                else if (text.includes('free')) { data.cell.styles.textColor = [148, 163, 184]; }
+                if (text.indexOf('break') !== -1) { data.cell.styles.fillColor = [241, 245, 249]; data.cell.styles.fontStyle = 'italic'; }
+                else if (text.indexOf('free') !== -1) { data.cell.styles.textColor = [148, 163, 184]; }
             }
         }
     });
