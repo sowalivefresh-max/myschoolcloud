@@ -1324,71 +1324,96 @@ function loadTimetableData() {
             var isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("year") || className.toLowerCase().includes("playgroup");
             var secType = isPrimary ? "Primary" : "High";
 
-            var btnHtml = '<div style="text-align:right; margin-bottom:10px;">' +
-                '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF('' + secType + '')" style="margin-right:10px;">' +
-                '<i class="fa fa-file-excel"></i> Export Master (' + secType + ')</button>' +
-                '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF('' + className + '')">' +
-                '<i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
+            // Group days that share the same time-slot signature into one table
+            // Signature = JSON of the label/type/customLabel values in order
+            function getDaySignature(day) {
+                var periods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day] : (config.periods || []);
+                return JSON.stringify(periods.map(function(p) { return p.label + '|' + (p.type || '') + '|' + (p.customLabel || ''); }));
+            }
 
-            // Build the table — each day uses its OWN column headers
-            var tableHtml = '<div style="overflow-x:auto;"><table class="aa-table" id="timetable-pdf-table" style="min-width:600px;">';
-
+            // Build ordered groups preserving day order
+            var groups = [];         // [{sig, days:[], periods:[]}]
+            var sigIndex = {};
             config.days.forEach(function(day) {
-                var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day])
-                    ? config.scheduleTemplate[day]
-                    : (config.periods || []);
-                var schedule = (tt.schedule && tt.schedule[day]) ? tt.schedule[day] : [];
-
-                // Header row for this day
-                tableHtml += '<thead><tr style="background:#1e3a5f; color:#fff;">' +
-                    '<th style="padding:8px 12px; text-align:left; white-space:nowrap; min-width:90px;">' + day + '</th>';
-
-                dayPeriods.forEach(function(p) {
-                    tableHtml += '<th style="padding:6px 10px; text-align:center; white-space:nowrap; font-weight:600;">' +
-                        (p.label || '') + '</th>';
-                });
-                tableHtml += '</tr></thead>';
-
-                // Data row for this day — detect consecutive breaks to merge
-                tableHtml += '<tbody><tr>';
-                tableHtml += '<td style="font-weight:bold; white-space:nowrap; padding:8px 12px;"></td>'; // empty day cell (day is in header)
-
-                var pIdx = 0;
-                while (pIdx < dayPeriods.length) {
-                    var cfgPeriod = dayPeriods[pIdx];
-                    var periodType = cfgPeriod.type || (cfgPeriod.isBreak ? 'Break' : 'Subject');
-                    var scheduledEntry = schedule[pIdx] || null;
-
-                    if (periodType === 'Break' || periodType === 'Event') {
-                        // Count consecutive break/event slots to determine colspan
-                        var span = 1;
-                        while (pIdx + span < dayPeriods.length) {
-                            var nextCfg = dayPeriods[pIdx + span];
-                            var nextType = nextCfg.type || (nextCfg.isBreak ? 'Break' : 'Subject');
-                            if (nextType === 'Break' || nextType === 'Event') {
-                                span++;
-                            } else {
-                                break;
-                            }
-                        }
-                        var breakName = cfgPeriod.customLabel || (scheduledEntry && scheduledEntry.label) || cfgPeriod.label || 'Break';
-                        // If the break label equals the time label (old bug), use customLabel or "Break"
-                        if (breakName === cfgPeriod.label && !cfgPeriod.customLabel) breakName = 'Break';
-                        tableHtml += '<td colspan="' + span + '" style="background:#e2e8f0; text-align:center; vertical-align:middle; padding:8px;">' +
-                            '<strong style="writing-mode:horizontal-tb; letter-spacing:1px;">' + breakName + '</strong></td>';
-                        pIdx += span;
-                    } else {
-                        var subject = scheduledEntry && scheduledEntry.type === 'Subject' ? scheduledEntry.subjectName : (scheduledEntry ? scheduledEntry.label : '-');
-                        tableHtml += '<td style="text-align:center; padding:6px 10px;">' + (subject || '-') + '</td>';
-                        pIdx++;
-                    }
+                var sig = getDaySignature(day);
+                if (sigIndex[sig] !== undefined) {
+                    groups[sigIndex[sig]].days.push(day);
+                } else {
+                    var periods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day] : (config.periods || []);
+                    sigIndex[sig] = groups.length;
+                    groups.push({ sig: sig, days: [day], periods: periods });
                 }
-                tableHtml += '</tr></tbody>';
             });
 
-            tableHtml += '</table></div>';
+            var btnHtml = '<div style="text-align:right; margin-bottom:10px;">' +
+                '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF(\'' + secType + '\')" style="margin-right:10px;">' +
+                '<i class="fa fa-file-excel"></i> Export Master (' + secType + ')</button>' +
+                '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')">' +
+                '<i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
 
+            var tableHtml = '<div id="timetable-pdf-table">';
+
+            groups.forEach(function(group, gIdx) {
+                var periods = group.periods;
+
+                // Build header: Day | time1 | time2 | ...
+                var theadHtml = '<thead><tr>' +
+                    '<th style="min-width:90px; text-align:left;">Day</th>';
+
+                periods.forEach(function(p) {
+                    var pType = p.type || (p.isBreak ? 'Break' : 'Subject');
+                    if (pType === 'Break' || pType === 'Event') {
+                        theadHtml += '<th style="background:#d1d5db; color:#374151; text-align:center;">' + (p.label || '') + '</th>';
+                    } else {
+                        theadHtml += '<th style="text-align:center;">' + (p.label || '') + '</th>';
+                    }
+                });
+                theadHtml += '</tr></thead>';
+
+                // Build body: one row per day in this group
+                var tbodyHtml = '<tbody>';
+                group.days.forEach(function(day) {
+                    var schedule = (tt.schedule && tt.schedule[day]) ? tt.schedule[day] : [];
+                    tbodyHtml += '<tr><td style="font-weight:bold; white-space:nowrap;">' + day + '</td>';
+
+                    var pIdx = 0;
+                    while (pIdx < periods.length) {
+                        var cfgP = periods[pIdx];
+                        var pType = cfgP.type || (cfgP.isBreak ? 'Break' : 'Subject');
+
+                        if (pType === 'Break' || pType === 'Event') {
+                            // Merge consecutive break/event columns
+                            var span = 1;
+                            while (pIdx + span < periods.length) {
+                                var next = periods[pIdx + span];
+                                var nType = next.type || (next.isBreak ? 'Break' : 'Subject');
+                                if (nType === 'Break' || nType === 'Event') span++;
+                                else break;
+                            }
+                            // Get the display name from config (customLabel > scheduledEntry.label > cfgP.label > "Break")
+                            var scheduledEntry = schedule[pIdx] || null;
+                            var breakName = cfgP.customLabel || (scheduledEntry && scheduledEntry.label && scheduledEntry.label !== cfgP.label ? scheduledEntry.label : null) || 'Break';
+                            tbodyHtml += '<td colspan="' + span + '" style="background:#e2e8f0; text-align:center; font-weight:bold; letter-spacing:0.5px; color:#475569;">' + breakName + '</td>';
+                            pIdx += span;
+                        } else {
+                            var entry = schedule[pIdx] || null;
+                            var cellText = (entry && entry.type === 'Subject') ? entry.subjectName : (entry && entry.label ? entry.label : '-');
+                            tbodyHtml += '<td style="text-align:center;">' + (cellText || '-') + '</td>';
+                            pIdx++;
+                        }
+                    }
+                    tbodyHtml += '</tr>';
+                });
+                tbodyHtml += '</tbody>';
+
+                var marginTop = gIdx > 0 ? 'margin-top:24px;' : '';
+                tableHtml += '<div style="overflow-x:auto; ' + marginTop + '">' +
+                    '<table class="aa-table">' + theadHtml + tbodyHtml + '</table></div>';
+            });
+
+            tableHtml += '</div>';
             area.innerHTML = btnHtml + tableHtml;
+
             window.globalTimetableList = list;
             window.globalTimetableConfig = config;
         });
