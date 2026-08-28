@@ -1518,116 +1518,170 @@ function downloadMasterTimetablePDF(section) {
     var config = window.globalTimetableConfig;
     if (!list || !config) return showToast('Please load timetable data first.', 'error');
 
-    var filteredList = list.filter(function(t){
+    var filteredList = list.filter(function(t) {
         var c = t.className.toLowerCase();
         var isPri = ['primary','nursery','creche','basic','year','playgroup'].some(function(k){ return c.includes(k); });
-        if (section==='Primary') return isPri;
-        if (section==='High') return !isPri;
+        if (section === 'Primary') return isPri;
+        if (section === 'High')    return !isPri;
         return true;
     });
-    if (!filteredList.length) return showToast('No timetables for '+section+' section.', 'warning');
-    filteredList.sort(function(a,b){ return a.className.localeCompare(b.className); });
+    if (!filteredList.length) return showToast('No timetables for ' + section + ' section.', 'warning');
+    filteredList.sort(function(a, b){ return a.className.localeCompare(b.className); });
 
     var jsPDF = window.jspdf.jsPDF;
-    var doc   = new jsPDF('landscape');
+    var doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
     var pw    = doc.internal.pageSize.getWidth();
-    var schoolName = (document.getElementById('sb-school-name')||{}).innerText || 'School';
+
+    var schoolName = (document.getElementById('sb-school-name') || {}).innerText || 'School';
     var termSel    = document.getElementById('timetable-term-select');
     var term       = termSel ? termSel.options[termSel.selectedIndex].text : '';
-    var session    = (document.getElementById('timetable-session-select')||{}).value || '';
+    var session    = (document.getElementById('timetable-session-select') || {}).value || '';
 
-    /* Single heading */
-    doc.setFontSize(16); doc.text(schoolName, pw/2, 16, {align:'center'});
-    doc.setFontSize(11);
-    doc.text('Master Timetable: '+section+' Section  ('+term+', '+session+')', pw/2, 24, {align:'center'});
+    /* ─── Heading ─── */
+    doc.setFontSize(16); doc.setFont(undefined, 'bold');
+    doc.text(schoolName, pw / 2, 14, { align: 'center' });
+    doc.setFontSize(11); doc.setFont(undefined, 'normal');
+    doc.text('Master Timetable: ' + section + ' Section  (' + term + ', ' + session + ')', pw / 2, 21, { align: 'center' });
 
-    /* Use first day's periods as the master column header */
-    var firstDay = config.days[0];
-    var masterPeriods = (config.scheduleTemplate && config.scheduleTemplate[firstDay]) || config.periods || [];
+    /* ─── Use first day's periods as master column template ─── */
+    function getDayPeriods(day) {
+        return (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
+    }
+    var masterPeriods = getDayPeriods(config.days[0]);
 
-    /* Build headRow: Day | Class | t1 | t2 | Break | t3 | ... */
-    var headRow = ['Day', 'Class'];
-    var breakColIdx = {};   // 0-based column index in headRow -> true
-    var pIdx = 0, colBase = 2;
-    while (pIdx < masterPeriods.length) {
-        var p = masterPeriods[pIdx];
+    /* ─── Build effectiveCols: merge consecutive breaks into one ─── */
+    var effectiveCols = [];  /* [{type:'subject'|'break', label, origIdx(s)}] */
+    var pi = 0;
+    while (pi < masterPeriods.length) {
+        var p  = masterPeriods[pi];
         var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
-        if (pt==='Break'||pt==='Event') {
-            var sp=1;
-            while(pIdx+sp<masterPeriods.length){var np=masterPeriods[pIdx+sp];var nt=np.type||(np.isBreak?'Break':'Subject');if(nt==='Break'||nt==='Event')sp++;else break;}
-            var bn = p.customLabel||p.label||'Break';
-            for(var si=0;si<sp;si++){ headRow.push(si===0?bn:''); breakColIdx[colBase+si]=true; }
-            pIdx+=sp; colBase+=sp;
+        if (pt === 'Break' || pt === 'Event') {
+            var bn = p.customLabel || p.label || 'Break';
+            var idxs = [pi]; pi++;
+            while (pi < masterPeriods.length) {
+                var np = masterPeriods[pi];
+                var npt = np.type || (np.isBreak ? 'Break' : 'Subject');
+                if (npt === 'Break' || npt === 'Event') { idxs.push(pi); pi++; } else break;
+            }
+            effectiveCols.push({ type: 'break', label: bn, origIdxs: idxs });
         } else {
-            headRow.push(p.label||('P'+(pIdx+1)));
-            pIdx++; colBase++;
+            effectiveCols.push({ type: 'subject', label: p.label || ('P' + (pi+1)), origIdx: pi });
+            pi++;
         }
     }
 
-    /* Build body rows: for each day → for each class → one row */
-    var bodyRows = [];
-    config.days.forEach(function(day, dayIdx) {
-        var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
-        filteredList.forEach(function(tt, clsIdx) {
-            var sch = (tt.schedule && tt.schedule[day]) || [];
-            /* Day cell: only on the first class row of each day */
-            var dayCell = (clsIdx === 0) ? day : '';
-            var row = [dayCell, tt.className];
-            var pi=0;
-            while (pi < masterPeriods.length) {
-                var cp = masterPeriods[pi];
-                var cpt = cp.type||(cp.isBreak?'Break':'Subject');
-                if (cpt==='Break'||cpt==='Event') {
-                    var sp2=1;
-                    while(pi+sp2<masterPeriods.length){var np2=masterPeriods[pi+sp2];var nt2=np2.type||(np2.isBreak?'Break':'Subject');if(nt2==='Break'||nt2==='Event')sp2++;else break;}
-                    for(var si2=0;si2<sp2;si2++) row.push('');
-                    pi+=sp2;
-                } else {
-                    var en = sch[pi]||null;
-                    row.push((en&&en.type==='Subject')?en.subjectName:'-');
-                    pi++;
-                }
-            }
-            bodyRows.push(row);
-        });
-        /* Blank separator row between days */
-        if (dayIdx < config.days.length-1) {
-            var sepRow = new Array(headRow.length).fill('');
-            bodyRows.push(sepRow);
+    /* ─── Map absolute column indices for break columns ─── */
+    /* col 0 = Day, col 1 = Class, col 2+ = effectiveCols[0..] */
+    var breakAbsCols = {};   /* absColIdx -> label */
+    effectiveCols.forEach(function(col, i) {
+        if (col.type === 'break') breakAbsCols[2 + i] = col.label;
+    });
+
+    var nClasses   = filteredList.length;
+    var totalRows  = config.days.length * nClasses;
+
+    /* ─── Head row ─── */
+    var DK = [30, 58, 95];     /* dark header bg */
+    var GR = [226, 232, 240];  /* break col bg */
+    var headRow = [
+        { content: '', styles: { fillColor: DK } },
+        { content: 'CLASSES', styles: { fillColor: DK, textColor: [255,255,255], fontStyle: 'bold', halign: 'center' } }
+    ];
+    effectiveCols.forEach(function(col) {
+        if (col.type === 'break') {
+            headRow.push({ content: col.label.toUpperCase(),
+                           styles: { fillColor: GR, textColor: [200,0,0], fontStyle: 'bold', halign: 'center', valign: 'middle' } });
+        } else {
+            headRow.push({ content: col.label,
+                           styles: { fillColor: DK, textColor: [255,255,255], halign: 'center' } });
         }
     });
 
+    /* ─── Body rows ─── */
+    var body = [];
+    config.days.forEach(function(day, dayIdx) {
+        var sch_map = {};
+        filteredList.forEach(function(tt) {
+            sch_map[tt.className] = (tt.schedule && tt.schedule[day]) || [];
+        });
+
+        filteredList.forEach(function(tt, clsIdx) {
+            var sch = sch_map[tt.className];
+            var row = [];
+
+            /* Day column — rowSpan spans all classes for this day */
+            if (clsIdx === 0) {
+                row.push({ content: '', rowSpan: nClasses,
+                           styles: { fillColor: DK, halign: 'center', valign: 'middle' } });
+            }
+
+            /* Class column */
+            row.push({ content: tt.className, styles: { fontStyle: 'bold', halign: 'left' } });
+
+            /* Effective columns */
+            effectiveCols.forEach(function(col, colI) {
+                if (col.type === 'break') {
+                    /* Only push the spanning cell once (first row of the entire table) */
+                    if (dayIdx === 0 && clsIdx === 0) {
+                        row.push({ content: '', rowSpan: totalRows,
+                                   styles: { fillColor: GR, halign: 'center', valign: 'middle' } });
+                    }
+                    /* All other rows: skip — rowSpan handles it */
+                } else {
+                    var origIdx = col.origIdx;
+                    var entry   = sch[origIdx] || null;
+                    var text    = (entry && entry.type === 'Subject') ? entry.subjectName : '-';
+                    row.push({ content: text, styles: { halign: 'center' } });
+                }
+            });
+
+            body.push(row);
+        });
+    });
+
+    /* ─── Render table ─── */
     doc.autoTable({
         head: [headRow],
-        body: bodyRows,
-        startY: 30,
+        body: body,
+        startY: 26,
         theme: 'grid',
-        headStyles: { fillColor:[30,58,95], halign:'center', fontSize:8, fontStyle:'bold' },
-        styles: { fontSize:7, cellPadding:2, halign:'center', valign:'middle', overflow:'linebreak' },
+        headStyles: { fontSize: 7, fontStyle: 'bold', halign: 'center', valign: 'middle', minCellHeight: 10 },
+        styles:     { fontSize: 6.5, cellPadding: 1.5, valign: 'middle', overflow: 'linebreak' },
         columnStyles: {
-            0: { fontStyle:'bold', halign:'left', cellWidth:20 },
-            1: { fontStyle:'bold', halign:'left', cellWidth:22 }
+            0: { cellWidth: 10, halign: 'center' },   /* Day  */
+            1: { cellWidth: 22, halign: 'left'   }    /* Class */
         },
-        didParseCell: function(data) {
-            if (breakColIdx[data.column.index]) {
-                data.cell.styles.fillColor = [226,232,240];
-                data.cell.styles.textColor = [71,85,105];
-                data.cell.styles.fontStyle = 'bolditalic';
+        didDrawCell: function(data) {
+            /* Draw vertical text in Day column (col 0) body cells that have rowSpan */
+            if (data.row.section === 'body' && data.column.index === 0 && data.cell.height > 5) {
+                var dayIdx2  = Math.floor(data.row.index / nClasses);
+                var dayName  = (config.days[dayIdx2] || '').toUpperCase();
+                var cx = data.cell.x + data.cell.width  / 2;
+                var cy = data.cell.y + data.cell.height / 2;
+                doc.saveGraphicsState();
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(255, 255, 255);
+                doc.text(dayName, cx, cy, { angle: 90, align: 'center', baseline: 'middle' });
+                doc.restoreGraphicsState();
             }
-            /* Shade separator rows */
-            if (data.row.section==='body') {
-                var isAllEmpty = data.row.raw.every(function(c){ return c===''; });
-                if (isAllEmpty) data.cell.styles.fillColor = [248,250,252];
-            }
-            /* Shade day-grouping rows (first class row of each day block) */
-            if (data.row.section==='body' && data.column.index===0 && data.cell.raw) {
-                data.cell.styles.fontStyle = 'bold';
-                data.cell.styles.fillColor = [241,245,249];
+
+            /* Draw vertical text in break columns */
+            if (data.row.section === 'body' && breakAbsCols[data.column.index] && data.cell.height > 5) {
+                var breakLabel = breakAbsCols[data.column.index];
+                var cx2 = data.cell.x + data.cell.width  / 2;
+                var cy2 = data.cell.y + data.cell.height / 2;
+                doc.saveGraphicsState();
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(200, 0, 0);
+                doc.text(breakLabel.toUpperCase(), cx2, cy2, { angle: 90, align: 'center', baseline: 'middle' });
+                doc.restoreGraphicsState();
             }
         }
     });
 
-    doc.save('Master_Timetable_'+section+'.pdf');
+    doc.save('Master_Timetable_' + section + '.pdf');
 }
 
 
