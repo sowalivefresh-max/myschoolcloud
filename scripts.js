@@ -281,13 +281,19 @@ function showToast(message, type, duration) {
     container.id = 'aa-toast-container';
     document.body.appendChild(container);
   }
-  var icons = { success: 'Γ£à', error: 'Γ¥î', warning: 'ΓÜá∩╕Å', info: 'Γä╣∩╕Å' };
   var t = type || 'info';
+  var iconMap = {
+    success: '<i class="fa fa-check-circle" style="color:#10b981;font-size:16px;"></i>',
+    error:   '<i class="fa fa-times-circle" style="color:#ef4444;font-size:16px;"></i>',
+    warning: '<i class="fa fa-exclamation-triangle" style="color:#f59e0b;font-size:16px;"></i>',
+    info:    '<i class="fa fa-info-circle" style="color:#3b82f6;font-size:16px;"></i>'
+  };
+  var icon = iconMap[t] || iconMap['info'];
   var toast = document.createElement('div');
   toast.className = 'aa-toast ' + t;
-  toast.innerHTML = '<span class="aa-toast-icon">' + (icons[t] || 'Γä╣∩╕Å') + '</span>' +
+  toast.innerHTML = '<span class="aa-toast-icon">' + icon + '</span>' +
     '<span class="aa-toast-msg">' + message + '</span>' +
-    '<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;padding:0 0 0 8px;color:#888;font-size:16px;">├ù</button>';
+    '<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;padding:0 0 0 8px;color:#888;font-size:16px;">&times;</button>';
   container.appendChild(toast);
   setTimeout(function() { if (toast.parentNode) toast.remove(); }, duration || 4000);
 }
