@@ -1685,6 +1685,30 @@ function downloadMasterTimetablePDF(section) {
 }
 
 
+
+function clearTimetables() {
+    var termSel = document.getElementById('timetable-term-select');
+    var sessionSel = document.getElementById('timetable-session-select');
+    if (!termSel || !sessionSel) return showToast('Term and Session selectors missing.', 'error');
+    
+    var term = termSel.options[termSel.selectedIndex].text;
+    var session = sessionSel.value;
+    if (!term || !session) return showToast('Please select a term and session first.', 'warning');
+    
+    if (!confirm('Are you sure you want to clear ALL generated timetables for ' + term + ' (' + session + ')? This action cannot be undone.')) return;
+    
+    showToast('Clearing timetables...', 'info');
+    callServer('adminClearTimetables', [AA.token, term, session, null], function(res) {
+        if (res && res.success) {
+            showToast(res.message || 'Timetables cleared successfully.', 'success');
+            loadTimetableData(); // Refresh UI
+        } else {
+            showToast(res && res.message ? res.message : 'Failed to clear timetables.', 'error');
+        }
+    });
+}
+window.clearTimetables = clearTimetables;
+
 window.downloadTimetablePDF = downloadTimetablePDF;
 window.loadTimetable = loadTimetable;
 window.openTimetableConfigModal = openTimetableConfigModal;

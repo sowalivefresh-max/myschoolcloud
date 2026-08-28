@@ -238,6 +238,8 @@ app.post("/api", async (req, res) => {
         if (action === "adminSaveTimetableConfig") { req.body.data = args[1]; }
         if (action === "adminGenerateTimetable") { req.body.classes = args[1]; req.body.term = args[2]; req.body.session = args[3]; req.body.config = args[4]; }
         if (action === "adminGetTimetables") { req.body.term = args[1]; req.body.session = args[2]; }
+        if (action === "adminClearTimetables") { req.body.term = args[1]; req.body.session = args[2]; req.body.className = args[3]; }
+
         if (action === "adminSaveTimetable") { req.body.data = args[1]; }
         if (action === "adminSetComplianceRules") { req.body.rules = args[1]; }
         if (action === "adminSetEarlyBirdConfig") { req.body.config = args[1]; }
@@ -394,6 +396,8 @@ app.post("/api", async (req, res) => {
       case "adminSaveTimetableConfig": return requireRole(req, res, () => adminActions.adminSaveTimetableConfig(req, res));
       case "adminGenerateTimetable": return requireRole(req, res, () => adminActions.adminGenerateTimetable(req, res));
       case "adminGetTimetables": return requireRole(req, res, () => adminActions.adminGetTimetables(req, res));
+      case "adminClearTimetables": return requireRole(req, res, () => adminActions.adminClearTimetables(req, res));
+
       case "adminSaveTimetable": return requireRole(req, res, () => adminActions.adminSaveTimetable(req, res));
       case "adminGetAuditLogs": return requireRole(req, res, () => adminActions.adminGetAuditLogs(req, res));
       case "adminGetPasswordRequests": return requireRole(req, res, () => adminActions.adminGetPasswordRequests(req, res));

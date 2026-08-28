@@ -3024,6 +3024,28 @@ module.exports = function(db, notificationsActions) {
       }
     },
 
+
+    adminClearTimetables: async (req, res) => {
+      try {
+        const { term, session, className } = req.body;
+        if (!term || !session) {
+          return res.json({ success: false, message: "Missing term or session." });
+        }
+        let query = db.collection("timetables").where("term", "==", term).where("session", "==", session);
+        if (className) {
+          query = query.where("className", "==", className);
+        }
+        const snap = await query.get();
+        const batch = db.batch();
+        snap.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        return res.json({ success: true, message: `Successfully cleared ${snap.docs.length} timetable(s).` });
+      } catch (err) {
+        return res.json({ success: false, message: err.message });
+      }
+    },
     adminGetTimetables: async (req, res) => {
       try {
         const { term, session } = req.body;
