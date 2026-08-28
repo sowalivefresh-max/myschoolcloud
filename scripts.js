@@ -1140,7 +1140,7 @@ function _renderTimetableDayTabs() {
     timetableConfig.days.forEach(function(day) {
         var isAct = day === activeTimetableDay;
         var btnClass = isAct ? 'aa-btn-primary' : 'aa-btn-outline';
-        html += '<button class="aa-btn aa-btn-sm ' + btnClass + '" onclick="setActiveTimetableDay('' + day + '')">' + day + '</button>';
+        html += '<button class="aa-btn aa-btn-sm ' + btnClass + '" onclick="setActiveTimetableDay(\'' + day + '\')">' + day + '</button>';
     });
     var tabsEl = document.getElementById('tt-cfg-day-tabs');
     if (tabsEl) tabsEl.innerHTML = html;
@@ -1175,7 +1175,9 @@ function _renderTimetableSlots() {
         var typeVal = p.type || (p.isBreak ? 'Break' : 'Subject');
         var isBreakOrEvent = (typeVal === 'Break' || typeVal === 'Event');
 
-        var typeSel = '<select class="aa-input" style="min-width:100px;" onchange="_onSlotTypeChange('' + activeTimetableDay + '',' + idx + ',this.value)">' +
+        var d = activeTimetableDay.replace(/'/g, "\'");
+
+        var typeSel = '<select class="aa-input" style="min-width:100px;" onchange="_onSlotTypeChange(\'' + d + '\',' + idx + ',this.value)">' +
             '<option value="Subject"' + (typeVal === 'Subject' ? ' selected' : '') + '>Subject</option>' +
             '<option value="Break"'  + (typeVal === 'Break'   ? ' selected' : '') + '>Break</option>'   +
             '<option value="Event"'  + (typeVal === 'Event'   ? ' selected' : '') + '>Event</option>'   +
@@ -1183,19 +1185,19 @@ function _renderTimetableSlots() {
 
         var customLabelField = isBreakOrEvent
             ? '<div style="flex:1;"><label>Break/Event Name</label>' +
-              '<input type="text" class="aa-input" value="' + (p.customLabel || '') + '" ' +
-              'placeholder="e.g. Short Break" onchange="_onSlotCustomLabel('' + activeTimetableDay + '',' + idx + ',this.value)"></div>'
+              '<input type="text" class="aa-input" value="' + (p.customLabel || '').replace(/"/g, '&quot;') + '" ' +
+              'placeholder="e.g. Short Break" onchange="_onSlotCustomLabel(\'' + d + '\',' + idx + ',this.value)"></div>'
             : '';
 
         var rowBg = isBreakOrEvent ? 'background:#fef3c7;' : 'background:#f8fafc;';
 
         html += '<div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end; ' + rowBg + ' padding:10px; border-radius:5px; margin-bottom:6px;">' +
             '<div style="flex:2;"><label>Period ' + (idx + 1) + ' Time</label>' +
-            '<input type="text" class="aa-input" value="' + (p.label || '') + '" placeholder="e.g. 08:00 - 08:40" ' +
-            'onchange="_onSlotLabel('' + activeTimetableDay + '',' + idx + ',this.value)"></div>' +
+            '<input type="text" class="aa-input" value="' + (p.label || '').replace(/"/g, '&quot;') + '" placeholder="e.g. 08:00 - 08:40" ' +
+            'onchange="_onSlotLabel(\'' + d + '\',' + idx + ',this.value)"></div>' +
             '<div><label>Type</label>' + typeSel + '</div>' +
             customLabelField +
-            '<button class="aa-btn aa-btn-sm aa-btn-danger" style="margin-bottom:0;" onclick="removeTimetableSlot('' + activeTimetableDay + '',' + idx + ')"><i class="fa fa-trash"></i></button>' +
+            '<button class="aa-btn aa-btn-sm aa-btn-danger" style="margin-bottom:0;" onclick="removeTimetableSlot(\'' + d + '\',' + idx + ')"><i class="fa fa-trash"></i></button>' +
             '</div>';
     });
 
