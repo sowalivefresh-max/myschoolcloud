@@ -1305,7 +1305,6 @@ function loadTimetableData() {
     var className = document.getElementById('timetable-class-select').value;
     var term = document.getElementById('timetable-term-select').value;
     var session = document.getElementById('timetable-session-select').value;
-
     if (!className) return showToast('Please select a class.', 'warning');
 
     var area = document.getElementById('timetable-display-area');
@@ -1314,251 +1313,323 @@ function loadTimetableData() {
     callServer('adminGetTimetableConfig', [AA.token], function(resCfg) {
         var config = (resCfg && resCfg.success && resCfg.data) ? resCfg.data : (resCfg && resCfg.days ? resCfg : null);
         if (!config || !config.days) {
-            area.innerHTML = '<p class="text-muted">Timetable configuration is missing. Please configure the timetable format first.</p>';
+            area.innerHTML = '<p class="text-muted">Timetable configuration is missing.</p>';
             return;
         }
         callServer('adminGetTimetables', [AA.token, term, session], function(resTt) {
             var list = (resTt && resTt.success && resTt.data) ? resTt.data : (Array.isArray(resTt) ? resTt : null);
-            if (!list || !Array.isArray(list)) {
-                area.innerHTML = '<p class="text-danger">Failed to load timetable data.</p>';
-                return;
-            }
+            if (!list) { area.innerHTML = '<p class="text-danger">Failed to load timetable data.</p>'; return; }
+
             var tt = list.find(function(t) { return t.className === className; });
-            if (!tt) {
-                area.innerHTML = '<p class="text-muted">No timetable generated for this class yet.</p>';
-                return;
+            if (!tt) { area.innerHTML = '<p class="text-muted">No timetable generated for this class yet.</p>'; return; }
+
+            var isPrimary = ['primary','nursery','creche','basic','year','playgroup'].some(function(k){ return className.toLowerCase().includes(k); });
+            var secType = isPrimary ? 'Primary' : 'High';
+
+            window.globalTimetableList   = list;
+            window.globalTimetableConfig = config;
+            window.globalClassName       = className;
+
+            /* ── Group days by identical slot signature ── */
+            function sig(day) {
+                var ps = (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
+                return ps.map(function(p){ return p.label+'|'+(p.type||'')+'|'+(p.customLabel||''); }).join('~');
             }
-
-            var isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("year") || className.toLowerCase().includes("playgroup");
-            var secType = isPrimary ? "Primary" : "High";
-
-            // Group days that share the same time-slot signature into one table
-            // Signature = JSON of the label/type/customLabel values in order
-            function getDaySignature(day) {
-                var periods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day] : (config.periods || []);
-                return JSON.stringify(periods.map(function(p) { return p.label + '|' + (p.type || '') + '|' + (p.customLabel || ''); }));
-            }
-
-            // Build ordered groups preserving day order
-            var groups = [];         // [{sig, days:[], periods:[]}]
-            var sigIndex = {};
-            config.days.forEach(function(day) {
-                var sig = getDaySignature(day);
-                if (sigIndex[sig] !== undefined) {
-                    groups[sigIndex[sig]].days.push(day);
-                } else {
-                    var periods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day] : (config.periods || []);
-                    sigIndex[sig] = groups.length;
-                    groups.push({ sig: sig, days: [day], periods: periods });
+            var groups = [], sigIdx = {};
+            config.days.forEach(function(day){
+                var s = sig(day);
+                if (sigIdx[s] !== undefined) { groups[sigIdx[s]].days.push(day); }
+                else {
+                    var ps = (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
+                    sigIdx[s] = groups.length;
+                    groups.push({ days:[day], periods:ps });
                 }
             });
 
-            var btnHtml = '<div style="text-align:right; margin-bottom:10px;">' +
-                '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF(\'' + secType + '\')" style="margin-right:10px;">' +
-                '<i class="fa fa-file-excel"></i> Export Master (' + secType + ')</button>' +
-                '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')">' +
+            /* ── Build on-screen tables ── */
+            var btnHtml =
+                '<div style="text-align:right;margin-bottom:10px;">' +
+                '<button class="aa-btn aa-btn-sm aa-btn-secondary" style="margin-right:10px;" onclick="downloadMasterTimetablePDF(\''+secType+'\')">' +
+                '<i class="fa fa-file-excel"></i> Export Master ('+secType+')</button>' +
+                '<button id="btn-export-class-pdf" class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\''+className+'\')">' +
                 '<i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
 
-            var tableHtml = '<div id="timetable-pdf-table">';
+            var allTables = '';
+            groups.forEach(function(grp, gIdx) {
+                var ps = grp.periods;
+                var marginTop = gIdx > 0 ? 'margin-top:28px;' : '';
 
-            groups.forEach(function(group, gIdx) {
-                var periods = group.periods;
-
-                // Build header: Day | time1 | time2 | ...
-                var theadHtml = '<thead><tr>' +
-                    '<th style="min-width:90px; text-align:left;">Day</th>';
-
-                periods.forEach(function(p) {
-                    var pType = p.type || (p.isBreak ? 'Break' : 'Subject');
-                    if (pType === 'Break' || pType === 'Event') {
-                        theadHtml += '<th style="background:#d1d5db; color:#374151; text-align:center;">' + (p.label || '') + '</th>';
+                /* thead */
+                var thead = '<thead><tr><th style="text-align:left;min-width:90px;">Day</th>';
+                var pIdx = 0;
+                while (pIdx < ps.length) {
+                    var p = ps[pIdx]; var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
+                    if (pt === 'Break' || pt === 'Event') {
+                        var span = 1;
+                        while (pIdx+span < ps.length) {
+                            var nx = ps[pIdx+span]; var nt = nx.type||(nx.isBreak?'Break':'Subject');
+                            if (nt==='Break'||nt==='Event') span++; else break;
+                        }
+                        thead += '<th colspan="'+span+'" style="background:#d1d5db;color:#374151;text-align:center;">' + (p.customLabel||p.label||'Break') + '</th>';
+                        pIdx += span;
                     } else {
-                        theadHtml += '<th style="text-align:center;">' + (p.label || '') + '</th>';
+                        thead += '<th style="text-align:center;">' + (p.label||'') + '</th>';
+                        pIdx++;
                     }
-                });
-                theadHtml += '</tr></thead>';
+                }
+                thead += '</tr></thead>';
 
-                // Build body: one row per day in this group
-                var tbodyHtml = '<tbody>';
-                group.days.forEach(function(day) {
-                    var schedule = (tt.schedule && tt.schedule[day]) ? tt.schedule[day] : [];
-                    tbodyHtml += '<tr><td style="font-weight:bold; white-space:nowrap;">' + day + '</td>';
-
-                    var pIdx = 0;
-                    while (pIdx < periods.length) {
-                        var cfgP = periods[pIdx];
-                        var pType = cfgP.type || (cfgP.isBreak ? 'Break' : 'Subject');
-
-                        if (pType === 'Break' || pType === 'Event') {
-                            // Merge consecutive break/event columns
-                            var span = 1;
-                            while (pIdx + span < periods.length) {
-                                var next = periods[pIdx + span];
-                                var nType = next.type || (next.isBreak ? 'Break' : 'Subject');
-                                if (nType === 'Break' || nType === 'Event') span++;
-                                else break;
+                /* tbody */
+                var tbody = '<tbody>';
+                grp.days.forEach(function(day) {
+                    var sch = (tt.schedule && tt.schedule[day]) || [];
+                    tbody += '<tr><td style="font-weight:bold;white-space:nowrap;">'+day+'</td>';
+                    var pi = 0;
+                    while (pi < ps.length) {
+                        var cp = ps[pi]; var cpt = cp.type||(cp.isBreak?'Break':'Subject');
+                        if (cpt==='Break'||cpt==='Event') {
+                            var sp = 1;
+                            while (pi+sp < ps.length) {
+                                var np=ps[pi+sp]; var npt=np.type||(np.isBreak?'Break':'Subject');
+                                if (npt==='Break'||npt==='Event') sp++; else break;
                             }
-                            // Get the display name from config (customLabel > scheduledEntry.label > cfgP.label > "Break")
-                            var scheduledEntry = schedule[pIdx] || null;
-                            var breakName = cfgP.customLabel || (scheduledEntry && scheduledEntry.label && scheduledEntry.label !== cfgP.label ? scheduledEntry.label : null) || 'Break';
-                            tbodyHtml += '<td colspan="' + span + '" style="background:#e2e8f0; text-align:center; font-weight:bold; letter-spacing:0.5px; color:#475569;">' + breakName + '</td>';
-                            pIdx += span;
+                            var bn = cp.customLabel || 'Break';
+                            tbody += '<td colspan="'+sp+'" style="background:#e2e8f0;text-align:center;font-weight:bold;color:#475569;">'+bn+'</td>';
+                            pi += sp;
                         } else {
-                            var entry = schedule[pIdx] || null;
-                            var cellText = (entry && entry.type === 'Subject') ? entry.subjectName : (entry && entry.label ? entry.label : '-');
-                            tbodyHtml += '<td style="text-align:center;">' + (cellText || '-') + '</td>';
-                            pIdx++;
+                            var en = sch[pi]||null;
+                            var ct = (en && en.type==='Subject') ? en.subjectName : '-';
+                            tbody += '<td style="text-align:center;">'+ct+'</td>';
+                            pi++;
                         }
                     }
-                    tbodyHtml += '</tr>';
+                    tbody += '</tr>';
                 });
-                tbodyHtml += '</tbody>';
+                tbody += '</tbody>';
 
-                var marginTop = gIdx > 0 ? 'margin-top:24px;' : '';
-                tableHtml += '<div style="overflow-x:auto; ' + marginTop + '">' +
-                    '<table class="aa-table">' + theadHtml + tbodyHtml + '</table></div>';
+                allTables += '<div style="overflow-x:auto;'+marginTop+'"><table class="aa-table" id="timetable-class-table-'+gIdx+'">'+thead+tbody+'</table></div>';
             });
 
-            tableHtml += '</div>';
-            area.innerHTML = btnHtml + tableHtml;
-
-            window.globalTimetableList = list;
-            window.globalTimetableConfig = config;
+            area.innerHTML = btnHtml + allTables;
         });
     });
 }
 
 function downloadTimetablePDF(className) {
-    if (typeof window.jspdf === 'undefined') {
-        return showToast('PDF generation library not loaded.', 'error');
-    }
+    if (typeof window.jspdf === 'undefined') return showToast('PDF library not loaded.', 'error');
+    var config = window.globalTimetableConfig;
+    var list   = window.globalTimetableList;
+    var cn     = className || window.globalClassName;
+    if (!config || !list || !cn) return showToast('Please load a class timetable first.', 'error');
+
+    var tt = list.find(function(t){ return t.className === cn; });
+    if (!tt) return showToast('Timetable not found.', 'error');
+
     var jsPDF = window.jspdf.jsPDF;
-    var doc = new jsPDF('landscape');
-    var schoolNameEl = document.getElementById('sb-school-name');
-    var schoolName = schoolNameEl ? schoolNameEl.innerText : 'School Timetable';
-    var termSel = document.getElementById('timetable-term-select');
-    var term = termSel ? termSel.options[termSel.selectedIndex].text : '';
-    var session = document.getElementById('timetable-session-select').value;
-    
-    var pageWidth = doc.internal.pageSize.getWidth();
-    doc.setFontSize(18);
-    doc.text(schoolName, pageWidth / 2, 20, { align: 'center' });
-    doc.setFontSize(14);
-    doc.text('Class Timetable: ' + className + ' (' + term + ', ' + session + ')', pageWidth / 2, 30, { align: 'center' });
-    
-    doc.autoTable({
-        html: '#timetable-pdf-table',
-        startY: 35,
-        theme: 'grid',
-        headStyles: { fillColor: [44, 62, 80] },
-        styles: { fontSize: 10, cellPadding: 3, halign: 'center', valign: 'middle' },
-        columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
-        didParseCell: function(data) {
-            if (data.cell.raw && data.cell.raw.innerText) {
-                var text = data.cell.raw.innerText.toLowerCase();
-                if (text.indexOf('break') !== -1 || text.indexOf('assembly') !== -1 || text.indexOf('event') !== -1) { 
-                    data.cell.styles.fillColor = [241, 245, 249]; 
-                }
-                else if (text.indexOf('free') !== -1) { 
-                    data.cell.styles.textColor = [148, 163, 184]; 
-                }
+    var doc   = new jsPDF('landscape');
+    var pw    = doc.internal.pageSize.getWidth();
+    var schoolName = (document.getElementById('sb-school-name')||{}).innerText || 'School';
+    var termSel    = document.getElementById('timetable-term-select');
+    var term       = termSel ? termSel.options[termSel.selectedIndex].text : '';
+    var session    = (document.getElementById('timetable-session-select')||{}).value || '';
+
+    doc.setFontSize(16); doc.text(schoolName, pw/2, 18, {align:'center'});
+    doc.setFontSize(12); doc.text('Class Timetable: '+cn+' ('+term+', '+session+')', pw/2, 27, {align:'center'});
+
+    /* Build head + body manually so PDF doesn't depend on DOM table */
+    function getDayPeriods(day) {
+        return (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
+    }
+    function sig(day) {
+        return getDayPeriods(day).map(function(p){ return p.label+'|'+(p.type||'')+'|'+(p.customLabel||''); }).join('~');
+    }
+    var groups = [], sigIdx = {};
+    config.days.forEach(function(day){
+        var s = sig(day);
+        if (sigIdx[s]!==undefined) groups[sigIdx[s]].days.push(day);
+        else { sigIdx[s]=groups.length; groups.push({ days:[day], periods:getDayPeriods(day) }); }
+    });
+
+    var startY = 33;
+    groups.forEach(function(grp, gIdx) {
+        var ps = grp.periods;
+        var headRow = ['Day'];
+        var breakColIdx = {};   // col index -> breakName for styling
+        var pIdx = 0, colIdx = 1;
+        while (pIdx < ps.length) {
+            var p = ps[pIdx]; var pt = p.type||(p.isBreak?'Break':'Subject');
+            if (pt==='Break'||pt==='Event') {
+                var sp=1;
+                while (pIdx+sp<ps.length){var np=ps[pIdx+sp];var nt=np.type||(np.isBreak?'Break':'Subject');if(nt==='Break'||nt==='Event')sp++;else break;}
+                var bn = p.customLabel||'Break';
+                for (var si=0;si<sp;si++) { headRow.push(si===0?bn:''); breakColIdx[colIdx+si]=true; }
+                pIdx+=sp; colIdx+=sp;
+            } else {
+                headRow.push(p.label||('P'+(pIdx+1)));
+                pIdx++; colIdx++;
             }
         }
+
+        var bodyRows = [];
+        grp.days.forEach(function(day){
+            var sch = (tt.schedule&&tt.schedule[day])||[];
+            var row = [day]; var pi=0;
+            while (pi < ps.length) {
+                var cp=ps[pi]; var cpt=cp.type||(cp.isBreak?'Break':'Subject');
+                if (cpt==='Break'||cpt==='Event'){
+                    var sp2=1;
+                    while(pi+sp2<ps.length){var np2=ps[pi+sp2];var nt2=np2.type||(np2.isBreak?'Break':'Subject');if(nt2==='Break'||nt2==='Event')sp2++;else break;}
+                    for(var si2=0;si2<sp2;si2++) row.push('');
+                    pi+=sp2;
+                } else {
+                    var en=sch[pi]||null;
+                    row.push((en&&en.type==='Subject')?en.subjectName:'-');
+                    pi++;
+                }
+            }
+            bodyRows.push(row);
+        });
+
+        doc.autoTable({
+            head: [headRow],
+            body: bodyRows,
+            startY: startY,
+            theme: 'grid',
+            headStyles: { fillColor:[30,58,95], halign:'center', fontSize:9, fontStyle:'bold' },
+            styles: { fontSize:9, cellPadding:3, halign:'center', valign:'middle' },
+            columnStyles: { 0: { fontStyle:'bold', halign:'left', cellWidth:22 } },
+            didParseCell: function(data) {
+                if (breakColIdx[data.column.index]) {
+                    data.cell.styles.fillColor = [226,232,240];
+                    data.cell.styles.textColor = [71,85,105];
+                }
+            }
+        });
+        startY = doc.lastAutoTable.finalY + 10;
+        if (gIdx < groups.length-1 && startY > 170) { doc.addPage(); startY = 15; }
     });
-    doc.save('Timetable_' + className + '.pdf');
+
+    doc.save('Timetable_'+cn+'.pdf');
 }
 
 function downloadMasterTimetablePDF(section) {
-    if (typeof window.jspdf === 'undefined') {
-        return showToast('PDF generation library not loaded.', 'error');
-    }
-    var list = window.globalTimetableList;
+    if (typeof window.jspdf === 'undefined') return showToast('PDF library not loaded.', 'error');
+    var list   = window.globalTimetableList;
     var config = window.globalTimetableConfig;
     if (!list || !config) return showToast('Please load timetable data first.', 'error');
-    
-    var filteredList = list.filter(function(t) {
-       var cls = t.className.toLowerCase();
-       var isPri = cls.includes('primary') || cls.includes('nursery') || cls.includes('creche') || cls.includes('basic') || cls.includes('year') || cls.includes('playgroup');
-       if (section === 'Primary') return isPri;
-       if (section === 'High') return !isPri;
-       return true;
+
+    var filteredList = list.filter(function(t){
+        var c = t.className.toLowerCase();
+        var isPri = ['primary','nursery','creche','basic','year','playgroup'].some(function(k){ return c.includes(k); });
+        if (section==='Primary') return isPri;
+        if (section==='High') return !isPri;
+        return true;
     });
-    
-    if (filteredList.length === 0) return showToast('No timetables found for ' + section + ' section.', 'warning');
-    
-    // Sort classes (roughly)
-    filteredList.sort(function(a, b) { return a.className.localeCompare(b.className); });
-    
+    if (!filteredList.length) return showToast('No timetables for '+section+' section.', 'warning');
+    filteredList.sort(function(a,b){ return a.className.localeCompare(b.className); });
+
     var jsPDF = window.jspdf.jsPDF;
-    var doc = new jsPDF('landscape');
-    var schoolNameEl = document.getElementById('sb-school-name');
-    var schoolName = schoolNameEl ? schoolNameEl.innerText : 'School Timetable';
-    var termSel = document.getElementById('timetable-term-select');
-    var term = termSel ? termSel.options[termSel.selectedIndex].text : '';
-    var session = document.getElementById('timetable-session-select').value;
-    
-    var pageWidth = doc.internal.pageSize.getWidth();
-    var currentY = 20;
-    
-    config.days.forEach(function(day, dayIdx) {
-        if (dayIdx > 0 && dayIdx % 2 === 0) {
-            doc.addPage();
-            currentY = 20;
+    var doc   = new jsPDF('landscape');
+    var pw    = doc.internal.pageSize.getWidth();
+    var schoolName = (document.getElementById('sb-school-name')||{}).innerText || 'School';
+    var termSel    = document.getElementById('timetable-term-select');
+    var term       = termSel ? termSel.options[termSel.selectedIndex].text : '';
+    var session    = (document.getElementById('timetable-session-select')||{}).value || '';
+
+    /* Single heading */
+    doc.setFontSize(16); doc.text(schoolName, pw/2, 16, {align:'center'});
+    doc.setFontSize(11);
+    doc.text('Master Timetable: '+section+' Section  ('+term+', '+session+')', pw/2, 24, {align:'center'});
+
+    /* Use first day's periods as the master column header */
+    var firstDay = config.days[0];
+    var masterPeriods = (config.scheduleTemplate && config.scheduleTemplate[firstDay]) || config.periods || [];
+
+    /* Build headRow: Day | Class | t1 | t2 | Break | t3 | ... */
+    var headRow = ['Day', 'Class'];
+    var breakColIdx = {};   // 0-based column index in headRow -> true
+    var pIdx = 0, colBase = 2;
+    while (pIdx < masterPeriods.length) {
+        var p = masterPeriods[pIdx];
+        var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
+        if (pt==='Break'||pt==='Event') {
+            var sp=1;
+            while(pIdx+sp<masterPeriods.length){var np=masterPeriods[pIdx+sp];var nt=np.type||(np.isBreak?'Break':'Subject');if(nt==='Break'||nt==='Event')sp++;else break;}
+            var bn = p.customLabel||p.label||'Break';
+            for(var si=0;si<sp;si++){ headRow.push(si===0?bn:''); breakColIdx[colBase+si]=true; }
+            pIdx+=sp; colBase+=sp;
+        } else {
+            headRow.push(p.label||('P'+(pIdx+1)));
+            pIdx++; colBase++;
         }
-        
-        doc.setFontSize(16);
-        doc.text(schoolName, pageWidth / 2, currentY, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text('Master Timetable: ' + section + ' Section (' + term + ', ' + session + ') - ' + day.toUpperCase(), pageWidth / 2, currentY + 8, { align: 'center' });
-        
-        currentY += 15;
-        
-        var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day] : (config.periods || []);
-        var headRow = ['Class'];
-        dayPeriods.forEach(function(p) { headRow.push(p.label); });
-        
-        var bodyData = [];
-        filteredList.forEach(function(tt) {
-            var row = [tt.className];
-            for (var pIdx = 0; pIdx < dayPeriods.length; pIdx++) {
-                var period = tt.schedule && tt.schedule[day] ? tt.schedule[day][pIdx] : null;
-                if (!period) {
-                    row.push('-');
-                } else if (period.type === 'Break' || period.type === 'Event') {
-                    row.push(period.label);
-                } else if (period.type === 'Subject') {
-                    row.push(period.subjectName);
+    }
+
+    /* Build body rows: for each day → for each class → one row */
+    var bodyRows = [];
+    config.days.forEach(function(day, dayIdx) {
+        var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
+        filteredList.forEach(function(tt, clsIdx) {
+            var sch = (tt.schedule && tt.schedule[day]) || [];
+            /* Day cell: only on the first class row of each day */
+            var dayCell = (clsIdx === 0) ? day : '';
+            var row = [dayCell, tt.className];
+            var pi=0;
+            while (pi < masterPeriods.length) {
+                var cp = masterPeriods[pi];
+                var cpt = cp.type||(cp.isBreak?'Break':'Subject');
+                if (cpt==='Break'||cpt==='Event') {
+                    var sp2=1;
+                    while(pi+sp2<masterPeriods.length){var np2=masterPeriods[pi+sp2];var nt2=np2.type||(np2.isBreak?'Break':'Subject');if(nt2==='Break'||nt2==='Event')sp2++;else break;}
+                    for(var si2=0;si2<sp2;si2++) row.push('');
+                    pi+=sp2;
                 } else {
-                    row.push('Free');
+                    var en = sch[pi]||null;
+                    row.push((en&&en.type==='Subject')?en.subjectName:'-');
+                    pi++;
                 }
             }
-            bodyData.push(row);
+            bodyRows.push(row);
         });
-        
-        doc.autoTable({
-            head: [headRow],
-            body: bodyData,
-            startY: currentY,
-            theme: 'grid',
-            headStyles: { fillColor: [44, 62, 80], halign: 'center', fontSize: 9 },
-            styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
-            columnStyles: { 0: { fontStyle: 'bold', halign: 'left', cellWidth: 25 } },
-            didParseCell: function(data) {
-                if (data.row.section === 'body' && data.column.index > 0) {
-                    var text = String(data.cell.raw).toLowerCase();
-                    if (text.indexOf('break') !== -1 || text.indexOf('assembly') !== -1 || text.indexOf('event') !== -1) { 
-                        data.cell.styles.fillColor = [241, 245, 249]; 
-                        data.cell.styles.fontStyle = 'italic';
-                    }
-                }
-            }
-        });
-        
-        currentY = doc.lastAutoTable.finalY + 20;
+        /* Blank separator row between days */
+        if (dayIdx < config.days.length-1) {
+            var sepRow = new Array(headRow.length).fill('');
+            bodyRows.push(sepRow);
+        }
     });
-    
-    doc.save('Master_Timetable_' + section + '.pdf');
+
+    doc.autoTable({
+        head: [headRow],
+        body: bodyRows,
+        startY: 30,
+        theme: 'grid',
+        headStyles: { fillColor:[30,58,95], halign:'center', fontSize:8, fontStyle:'bold' },
+        styles: { fontSize:7, cellPadding:2, halign:'center', valign:'middle', overflow:'linebreak' },
+        columnStyles: {
+            0: { fontStyle:'bold', halign:'left', cellWidth:20 },
+            1: { fontStyle:'bold', halign:'left', cellWidth:22 }
+        },
+        didParseCell: function(data) {
+            if (breakColIdx[data.column.index]) {
+                data.cell.styles.fillColor = [226,232,240];
+                data.cell.styles.textColor = [71,85,105];
+                data.cell.styles.fontStyle = 'bolditalic';
+            }
+            /* Shade separator rows */
+            if (data.row.section==='body') {
+                var isAllEmpty = data.row.raw.every(function(c){ return c===''; });
+                if (isAllEmpty) data.cell.styles.fillColor = [248,250,252];
+            }
+            /* Shade day-grouping rows (first class row of each day block) */
+            if (data.row.section==='body' && data.column.index===0 && data.cell.raw) {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.fillColor = [241,245,249];
+            }
+        }
+    });
+
+    doc.save('Master_Timetable_'+section+'.pdf');
 }
+
 
 window.downloadTimetablePDF = downloadTimetablePDF;
 window.loadTimetable = loadTimetable;
