@@ -1097,119 +1097,145 @@ function openTimetableConfigModal() {
         } else if (res && res.days) {
             timetableConfig = res;
         } else {
-            timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], periods: [] };
+            timetableConfig = { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], scheduleTemplate: {} };
         }
         if (!timetableConfig.days) timetableConfig.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         if (!timetableConfig.scheduleTemplate) timetableConfig.scheduleTemplate = {};
-        
-        // Migrate old periods format to new scheduleTemplate
-        if (timetableConfig.periods && timetableConfig.periods.length > 0 && Object.keys(timetableConfig.scheduleTemplate).length === 0) {
+
+        // Migrate old periods format: copy to each day independently
+        if (timetableConfig.periods && timetableConfig.periods.length > 0) {
             timetableConfig.days.forEach(function(day) {
-                timetableConfig.scheduleTemplate[day] = JSON.parse(JSON.stringify(timetableConfig.periods));
+                if (!timetableConfig.scheduleTemplate[day]) {
+                    timetableConfig.scheduleTemplate[day] = JSON.parse(JSON.stringify(timetableConfig.periods));
+                }
             });
         }
-        
+
         document.getElementById('tt-cfg-days').value = timetableConfig.days.join(', ');
-        
-        if (timetableConfig.days.length > 0) {
-            activeTimetableDay = timetableConfig.days[0];
-        } else {
-            activeTimetableDay = '';
-        }
-        
-        renderTimetableDayTabs();
+        activeTimetableDay = timetableConfig.days.length > 0 ? timetableConfig.days[0] : '';
+
+        _renderTimetableDayTabs();
         openModal('modal-timetable-config');
     });
 }
 
 function renderTimetableDayTabs() {
-    timetableConfig.days = document.getElementById('tt-cfg-days').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-    
-    if (timetableConfig.days.length > 0 && !timetableConfig.days.includes(activeTimetableDay)) {
-        activeTimetableDay = timetableConfig.days[0];
+    // Called when the days input changes - parse new days, preserve existing scheduleTemplate
+    var newDays = document.getElementById('tt-cfg-days').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    // Add new days with empty schedule (don't copy from others)
+    newDays.forEach(function(day) {
+        if (!timetableConfig.scheduleTemplate[day]) {
+            timetableConfig.scheduleTemplate[day] = [];
+        }
+    });
+    timetableConfig.days = newDays;
+    if (!timetableConfig.days.includes(activeTimetableDay)) {
+        activeTimetableDay = timetableConfig.days.length > 0 ? timetableConfig.days[0] : '';
     }
-    
+    _renderTimetableDayTabs();
+}
+
+function _renderTimetableDayTabs() {
     var html = '';
     timetableConfig.days.forEach(function(day) {
         var isAct = day === activeTimetableDay;
         var btnClass = isAct ? 'aa-btn-primary' : 'aa-btn-outline';
-        html += '<button class="aa-btn aa-btn-sm ' + btnClass + '" onclick="setActiveTimetableDay(\'' + day + '\')">' + day + '</button>';
-        
-        if (!timetableConfig.scheduleTemplate[day]) {
-            // Check if we can copy from the first day or fallback to empty
-            if (timetableConfig.days.length > 0 && timetableConfig.scheduleTemplate[timetableConfig.days[0]]) {
-               timetableConfig.scheduleTemplate[day] = JSON.parse(JSON.stringify(timetableConfig.scheduleTemplate[timetableConfig.days[0]]));
-            } else {
-               timetableConfig.scheduleTemplate[day] = [];
-            }
-        }
+        html += '<button class="aa-btn aa-btn-sm ' + btnClass + '" onclick="setActiveTimetableDay('' + day + '')">' + day + '</button>';
     });
-    
     var tabsEl = document.getElementById('tt-cfg-day-tabs');
     if (tabsEl) tabsEl.innerHTML = html;
-    
-    renderTimetableSlots();
+    _renderTimetableSlots();
 }
 
 function setActiveTimetableDay(day) {
     activeTimetableDay = day;
-    renderTimetableDayTabs();
+    _renderTimetableDayTabs();
 }
 
-function renderTimetableSlots() {
+function _renderTimetableSlots() {
     var actDayEl = document.getElementById('tt-cfg-active-day');
     if (actDayEl) actDayEl.innerText = activeTimetableDay;
-    
-    if (!activeTimetableDay || !timetableConfig.scheduleTemplate[activeTimetableDay]) {
-        document.getElementById('tt-cfg-slots').innerHTML = '<p class="text-muted">No days configured.</p>';
+
+    if (!activeTimetableDay) {
+        document.getElementById('tt-cfg-slots').innerHTML = '<p class="text-muted">No day selected.</p>';
         return;
     }
-    
-    var html = '';
-    timetableConfig.scheduleTemplate[activeTimetableDay].forEach(function(p, idx) {
-        var typeSel = '<select class="aa-input" onchange="timetableConfig.scheduleTemplate[\''+activeTimetableDay+'\']['+idx+'].type = this.value; renderTimetableSlots();">' +
-            '<option value="Subject" ' + (p.type === 'Subject' || (!p.type && !p.isBreak) ? 'selected' : '') + '>Subject</option>' +
-            '<option value="Break" ' + (p.type === 'Break' || p.isBreak ? 'selected' : '') + '>Break</option>' +
-            '<option value="Event" ' + (p.type === 'Event' ? 'selected' : '') + '>Event</option>' +
-            '</select>';
-            
-        var lblInput = (p.type === 'Break' || p.isBreak || p.type === 'Event') ? 
-            '<div><label>Custom Name</label><input type="text" class="aa-input" value="' + (p.customLabel || p.label || (p.isBreak ? 'Break' : '')) + '" onchange="timetableConfig.scheduleTemplate[\''+activeTimetableDay+'\']['+idx+'].customLabel = this.value" placeholder="e.g. Short Break"></div>' : '';
+    if (!timetableConfig.scheduleTemplate[activeTimetableDay]) {
+        timetableConfig.scheduleTemplate[activeTimetableDay] = [];
+    }
 
-        html += '<div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end; background:#f8fafc; padding:10px; border-radius:5px;">' +
-            '<div style="flex:1;">' +
-            '<label>Period ' + (idx + 1) + ' Time/Label</label>' +
-            '<input type="text" class="aa-input" value="' + (p.label || '') + '" onchange="timetableConfig.scheduleTemplate[\''+activeTimetableDay+'\']['+idx+'].label = this.value" placeholder="e.g. 08:00 - 08:40">' +
-            '</div>' +
-            '<div>' +
-            '<label>Type</label>' +
-            typeSel +
-            '</div>' +
-            lblInput +
-            '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="removeTimetableSlot(' + idx + ')"><i class="fa fa-trash"></i></button>' +
+    var periods = timetableConfig.scheduleTemplate[activeTimetableDay];
+    var html = '';
+
+    if (periods.length === 0) {
+        html = '<p class="text-muted" style="padding:10px;">No slots added for ' + activeTimetableDay + ' yet. Click "Add Slot" to begin.</p>';
+    }
+
+    periods.forEach(function(p, idx) {
+        var typeVal = p.type || (p.isBreak ? 'Break' : 'Subject');
+        var isBreakOrEvent = (typeVal === 'Break' || typeVal === 'Event');
+
+        var typeSel = '<select class="aa-input" style="min-width:100px;" onchange="_onSlotTypeChange('' + activeTimetableDay + '',' + idx + ',this.value)">' +
+            '<option value="Subject"' + (typeVal === 'Subject' ? ' selected' : '') + '>Subject</option>' +
+            '<option value="Break"'  + (typeVal === 'Break'   ? ' selected' : '') + '>Break</option>'   +
+            '<option value="Event"'  + (typeVal === 'Event'   ? ' selected' : '') + '>Event</option>'   +
+            '</select>';
+
+        var customLabelField = isBreakOrEvent
+            ? '<div style="flex:1;"><label>Break/Event Name</label>' +
+              '<input type="text" class="aa-input" value="' + (p.customLabel || '') + '" ' +
+              'placeholder="e.g. Short Break" onchange="_onSlotCustomLabel('' + activeTimetableDay + '',' + idx + ',this.value)"></div>'
+            : '';
+
+        var rowBg = isBreakOrEvent ? 'background:#fef3c7;' : 'background:#f8fafc;';
+
+        html += '<div class="aa-form-group" style="display:flex; gap:10px; align-items:flex-end; ' + rowBg + ' padding:10px; border-radius:5px; margin-bottom:6px;">' +
+            '<div style="flex:2;"><label>Period ' + (idx + 1) + ' Time</label>' +
+            '<input type="text" class="aa-input" value="' + (p.label || '') + '" placeholder="e.g. 08:00 - 08:40" ' +
+            'onchange="_onSlotLabel('' + activeTimetableDay + '',' + idx + ',this.value)"></div>' +
+            '<div><label>Type</label>' + typeSel + '</div>' +
+            customLabelField +
+            '<button class="aa-btn aa-btn-sm aa-btn-danger" style="margin-bottom:0;" onclick="removeTimetableSlot('' + activeTimetableDay + '',' + idx + ')"><i class="fa fa-trash"></i></button>' +
             '</div>';
     });
+
     document.getElementById('tt-cfg-slots').innerHTML = html;
 }
 
-function addTimetableSlot() {
-    if (!activeTimetableDay) return;
-    if (!timetableConfig.scheduleTemplate[activeTimetableDay]) timetableConfig.scheduleTemplate[activeTimetableDay] = [];
-    timetableConfig.scheduleTemplate[activeTimetableDay].push({ label: '', type: 'Subject' });
-    renderTimetableSlots();
+function _onSlotLabel(day, idx, val) {
+    if (!timetableConfig.scheduleTemplate[day]) return;
+    timetableConfig.scheduleTemplate[day][idx].label = val;
+}
+function _onSlotTypeChange(day, idx, val) {
+    if (!timetableConfig.scheduleTemplate[day]) return;
+    timetableConfig.scheduleTemplate[day][idx].type = val;
+    timetableConfig.scheduleTemplate[day][idx].isBreak = (val === 'Break');
+    _renderTimetableSlots();
+}
+function _onSlotCustomLabel(day, idx, val) {
+    if (!timetableConfig.scheduleTemplate[day]) return;
+    timetableConfig.scheduleTemplate[day][idx].customLabel = val;
 }
 
-function removeTimetableSlot(idx) {
-    if (!activeTimetableDay) return;
-    timetableConfig.scheduleTemplate[activeTimetableDay].splice(idx, 1);
-    renderTimetableSlots();
+function addTimetableSlot() {
+    if (!activeTimetableDay) return showToast('Please select a day tab first.', 'warning');
+    if (!timetableConfig.scheduleTemplate[activeTimetableDay]) timetableConfig.scheduleTemplate[activeTimetableDay] = [];
+    timetableConfig.scheduleTemplate[activeTimetableDay].push({ label: '', type: 'Subject', customLabel: '' });
+    _renderTimetableSlots();
+}
+
+function removeTimetableSlot(day, idx) {
+    if (!timetableConfig.scheduleTemplate[day]) return;
+    timetableConfig.scheduleTemplate[day].splice(idx, 1);
+    _renderTimetableSlots();
 }
 
 function saveTimetableConfig() {
     timetableConfig.days = document.getElementById('tt-cfg-days').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-    // Legacy support just in case
-    timetableConfig.periods = timetableConfig.days.length > 0 ? (timetableConfig.scheduleTemplate[timetableConfig.days[0]] || []) : [];
-    
+    // Keep a legacy periods field pointing at Monday (or first day) for any old code
+    var firstDay = timetableConfig.days[0];
+    timetableConfig.periods = firstDay ? (timetableConfig.scheduleTemplate[firstDay] || []) : [];
+
     callServer('adminSaveTimetableConfig', [AA.token, timetableConfig], function(res) {
         if (res && res.success) {
             showToast(res.message || 'Configuration saved.', 'success');
@@ -1242,7 +1268,11 @@ function generateTimetable() {
 
     callServer('adminGetTimetableConfig', [AA.token], function(res) {
         var config = (res && res.success && res.data) ? res.data : (res && res.days ? res : null);
-        if (!config || !config.days || !config.periods || config.periods.length === 0) {
+        var hasSlots = config && config.days && (
+            (config.scheduleTemplate && config.days.some(function(d) { return config.scheduleTemplate[d] && config.scheduleTemplate[d].length > 0; })) ||
+            (config.periods && config.periods.length > 0)
+        );
+        if (!hasSlots) {
             btn.disabled = false; btn.innerHTML = 'Generate Now';
             return showToast('Please configure timetable format first (add at least one time slot).', 'error');
         }
@@ -1275,82 +1305,93 @@ function loadTimetableData() {
 
     callServer('adminGetTimetableConfig', [AA.token], function(resCfg) {
         var config = (resCfg && resCfg.success && resCfg.data) ? resCfg.data : (resCfg && resCfg.days ? resCfg : null);
-        if (config && config.days) {
-            callServer('adminGetTimetables', [AA.token, term, session], function(resTt) {
-                var list = (resTt && resTt.success && resTt.data) ? resTt.data :
-                           (Array.isArray(resTt) ? resTt : null);
-                if (list && Array.isArray(list)) {
-                    var tt = list.find(function(t) { return t.className === className; });
-                    if (!tt) {
-                        area.innerHTML = '<p class="text-muted">No timetable generated for this class yet.</p>';
-                        return;
-                    }
-                    
-                    var maxPeriods = 0;
-                    config.days.forEach(function(day) {
-                       var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day]) ? config.scheduleTemplate[day].length : (config.periods ? config.periods.length : 0);
-                       if (dayPeriods > maxPeriods) maxPeriods = dayPeriods;
-                    });
-                    
-                    var isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("year") || className.toLowerCase().includes("playgroup");
-                    var secType = isPrimary ? "Primary" : "High";
-                    
-                    var html = '<div style="text-align:right; margin-bottom:10px;">';
-                    html += '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF(\'' + secType + '\')" style="margin-right:10px;"><i class="fa fa-file-excel"></i> Export Master ('+secType+')</button>';
-                    html += '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\'' + className + '\')"><i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
-                    
-                    var firstDay = config.days[0];
-                    var headerPeriods = (config.scheduleTemplate && config.scheduleTemplate[firstDay]) ? config.scheduleTemplate[firstDay] : (config.periods || []);
-                    
-                    html += '<table class="aa-table" id="timetable-pdf-table"><thead><tr><th>Day</th>';
-                    for (var i = 0; i < maxPeriods; i++) {
-                        var headTime = headerPeriods[i] ? headerPeriods[i].label : ('Period ' + (i+1));
-                        html += '<th>' + headTime + '</th>';
-                    }
-                    html += '</tr></thead><tbody>';
-                    
-                    config.days.forEach(function(day) {
-                        html += '<tr><td style="font-weight:bold;">' + day + '</td>';
-                        if (tt.schedule && tt.schedule[day]) {
-                            for (var pIdx = 0; pIdx < maxPeriods; pIdx++) {
-                                var period = tt.schedule[day][pIdx];
-                                
-                                if (!period) {
-                                    html += '<td>-</td>';
-                                    continue;
-                                }
-                                
-                                if (period.type === 'Break' || period.type === 'Event') {
-                                    var displayLabel = period.label;
-                                    var timeLbl = (config.scheduleTemplate && config.scheduleTemplate[day] && config.scheduleTemplate[day][pIdx]) ? config.scheduleTemplate[day][pIdx].label : '';
-                                    if (displayLabel === timeLbl) {
-                                        // Fix for older generated timetables where the break label was mistakenly set to the time
-                                        displayLabel = "Break";
-                                    }
-                                    html += '<td style="background:#f1f5f9; text-align:center;"><strong>' + displayLabel + '</strong></td>';
-                                } else if (period.type === 'Subject') {
-                                    html += '<td>' + period.subjectName + '</td>';
-                                } else {
-                                    html += '<td style="color:#94a3b8;">Free</td>';
-                                }
-                            }
-                        } else {
-                            for (var i = 0; i < maxPeriods; i++) html += '<td>-</td>';
-                        }
-                        html += '</tr>';
-                    });
-                    html += '</tbody></table>';
-                    area.innerHTML = html;
-                    
-                    window.globalTimetableList = list;
-                    window.globalTimetableConfig = config;
-                } else {
-                    area.innerHTML = '<p class="text-danger">Failed to load timetable data.</p>';
-                }
-            });
-        } else {
+        if (!config || !config.days) {
             area.innerHTML = '<p class="text-muted">Timetable configuration is missing. Please configure the timetable format first.</p>';
+            return;
         }
+        callServer('adminGetTimetables', [AA.token, term, session], function(resTt) {
+            var list = (resTt && resTt.success && resTt.data) ? resTt.data : (Array.isArray(resTt) ? resTt : null);
+            if (!list || !Array.isArray(list)) {
+                area.innerHTML = '<p class="text-danger">Failed to load timetable data.</p>';
+                return;
+            }
+            var tt = list.find(function(t) { return t.className === className; });
+            if (!tt) {
+                area.innerHTML = '<p class="text-muted">No timetable generated for this class yet.</p>';
+                return;
+            }
+
+            var isPrimary = className.toLowerCase().includes("primary") || className.toLowerCase().includes("nursery") || className.toLowerCase().includes("creche") || className.toLowerCase().includes("basic") || className.toLowerCase().includes("year") || className.toLowerCase().includes("playgroup");
+            var secType = isPrimary ? "Primary" : "High";
+
+            var btnHtml = '<div style="text-align:right; margin-bottom:10px;">' +
+                '<button class="aa-btn aa-btn-sm aa-btn-secondary" onclick="downloadMasterTimetablePDF('' + secType + '')" style="margin-right:10px;">' +
+                '<i class="fa fa-file-excel"></i> Export Master (' + secType + ')</button>' +
+                '<button class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF('' + className + '')">' +
+                '<i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
+
+            // Build the table — each day uses its OWN column headers
+            var tableHtml = '<div style="overflow-x:auto;"><table class="aa-table" id="timetable-pdf-table" style="min-width:600px;">';
+
+            config.days.forEach(function(day) {
+                var dayPeriods = (config.scheduleTemplate && config.scheduleTemplate[day])
+                    ? config.scheduleTemplate[day]
+                    : (config.periods || []);
+                var schedule = (tt.schedule && tt.schedule[day]) ? tt.schedule[day] : [];
+
+                // Header row for this day
+                tableHtml += '<thead><tr style="background:#1e3a5f; color:#fff;">' +
+                    '<th style="padding:8px 12px; text-align:left; white-space:nowrap; min-width:90px;">' + day + '</th>';
+
+                dayPeriods.forEach(function(p) {
+                    tableHtml += '<th style="padding:6px 10px; text-align:center; white-space:nowrap; font-weight:600;">' +
+                        (p.label || '') + '</th>';
+                });
+                tableHtml += '</tr></thead>';
+
+                // Data row for this day — detect consecutive breaks to merge
+                tableHtml += '<tbody><tr>';
+                tableHtml += '<td style="font-weight:bold; white-space:nowrap; padding:8px 12px;"></td>'; // empty day cell (day is in header)
+
+                var pIdx = 0;
+                while (pIdx < dayPeriods.length) {
+                    var cfgPeriod = dayPeriods[pIdx];
+                    var periodType = cfgPeriod.type || (cfgPeriod.isBreak ? 'Break' : 'Subject');
+                    var scheduledEntry = schedule[pIdx] || null;
+
+                    if (periodType === 'Break' || periodType === 'Event') {
+                        // Count consecutive break/event slots to determine colspan
+                        var span = 1;
+                        while (pIdx + span < dayPeriods.length) {
+                            var nextCfg = dayPeriods[pIdx + span];
+                            var nextType = nextCfg.type || (nextCfg.isBreak ? 'Break' : 'Subject');
+                            if (nextType === 'Break' || nextType === 'Event') {
+                                span++;
+                            } else {
+                                break;
+                            }
+                        }
+                        var breakName = cfgPeriod.customLabel || (scheduledEntry && scheduledEntry.label) || cfgPeriod.label || 'Break';
+                        // If the break label equals the time label (old bug), use customLabel or "Break"
+                        if (breakName === cfgPeriod.label && !cfgPeriod.customLabel) breakName = 'Break';
+                        tableHtml += '<td colspan="' + span + '" style="background:#e2e8f0; text-align:center; vertical-align:middle; padding:8px;">' +
+                            '<strong style="writing-mode:horizontal-tb; letter-spacing:1px;">' + breakName + '</strong></td>';
+                        pIdx += span;
+                    } else {
+                        var subject = scheduledEntry && scheduledEntry.type === 'Subject' ? scheduledEntry.subjectName : (scheduledEntry ? scheduledEntry.label : '-');
+                        tableHtml += '<td style="text-align:center; padding:6px 10px;">' + (subject || '-') + '</td>';
+                        pIdx++;
+                    }
+                }
+                tableHtml += '</tr></tbody>';
+            });
+
+            tableHtml += '</table></div>';
+
+            area.innerHTML = btnHtml + tableHtml;
+            window.globalTimetableList = list;
+            window.globalTimetableConfig = config;
+        });
     });
 }
 
