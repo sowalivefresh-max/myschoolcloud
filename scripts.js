@@ -1021,7 +1021,11 @@ function generateBroadsheet() {
         return row;
       });
       
-      doc.autoTable({
+      var breakColsMeta = {};
+    var tableStartY = 9999;
+    var tableEndY = 0;
+
+    doc.autoTable({
         startY: 28,
         head: head,
         body: body,
@@ -1490,7 +1494,11 @@ function downloadTimetablePDF(className) {
             bodyRows.push(row);
         });
 
-        doc.autoTable({
+        var breakColsMeta = {};
+    var tableStartY = 9999;
+    var tableEndY = 0;
+
+    doc.autoTable({
             head: [headRow],
             body: bodyRows,
             startY: startY,
@@ -1648,7 +1656,7 @@ function downloadMasterTimetablePDF(section) {
             eCols.forEach(function(col) {
                 if (col.type === 'break') {
                     if (clsIdx === 0) {
-                        row.push({ content: '', rowSpan: nClasses,
+                        row.push({ content: ' ', rowSpan: nClasses,
                                    styles: { fillColor: GR, halign: 'center', valign: 'middle' } });
                     }
                 } else {
@@ -1662,6 +1670,10 @@ function downloadMasterTimetablePDF(section) {
             rowBreakMeta.push({ isSubHeader: false, breakCols: breakAbsCols, day: day, clsIdx: clsIdx });
         });
     });
+
+    var breakColsMeta = {};
+    var tableStartY = 9999;
+    var tableEndY = 0;
 
     doc.autoTable({
         head: [buildHeadRow(masterCols)],
@@ -1679,41 +1691,62 @@ function downloadMasterTimetablePDF(section) {
             var meta = rowBreakMeta[data.row.index];
             if (!meta || meta.isSubHeader) return;
 
-            /* Calculate true center of the spanned area (since data.cell.height is only 1 row) */
-            var trueHeight = data.row.height * nClasses;
-            var trueCy = data.cell.y + (trueHeight / 2);
-            var cx = data.cell.x + data.cell.width / 2;
+            /* Track table bounds and break columns for didDrawPage */
+            tableStartY = Math.min(tableStartY, data.cell.y);
+            tableEndY = Math.max(tableEndY, data.cell.y + data.cell.height);
             
-            // Adjust X to perfectly center the text horizontally (baseline bottom rotated 90deg CCW shifts text left)
-            var fontHeight = 7 / doc.internal.scaleFactor; 
-            var adjustedCx = cx + fontHeight / 3;
+            var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
+            if (breakLabel) {
+                breakColsMeta[data.column.index] = { x: data.cell.x, w: data.cell.width, label: breakLabel };
+            }
 
             /* Draw vertical day name in Day column (col 0) — only for the first row of each day */
             if (data.column.index === 0 && meta.clsIdx === 0) {
+                var trueHeight = data.row.height * nClasses;
+                var trueCy = data.cell.y + (trueHeight / 2);
+                var cx = data.cell.x + data.cell.width / 2;
+
                 doc.saveGraphicsState();
-                doc.setFontSize(7);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(255, 255, 255);
                 var dayStr = (meta.day || '').toUpperCase();
-                var tw = doc.getStringUnitWidth(dayStr) * 7 / doc.internal.scaleFactor;
-                // angle 90 is counter-clockwise (Bottom-to-Top), so text goes UP.
-                // To center vertically, start BELOW the center by tw/2.
+                
+                var fontSize = 7;
+                doc.setFontSize(fontSize);
+                var tw = doc.getStringUnitWidth(dayStr) * fontSize / doc.internal.scaleFactor;
+                
+                /* Auto-resize font to fit smartly in the cell */
+                if (tw > trueHeight - 2) {
+                    fontSize = fontSize * ((trueHeight - 2) / tw);
+                    doc.setFontSize(fontSize);
+                    tw = doc.getStringUnitWidth(dayStr) * fontSize / doc.internal.scaleFactor;
+                }
+
+                var fontHeight = fontSize / doc.internal.scaleFactor; 
+                var adjustedCx = cx + fontHeight / 3;
+                
                 doc.text(dayStr, adjustedCx, trueCy + tw / 2, { angle: 90 });
                 doc.restoreGraphicsState();
             }
-
-            /* Draw vertical break label — only in the middle of the table (middle day group) */
-            var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
-            var isMiddleDay = (meta.dayIdx === Math.floor(config.days.length / 2));
-            if (breakLabel && isMiddleDay && meta.clsIdx === 0) {
-                doc.saveGraphicsState();
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(200, 0, 0);
-                var brkStr = breakLabel.toUpperCase();
-                var tw2 = doc.getStringUnitWidth(brkStr) * 7 / doc.internal.scaleFactor;
-                doc.text(brkStr, adjustedCx, trueCy + tw2 / 2, { angle: 90 });
-                doc.restoreGraphicsState();
+        },
+        didDrawPage: function(data) {
+            /* Draw merged break labels perfectly centered across the entire table */
+            if (tableStartY < tableEndY) {
+                var cy = (tableStartY + tableEndY) / 2;
+                for (var colIdx in breakColsMeta) {
+                    var b = breakColsMeta[colIdx];
+                    var cx = b.x + b.w / 2;
+                    doc.saveGraphicsState();
+                    doc.setFontSize(7);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(200, 0, 0);
+                    var brkStr = b.label.toUpperCase();
+                    var tw = doc.getStringUnitWidth(brkStr) * 7 / doc.internal.scaleFactor;
+                    var fontHeight = 7 / doc.internal.scaleFactor;
+                    var adjustedCx = cx + fontHeight / 3;
+                    doc.text(brkStr, adjustedCx, cy + tw / 2, { angle: 90 });
+                    doc.restoreGraphicsState();
+                }
             }
         }
 
