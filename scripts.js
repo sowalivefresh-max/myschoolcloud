@@ -1537,69 +1537,97 @@ function downloadMasterTimetablePDF(section) {
     var term       = termSel ? termSel.options[termSel.selectedIndex].text : '';
     var session    = (document.getElementById('timetable-session-select') || {}).value || '';
 
-    /* ─── Heading ─── */
     doc.setFontSize(16); doc.setFont(undefined, 'bold');
     doc.text(schoolName, pw / 2, 14, { align: 'center' });
     doc.setFontSize(11); doc.setFont(undefined, 'normal');
     doc.text('Master Timetable: ' + section + ' Section  (' + term + ', ' + session + ')', pw / 2, 21, { align: 'center' });
 
-    /* ─── Use first day's periods as master column template ─── */
     function getDayPeriods(day) {
         return (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
     }
-    var masterPeriods = getDayPeriods(config.days[0]);
 
-    /* ─── Build effectiveCols: merge consecutive breaks into one ─── */
-    var effectiveCols = [];  /* [{type:'subject'|'break', label, origIdx(s)}] */
-    var pi = 0;
-    while (pi < masterPeriods.length) {
-        var p  = masterPeriods[pi];
-        var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
-        if (pt === 'Break' || pt === 'Event') {
-            var bn = p.customLabel || p.label || 'Break';
-            var idxs = [pi]; pi++;
-            while (pi < masterPeriods.length) {
-                var np = masterPeriods[pi];
-                var npt = np.type || (np.isBreak ? 'Break' : 'Subject');
-                if (npt === 'Break' || npt === 'Event') { idxs.push(pi); pi++; } else break;
+    function buildEffectiveCols(periods) {
+        var cols = [];
+        var pi = 0;
+        while (pi < periods.length) {
+            var p  = periods[pi];
+            var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
+            if (pt === 'Break' || pt === 'Event') {
+                var bn    = p.customLabel || p.label || 'Break';
+                var btime = (p.startTime && p.endTime) ? (p.startTime + ' - ' + p.endTime) : (p.label || bn);
+                var idxs  = [pi]; pi++;
+                while (pi < periods.length) {
+                    var np  = periods[pi];
+                    var npt = np.type || (np.isBreak ? 'Break' : 'Subject');
+                    if (npt === 'Break' || npt === 'Event') { idxs.push(pi); pi++; } else break;
+                }
+                cols.push({ type: 'break', label: bn, timeLabel: btime, origIdxs: idxs });
+            } else {
+                var slotLabel = (p.startTime && p.endTime) ? (p.startTime + ' - ' + p.endTime) : (p.label || ('P' + (pi + 1)));
+                cols.push({ type: 'subject', label: slotLabel, origIdx: pi });
+                pi++;
             }
-            effectiveCols.push({ type: 'break', label: bn, origIdxs: idxs });
-        } else {
-            effectiveCols.push({ type: 'subject', label: p.label || ('P' + (pi+1)), origIdx: pi });
-            pi++;
         }
+        return cols;
     }
 
-    /* ─── Map absolute column indices for break columns ─── */
-    /* col 0 = Day, col 1 = Class, col 2+ = effectiveCols[0..] */
-    var breakAbsCols = {};   /* absColIdx -> label */
-    effectiveCols.forEach(function(col, i) {
-        if (col.type === 'break') breakAbsCols[2 + i] = col.label;
-    });
+    function dayKey(day) {
+        return JSON.stringify(getDayPeriods(day).map(function(p){ return p.startTime + p.endTime + p.type; }));
+    }
+    var firstDayKey = dayKey(config.days[0]);
+    var masterCols  = buildEffectiveCols(getDayPeriods(config.days[0]));
+    var nClasses    = filteredList.length;
 
-    var nClasses   = filteredList.length;
-    var totalRows  = config.days.length * nClasses;
+    var DK = [30, 58, 95];
+    var GR = [226, 232, 240];
 
-    /* ─── Head row ─── */
-    var DK = [30, 58, 95];     /* dark header bg */
-    var GR = [226, 232, 240];  /* break col bg */
-    var headRow = [
-        { content: '', styles: { fillColor: DK } },
-        { content: 'CLASSES', styles: { fillColor: DK, textColor: [255,255,255], fontStyle: 'bold', halign: 'center' } }
-    ];
-    effectiveCols.forEach(function(col) {
-        if (col.type === 'break') {
-            headRow.push({ content: col.label.toUpperCase(),
+    function buildHeadRow(eCols) {
+        var row = [
+            { content: '',         styles: { fillColor: DK } },
+            { content: 'CLASSES',  styles: { fillColor: DK, textColor: [255,255,255], fontStyle: 'bold', halign: 'center' } }
+        ];
+        eCols.forEach(function(col) {
+            if (col.type === 'break') {
+                row.push({ content: col.timeLabel,
                            styles: { fillColor: GR, textColor: [200,0,0], fontStyle: 'bold', halign: 'center', valign: 'middle' } });
-        } else {
-            headRow.push({ content: col.label,
+            } else {
+                row.push({ content: col.label,
                            styles: { fillColor: DK, textColor: [255,255,255], halign: 'center' } });
-        }
-    });
+            }
+        });
+        return row;
+    }
 
-    /* ─── Body rows ─── */
-    var body = [];
+    function getBreakAbsCols(eCols) {
+        var map = {};
+        eCols.forEach(function(col, i) {
+            if (col.type === 'break') map[2 + i] = col.label;
+        });
+        return map;
+    }
+
+    var masterBreakAbsCols = getBreakAbsCols(masterCols);
+
+    var body        = [];
+    var rowBreakMeta = [];
+
     config.days.forEach(function(day, dayIdx) {
+        var dKey       = dayKey(day);
+        var isDifferent = (dKey !== firstDayKey);
+        var eCols       = isDifferent ? buildEffectiveCols(getDayPeriods(day)) : masterCols;
+        var breakAbsCols = isDifferent ? getBreakAbsCols(eCols) : masterBreakAbsCols;
+
+        if (isDifferent) {
+            var subHead = buildHeadRow(eCols);
+            subHead.forEach(function(cell) {
+                if (cell.styles && cell.styles.fillColor === DK) {
+                    cell.styles.fillColor = [50, 85, 130];
+                }
+            });
+            body.push(subHead);
+            rowBreakMeta.push({ isSubHeader: true, breakCols: {}, day: day });
+        }
+
         var sch_map = {};
         filteredList.forEach(function(tt) {
             sch_map[tt.className] = (tt.schedule && tt.schedule[day]) || [];
@@ -1609,53 +1637,48 @@ function downloadMasterTimetablePDF(section) {
             var sch = sch_map[tt.className];
             var row = [];
 
-            /* Day column — rowSpan spans all classes for this day */
             if (clsIdx === 0) {
-                row.push({ content: '', rowSpan: nClasses,
-                           styles: { fillColor: DK, halign: 'center', valign: 'middle' } });
+                row.push({ content: day.toUpperCase(), rowSpan: nClasses,
+                           styles: { fillColor: DK, textColor: DK, halign: 'center', valign: 'middle' } });
             }
 
-            /* Class column */
             row.push({ content: tt.className, styles: { fontStyle: 'bold', halign: 'left' } });
 
-            /* Effective columns */
-            effectiveCols.forEach(function(col, colI) {
+            eCols.forEach(function(col) {
                 if (col.type === 'break') {
-                    /* Only push the spanning cell once (first row of the entire table) */
-                    if (dayIdx === 0 && clsIdx === 0) {
-                        row.push({ content: '', rowSpan: totalRows,
+                    if (clsIdx === 0) {
+                        row.push({ content: '', rowSpan: nClasses,
                                    styles: { fillColor: GR, halign: 'center', valign: 'middle' } });
                     }
-                    /* All other rows: skip — rowSpan handles it */
                 } else {
-                    var origIdx = col.origIdx;
-                    var entry   = sch[origIdx] || null;
-                    var text    = (entry && entry.type === 'Subject') ? entry.subjectName : '-';
+                    var entry = (sch[col.origIdx] || null);
+                    var text  = (entry && entry.type === 'Subject') ? entry.subjectName : '-';
                     row.push({ content: text, styles: { halign: 'center' } });
                 }
             });
 
             body.push(row);
+            rowBreakMeta.push({ isSubHeader: false, breakCols: breakAbsCols, day: day, clsIdx: clsIdx });
         });
     });
 
-    /* ─── Render table ─── */
     doc.autoTable({
-        head: [headRow],
+        head: [buildHeadRow(masterCols)],
         body: body,
         startY: 26,
         theme: 'grid',
         headStyles: { fontSize: 7, fontStyle: 'bold', halign: 'center', valign: 'middle', minCellHeight: 10 },
         styles:     { fontSize: 6.5, cellPadding: 1.5, valign: 'middle', overflow: 'linebreak' },
         columnStyles: {
-            0: { cellWidth: 10, halign: 'center' },   /* Day  */
-            1: { cellWidth: 22, halign: 'left'   }    /* Class */
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 22, halign: 'left'   }
         },
         didDrawCell: function(data) {
-            /* Draw vertical text in Day column (col 0) body cells that have rowSpan */
-            if (data.row.section === 'body' && data.column.index === 0 && data.cell.height > 5) {
-                var dayIdx2  = Math.floor(data.row.index / nClasses);
-                var dayName  = (config.days[dayIdx2] || '').toUpperCase();
+            if (data.row.section !== 'body') return;
+            var meta = rowBreakMeta[data.row.index];
+            if (!meta || meta.isSubHeader) return;
+
+            if (data.column.index === 0 && data.cell.height > 5) {
                 var cx = data.cell.x + data.cell.width  / 2;
                 var cy = data.cell.y + data.cell.height / 2;
                 doc.saveGraphicsState();
