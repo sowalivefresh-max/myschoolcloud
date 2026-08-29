@@ -1717,20 +1717,6 @@ function downloadMasterTimetablePDF(section) {
             }
         }
 
-            /* Draw vertical break label — only ONCE per break column across the whole table */
-            var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
-            if (breakLabel && !drawnBreaks[data.column.index]) {
-                drawnBreaks[data.column.index] = true;
-                doc.saveGraphicsState();
-                doc.setFontSize(7);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(200, 0, 0);
-                var brkStr = breakLabel.toUpperCase();
-                var tw2 = doc.getStringUnitWidth(brkStr) * 7 / doc.internal.scaleFactor;
-                doc.text(brkStr, cx, trueCy - tw2 / 2, { angle: 90 });
-                doc.restoreGraphicsState();
-            }
-        }
     });
 
     doc.save('Master_Timetable_' + section + '.pdf');

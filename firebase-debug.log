@@ -154,3 +154,230 @@
     at process.processTimers (node:internal/timers:541:7)
 [error] 
 [error] Error: An unexpected error has occurred.
+[debug] [2026-08-29T10:38:18.582Z] ----------------------------------------------------------------------
+[debug] [2026-08-29T10:38:18.606Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --project cloudschool-3c1d4 --only hosting:cloudschool-3c1d4
+[debug] [2026-08-29T10:38:18.608Z] CLI Version:   15.24.0
+[debug] [2026-08-29T10:38:18.608Z] Platform:      win32
+[debug] [2026-08-29T10:38:18.609Z] Node Version:  v24.18.0
+[debug] [2026-08-29T10:38:18.609Z] Detected Agent: antigravity
+[debug] [2026-08-29T10:38:18.610Z] Time:          Sat Aug 29 2026 11:38:18 GMT+0100 (West Africa Time)
+[debug] [2026-08-29T10:38:18.610Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-29T10:38:23.416Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-29T10:38:23.416Z] > authorizing via signed-in user (faith4grtns@gmail.com)
+[debug] [2026-08-29T10:38:23.416Z] [iam] checking project cloudschool-3c1d4 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-08-29T10:38:23.471Z] Checked if tokens are valid: false, expires at: 1788000566109
+[debug] [2026-08-29T10:38:23.471Z] Checked if tokens are valid: false, expires at: 1788000566109
+[debug] [2026-08-29T10:38:23.472Z] > refreshing access token with scopes: []
+[debug] [2026-08-29T10:38:23.477Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-29T10:38:23.478Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-29T10:38:31.038Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-29T10:38:31.039Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-29T10:38:31.086Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions [none]
+[debug] [2026-08-29T10:38:31.087Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions  x-goog-user-project=cloudschool-3c1d4
+[debug] [2026-08-29T10:38:31.087Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-29T10:38:39.493Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions 200
+[debug] [2026-08-29T10:38:39.493Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-29T10:38:39.497Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:39.497Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:39.499Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 [none]
+[debug] [2026-08-29T10:38:40.854Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 200
+[debug] [2026-08-29T10:38:40.855Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 {"projectId":"cloudschool-3c1d4","projectNumber":"974189460331","displayName":"CloudSchool","name":"projects/cloudschool-3c1d4","resources":{"hostingSite":"cloudschool-3c1d4"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_9ddf5bb2-2cad-4585-a158-4048443b0921"}
+[info] 
+[info] === Deploying to 'cloudschool-3c1d4'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-08-29T10:38:40.875Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:40.876Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:40.876Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/cloudschool-3c1d4/sites/cloudschool-3c1d4 [none]
+[debug] [2026-08-29T10:38:43.010Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/cloudschool-3c1d4/sites/cloudschool-3c1d4 200
+[debug] [2026-08-29T10:38:43.011Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/cloudschool-3c1d4/sites/cloudschool-3c1d4 {"name":"projects/cloudschool-3c1d4/sites/cloudschool-3c1d4","defaultUrl":"https://cloudschool-3c1d4.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-08-29T10:38:43.055Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:43.055Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:43.060Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions [none]
+[debug] [2026-08-29T10:38:43.061Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-08-29T10:38:49.011Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions 200
+[debug] [2026-08-29T10:38:49.012Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions {"name":"projects/974189460331/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[cloudschool-3c1d4]: beginning deploy... 
+[info] i  hosting[cloudschool-3c1d4]: found 39 files in . 
+[debug] [2026-08-29T10:38:54.674Z] [hosting] uploading with 200 concurrency
+[debug] [2026-08-29T10:38:54.802Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:54.803Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:38:54.806Z] [hosting] hash cache [] stored for 39 files
+[debug] [2026-08-29T10:38:54.807Z] [hosting][hash queue][FINAL] {"max":94,"min":2,"avg":8.794871794871796,"active":0,"complete":39,"success":39,"errored":0,"retried":0,"total":39,"elapsed":126}
+[debug] [2026-08-29T10:38:54.808Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b:populateFiles [none]
+[debug] [2026-08-29T10:38:54.808Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b:populateFiles {"files":{"/VPDashboard.html":"8ddd960dabb38b61438458b4b5683bf8216956cf7dd61b75a2945d2c00fe1c34","/test_api.js":"1d7f49f9429ddc2a8e548a328fd84cb2f1e1b1690e04c995ce14c10586186995","/temp_script.js":"8af6a032e1bff17d07b77b6d91d98e2793366b86c36aa6bea24b84f9a8951061","/TeacherDashboard.html":"2d22986b0e027704dbf4dcc5b976ba23df440c283f1b50d836b9d7bb9c671543","/Subscription_Pricing_Proposal.html":"94848bb4b9a2a93ee6abd83468787baa320d3d43db50811816f93651accfd438","/Styles.html":"39d89ba40e547464af2645b18c9e8868c30242d01e64be53ddd08cc15d837960","/styles.css":"930df29d3680876066ed519bc41e14b4386b41d437406f4676dc0bef5ae511b5","/StudentDashboard.html":"c9048078854bdaba4692ee08046e8c092e324ca4b92d1aa6e930bb71b95e6511","/StorekeeperDashboard.html":"7157cd2d45f005dd070ff7b05a289a96cdabbfafeae8cfdfd29a645b2cd80e59","/Scripts.html":"750244fc6e726ce0df1f074d48826b019518ed17d72d8fa7a0cde9cf0f308bb4","/proper_patch.py":"cb6afd065057f421a830a648471bfba79ed362deb3971fa9f82cd008f9ba74c9","/PrincipalDashboard.html":"47970cdfb32799ed201e26fe184d20d5a2344e40a5d5eafac8d1117f9874bcaa","/PrimaryTeacherDashboard.html":"6e57957f04feb308464dd3a5d7547c3d895b1ae4fae95408af8fde92e2c34213","/payload.json":"4f2dd49067915bf06b0a2e9b4c58214966277e3a34121bc80b7f3b844bfda15c","/patch_teacher_cbt_fix.js":"7d32dfe8c7bccdf442bb6f26784aa19788ec0d9d9e165f54dedaf73960c253c2","/patch_student.js":"9efc1ef2443c08da4b8ee6f8928d3913368f5e71c47c81bb955b8d1a7e7f282d","/patch_frontend_cbt.js":"295924d776a19a2dfaae2614c91bdf35312a1c33c1c9001acb4bdcdcf8ca693b","/patch_finance_ui.js":"d37d550b899be760a971caa8a023e87a7a7b32262f21bbeab22fe1ad33fd0889","/patch_dashboards.js":"04c4e16b2873cb8c56281b590a57426614680944f90f34f40dcd5dddf7f44ad3","/ParentRegister.html":"80fc37690b2224e18eb529c63c55cbaad649c0cd134dbf913b7a9fcda3c6d394","/ParentDashboard.html":"cdbcf6dc01527a8a6f6a0f552886fccf54fa87ae2ae7e417ee13edbdd6a71b61","/package.json":"f3049ff99813ad3faa02ead85b707e1a073da98e7dd5a4fcd8c7adb848768bba","/package-lock.json":"d409f8ba82a3b07c67790637e045bea9fc706f9c551fea847af47285375a6ec4","/old_admin.html":"38d488bedc656c626cc2ff9171d81aa8b5d83f4f425f6bd713c83754f9df47ab","/logs.txt":"a75eaa938de516cfdaa68df4a11b90131fe0c0d18fb62fd4881dc23c9ff5e54d","/Login.html":"04e871c851ff078fb97ff2f08cad5664a641a00a743540236547f8a356a971b2","/index.html":"35d1708791e07dcb2a62155208246124376693ccddca55bb69309d56a65c59e2","/HeadTeacherDashboard.html":"c729719ea034bee0bb272399d79e26dc1206f7c701474aa61fb9754cd6a76976","/fix_syntax.py":"f6ef45a3098b6afc42a2be3630f052abfa0b57bd454814e589844a494d96e6d3","/firestore.indexes.json":"7008120c2b8c8a38ee326091c6a6b9d7b6a04da83681858c5c5f00717c2e43f5","/Cloud_Deployment_Guide.html":"9c07d6c55c31ad05525564955677a222150ffd4454a431b53c5391f321afe7c1","/check_db.js":"1208331aea14eda8847b31c8e354b3f627cbcff4af63f627d4009f4feeb16774","/api.js":"0d632033a875b916fd9a53a51c020fca95d9bf43e502a04bb3450b48a395bc0c","/AdminDashboard.html":"e31b86b6ba863d220afb03fb97ea5fab3bb5aebff688ced2a623400ce2a3d20c","/AccountsDashboard.html":"00597109dc4c9564d96127d07d04b3ff08acc06f09e73e490c7fbd616dd0aba6","/scripts/sync_clearance.js":"330819fc696d6b80adf592a708d90ba4c2273d98d920908fd8e3b755de5768ca","/scripts.js":"3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac","/AdminAssistantDashboard.html":"d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6","/DeveloperDashboard.html":"56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79"}}
+[info] i  hosting: adding files to version [0/39] (0%) 
+[info] i  hosting: adding files to version [0/39] (0%) 
+[info] i  hosting: adding files to version [0/39] (0%) 
+[debug] [2026-08-29T10:39:01.089Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b:populateFiles 200
+[debug] [2026-08-29T10:39:01.090Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b:populateFiles {"uploadRequiredHashes":["d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6","3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac","56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files"}
+[debug] [2026-08-29T10:39:01.093Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:01.094Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:01.095Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:01.096Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:01.097Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:01.097Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:01.098Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6 [none]
+[debug] [2026-08-29T10:39:01.098Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6 [stream]
+[debug] [2026-08-29T10:39:01.102Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac [none]
+[debug] [2026-08-29T10:39:01.103Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac [stream]
+[debug] [2026-08-29T10:39:01.108Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79 [none]
+[debug] [2026-08-29T10:39:01.109Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79 [stream]
+[debug] [2026-08-29T10:39:01.127Z] [hosting][populate queue][FINAL] {"max":6295,"min":6295,"avg":6295,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":6325}
+[debug] [2026-08-29T10:39:01.128Z] [hosting] uploads queued: 3
+[info] i  hosting: uploading new files [0/3] (0%) 
+[info] i  hosting: uploading new files [0/3] (0%) 
+[info] i  hosting: uploading new files [0/3] (0%) 
+[info] i  hosting: uploading new files [0/3] (0%) 
+[debug] [2026-08-29T10:39:09.795Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79 200
+[debug] [2026-08-29T10:39:09.796Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79 [stream]
+[debug] [2026-08-29T10:39:10.098Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6 200
+[debug] [2026-08-29T10:39:10.099Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6 [stream]
+[debug] [2026-08-29T10:39:10.104Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac 200
+[debug] [2026-08-29T10:39:10.105Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b/files/3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac [stream]
+[debug] [2026-08-29T10:39:10.106Z] [hosting][upload queue][FINAL] {"max":9012,"min":8701,"avg":8907.333333333334,"active":0,"complete":3,"success":3,"errored":0,"retried":0,"total":3,"elapsed":9015}
+[info] i  hosting: upload complete 
+[info] +  hosting[cloudschool-3c1d4]: file upload complete 
+[debug] [2026-08-29T10:39:10.109Z] [hosting] deploy completed after 15564ms
+[debug] [2026-08-29T10:39:10.110Z] [
+  {
+    "config": {
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        ".git/**",
+        "functions/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "cloudschool-3c1d4"
+    },
+    "version": "projects/974189460331/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b"
+  }
+]
+[info] i  hosting[cloudschool-3c1d4]: finalizing version... 
+[debug] [2026-08-29T10:39:10.122Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:10.123Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:39:10.126Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b updateMask=status%2Cconfig
+[debug] [2026-08-29T10:39:10.127Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[debug] [2026-08-29T10:39:21.819Z] *** [apiv2] error from fetch(https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/38ad58dff1c0b96b?updateMask=status%2Cconfig, {"headers":{},"method":"PATCH","body":"{\"status\":\"FINALIZED\",\"config\":{\"rewrites\":[{\"glob\":\"**\",\"path\":\"/index.html\"}]}}"}): SocketError: other side closed
+[debug] [2026-08-29T10:39:26.847Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:296:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-08-29T10:40:21.800Z] ----------------------------------------------------------------------
+[debug] [2026-08-29T10:40:21.807Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --project cloudschool-3c1d4 --only hosting:cloudschool-3c1d4
+[debug] [2026-08-29T10:40:21.808Z] CLI Version:   15.24.0
+[debug] [2026-08-29T10:40:21.808Z] Platform:      win32
+[debug] [2026-08-29T10:40:21.808Z] Node Version:  v24.18.0
+[debug] [2026-08-29T10:40:21.809Z] Detected Agent: antigravity
+[debug] [2026-08-29T10:40:21.809Z] Time:          Sat Aug 29 2026 11:40:21 GMT+0100 (West Africa Time)
+[debug] [2026-08-29T10:40:21.809Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-29T10:40:25.227Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-29T10:40:25.228Z] > authorizing via signed-in user (faith4grtns@gmail.com)
+[debug] [2026-08-29T10:40:25.228Z] [iam] checking project cloudschool-3c1d4 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-08-29T10:40:25.256Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:25.256Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:25.259Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions [none]
+[debug] [2026-08-29T10:40:25.259Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions  x-goog-user-project=cloudschool-3c1d4
+[debug] [2026-08-29T10:40:25.260Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-29T10:40:36.411Z] *** [apiv2] error from fetch(https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions, {"headers":{},"method":"POST","body":"{\"permissions\":[\"firebase.projects.get\",\"firebasehosting.sites.update\"]}"}): SocketError: other side closed
+[debug] [2026-08-29T10:40:36.414Z] [iam] error while checking permissions, command may fail: Failed to make request to https://cloudresourcemanager.googleapis.com/v1/projects/cloudschool-3c1d4:testIamPermissions
+[debug] [2026-08-29T10:40:36.417Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:36.418Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:36.419Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 [none]
+[debug] [2026-08-29T10:40:37.708Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 200
+[debug] [2026-08-29T10:40:37.709Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/cloudschool-3c1d4 {"projectId":"cloudschool-3c1d4","projectNumber":"974189460331","displayName":"CloudSchool","name":"projects/cloudschool-3c1d4","resources":{"hostingSite":"cloudschool-3c1d4"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_9ddf5bb2-2cad-4585-a158-4048443b0921"}
+[info] 
+[info] === Deploying to 'cloudschool-3c1d4'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-08-29T10:40:37.733Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:37.734Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:37.735Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/cloudschool-3c1d4/sites/cloudschool-3c1d4 [none]
+[debug] [2026-08-29T10:40:39.907Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/cloudschool-3c1d4/sites/cloudschool-3c1d4 200
+[debug] [2026-08-29T10:40:39.907Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/cloudschool-3c1d4/sites/cloudschool-3c1d4 {"name":"projects/cloudschool-3c1d4/sites/cloudschool-3c1d4","defaultUrl":"https://cloudschool-3c1d4.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-08-29T10:40:39.919Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:39.920Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:39.925Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions [none]
+[debug] [2026-08-29T10:40:39.926Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-08-29T10:40:41.336Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions 200
+[debug] [2026-08-29T10:40:41.336Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions {"name":"projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[cloudschool-3c1d4]: beginning deploy... 
+[info] i  hosting[cloudschool-3c1d4]: found 39 files in . 
+[debug] [2026-08-29T10:40:41.462Z] [hosting] uploading with 200 concurrency
+[debug] [2026-08-29T10:40:41.491Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:41.492Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:41.498Z] [hosting] hash cache [] stored for 39 files
+[debug] [2026-08-29T10:40:41.499Z] [hosting][hash queue][FINAL] {"max":19,"min":1,"avg":1,"active":0,"complete":39,"success":39,"errored":0,"retried":0,"total":39,"elapsed":31}
+[debug] [2026-08-29T10:40:41.500Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba:populateFiles [none]
+[debug] [2026-08-29T10:40:41.501Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba:populateFiles {"files":{"/VPDashboard.html":"8ddd960dabb38b61438458b4b5683bf8216956cf7dd61b75a2945d2c00fe1c34","/test_api.js":"1d7f49f9429ddc2a8e548a328fd84cb2f1e1b1690e04c995ce14c10586186995","/temp_script.js":"8af6a032e1bff17d07b77b6d91d98e2793366b86c36aa6bea24b84f9a8951061","/TeacherDashboard.html":"2d22986b0e027704dbf4dcc5b976ba23df440c283f1b50d836b9d7bb9c671543","/Subscription_Pricing_Proposal.html":"94848bb4b9a2a93ee6abd83468787baa320d3d43db50811816f93651accfd438","/Styles.html":"39d89ba40e547464af2645b18c9e8868c30242d01e64be53ddd08cc15d837960","/styles.css":"930df29d3680876066ed519bc41e14b4386b41d437406f4676dc0bef5ae511b5","/StudentDashboard.html":"c9048078854bdaba4692ee08046e8c092e324ca4b92d1aa6e930bb71b95e6511","/StorekeeperDashboard.html":"7157cd2d45f005dd070ff7b05a289a96cdabbfafeae8cfdfd29a645b2cd80e59","/scripts.js":"3dd83fbb070e0105294f675f07ac4f58a71aabca2b3655381a36f42c519137ac","/Scripts.html":"750244fc6e726ce0df1f074d48826b019518ed17d72d8fa7a0cde9cf0f308bb4","/proper_patch.py":"cb6afd065057f421a830a648471bfba79ed362deb3971fa9f82cd008f9ba74c9","/PrincipalDashboard.html":"47970cdfb32799ed201e26fe184d20d5a2344e40a5d5eafac8d1117f9874bcaa","/PrimaryTeacherDashboard.html":"6e57957f04feb308464dd3a5d7547c3d895b1ae4fae95408af8fde92e2c34213","/payload.json":"4f2dd49067915bf06b0a2e9b4c58214966277e3a34121bc80b7f3b844bfda15c","/patch_teacher_cbt_fix.js":"7d32dfe8c7bccdf442bb6f26784aa19788ec0d9d9e165f54dedaf73960c253c2","/patch_student.js":"9efc1ef2443c08da4b8ee6f8928d3913368f5e71c47c81bb955b8d1a7e7f282d","/patch_frontend_cbt.js":"295924d776a19a2dfaae2614c91bdf35312a1c33c1c9001acb4bdcdcf8ca693b","/patch_finance_ui.js":"d37d550b899be760a971caa8a023e87a7a7b32262f21bbeab22fe1ad33fd0889","/patch_dashboards.js":"04c4e16b2873cb8c56281b590a57426614680944f90f34f40dcd5dddf7f44ad3","/ParentRegister.html":"80fc37690b2224e18eb529c63c55cbaad649c0cd134dbf913b7a9fcda3c6d394","/ParentDashboard.html":"cdbcf6dc01527a8a6f6a0f552886fccf54fa87ae2ae7e417ee13edbdd6a71b61","/package.json":"f3049ff99813ad3faa02ead85b707e1a073da98e7dd5a4fcd8c7adb848768bba","/package-lock.json":"d409f8ba82a3b07c67790637e045bea9fc706f9c551fea847af47285375a6ec4","/old_admin.html":"38d488bedc656c626cc2ff9171d81aa8b5d83f4f425f6bd713c83754f9df47ab","/logs.txt":"a75eaa938de516cfdaa68df4a11b90131fe0c0d18fb62fd4881dc23c9ff5e54d","/Login.html":"04e871c851ff078fb97ff2f08cad5664a641a00a743540236547f8a356a971b2","/index.html":"35d1708791e07dcb2a62155208246124376693ccddca55bb69309d56a65c59e2","/HeadTeacherDashboard.html":"c729719ea034bee0bb272399d79e26dc1206f7c701474aa61fb9754cd6a76976","/fix_syntax.py":"f6ef45a3098b6afc42a2be3630f052abfa0b57bd454814e589844a494d96e6d3","/firestore.indexes.json":"7008120c2b8c8a38ee326091c6a6b9d7b6a04da83681858c5c5f00717c2e43f5","/DeveloperDashboard.html":"56c8c3a74c79843e884b3f8e9b07eaa4bdbc57e127fc88c7b40bfbbe0facca79","/Cloud_Deployment_Guide.html":"9c07d6c55c31ad05525564955677a222150ffd4454a431b53c5391f321afe7c1","/check_db.js":"1208331aea14eda8847b31c8e354b3f627cbcff4af63f627d4009f4feeb16774","/api.js":"0d632033a875b916fd9a53a51c020fca95d9bf43e502a04bb3450b48a395bc0c","/AdminDashboard.html":"e31b86b6ba863d220afb03fb97ea5fab3bb5aebff688ced2a623400ce2a3d20c","/AdminAssistantDashboard.html":"d17556a89a6e25e3f3e29b6532e0e3dccc6399f85d23601c6ac5ed2681f73ab6","/AccountsDashboard.html":"00597109dc4c9564d96127d07d04b3ff08acc06f09e73e490c7fbd616dd0aba6","/scripts/sync_clearance.js":"330819fc696d6b80adf592a708d90ba4c2273d98d920908fd8e3b755de5768ca"}}
+[debug] [2026-08-29T10:40:42.973Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba:populateFiles 200
+[debug] [2026-08-29T10:40:42.973Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/cloudschool-3c1d4/versions/79c07115f58c62ba/files"}
+[debug] [2026-08-29T10:40:42.974Z] [hosting][populate queue][FINAL] {"max":1485,"min":1485,"avg":1485,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":1485}
+[debug] [2026-08-29T10:40:42.974Z] [hosting] uploads queued: 0
+[debug] [2026-08-29T10:40:42.975Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1788000042975}
+[info] i  hosting: upload complete 
+[info] +  hosting[cloudschool-3c1d4]: file upload complete 
+[debug] [2026-08-29T10:40:42.977Z] [hosting] deploy completed after 1624ms
+[debug] [2026-08-29T10:40:42.977Z] [
+  {
+    "config": {
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        ".git/**",
+        "functions/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "cloudschool-3c1d4"
+    },
+    "version": "projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba"
+  }
+]
+[info] i  hosting[cloudschool-3c1d4]: finalizing version... 
+[debug] [2026-08-29T10:40:42.981Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:42.982Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:42.982Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/79c07115f58c62ba updateMask=status%2Cconfig
+[debug] [2026-08-29T10:40:42.982Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/79c07115f58c62ba {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[debug] [2026-08-29T10:40:50.863Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/79c07115f58c62ba 200
+[debug] [2026-08-29T10:40:50.864Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/versions/79c07115f58c62ba {"name":"projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-08-29T10:40:39.421770Z","createUser":{"email":"faith4grtns@gmail.com"},"finalizeTime":"2026-08-29T10:40:49.090538Z","finalizeUser":{"email":"faith4grtns@gmail.com"}}
+[debug] [2026-08-29T10:40:50.865Z] [hosting] finalized version for cloudschool-3c1d4:[object Object]
+[info] +  hosting[cloudschool-3c1d4]: version finalized 
+[info] i  hosting[cloudschool-3c1d4]: releasing new version... 
+[debug] [2026-08-29T10:40:50.867Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:50.867Z] Checked if tokens are valid: true, expires at: 1788003510040
+[debug] [2026-08-29T10:40:50.868Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/channels/live/releases versionName=projects%2F974189460331%2Fsites%2Fcloudschool-3c1d4%2Fversions%2F79c07115f58c62ba
+[debug] [2026-08-29T10:40:50.868Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/channels/live/releases {}
+[debug] [2026-08-29T10:41:03.624Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/channels/live/releases 200
+[debug] [2026-08-29T10:41:03.625Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/cloudschool-3c1d4/channels/live/releases {"name":"projects/974189460331/sites/cloudschool-3c1d4/channels/live/releases/1788000061424000","version":{"name":"projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-08-29T10:40:39.421770Z","createUser":{"email":"faith4grtns@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLEYSCpC6QXxVI9ZrrPgzBbqLjliRa8FdJMXeDFQunkfwEXvFN7"},"finalizeTime":"2026-08-29T10:40:49.090538Z","finalizeUser":{"email":"faith4grtns@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLEYSCpC6QXxVI9ZrrPgzBbqLjliRa8FdJMXeDFQunkfwEXvFN7"}},"type":"DEPLOY","releaseTime":"2026-08-29T10:41:01.424Z","releaseUser":{"email":"faith4grtns@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLEYSCpC6QXxVI9ZrrPgzBbqLjliRa8FdJMXeDFQunkfwEXvFN7"}}
+[debug] [2026-08-29T10:41:03.625Z] [hosting] release: {"name":"projects/974189460331/sites/cloudschool-3c1d4/channels/live/releases/1788000061424000","version":{"name":"projects/974189460331/sites/cloudschool-3c1d4/versions/79c07115f58c62ba","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-08-29T10:40:39.421770Z","createUser":{"email":"faith4grtns@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLEYSCpC6QXxVI9ZrrPgzBbqLjliRa8FdJMXeDFQunkfwEXvFN7"},"finalizeTime":"2026-08-29T10:40:49.090538Z","finalizeUser":{"email":"faith4grtns@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLEYSCpC6QXxVI9ZrrPgzBbqLjliRa8FdJMXeDFQunkfwEXvFN7"}},"type":"DEPLOY","releaseTime":"2026-08-29T10:41:01.424Z","releaseUser":{"email":"faith4grtns@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLEYSCpC6QXxVI9ZrrPgzBbqLjliRa8FdJMXeDFQunkfwEXvFN7"}}
+[info] +  hosting[cloudschool-3c1d4]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/cloudschool-3c1d4/overview
+[info] Hosting URL: https://cloudschool-3c1d4.web.app
+[debug] [2026-08-29T10:41:13.673Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\OASISFAITH\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:296:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.
