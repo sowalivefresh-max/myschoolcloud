@@ -1358,14 +1358,33 @@ function loadTimetableData() {
                 '<button id="btn-export-class-pdf" class="aa-btn aa-btn-sm aa-btn-danger" onclick="downloadTimetablePDF(\''+className+'\')">' +
                 '<i class="fa fa-file-pdf"></i> Export Class PDF</button></div>';
 
-            var allTables = '';
-            groups.forEach(function(grp, gIdx) {
-                var ps = grp.periods;
-                var marginTop = gIdx > 0 ? 'margin-top:28px;' : '';
-
-                /* thead */
-                var thead = '<thead><tr><th style="text-align:left;min-width:90px;">Day</th>';
+            var maxCols = 0;
+            config.days.forEach(function(d) {
+                var len = 0;
                 var pIdx = 0;
+                var pds = (config.scheduleTemplate && config.scheduleTemplate[d]) || config.periods || [];
+                while (pIdx < pds.length) {
+                    var p = pds[pIdx]; var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
+                    if (pt === 'Break' || pt === 'Event') {
+                        var span = 1;
+                        while (pIdx+span < pds.length) {
+                            var nx = pds[pIdx+span]; var nt = nx.type||(nx.isBreak?'Break':'Subject');
+                            if (nt==='Break'||nt==='Event') span++; else break;
+                        }
+                        len++; pIdx += span;
+                    } else {
+                        len++; pIdx++;
+                    }
+                }
+                if (len > maxCols) maxCols = len;
+            });
+
+            function buildTheadRow(ps, isSub) {
+                var bg = isSub ? '#64748b' : '';
+                var fg = isSub ? '#ffffff' : '';
+                var style = isSub ? ('background:'+bg+';color:'+fg+';') : '';
+                var tr = '<tr><th style="'+style+'text-align:left;min-width:90px;font-weight:bold;">Day</th>';
+                var pIdx = 0, currentCols = 0;
                 while (pIdx < ps.length) {
                     var p = ps[pIdx]; var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
                     if (pt === 'Break' || pt === 'Event') {
@@ -1374,21 +1393,40 @@ function loadTimetableData() {
                             var nx = ps[pIdx+span]; var nt = nx.type||(nx.isBreak?'Break':'Subject');
                             if (nt==='Break'||nt==='Event') span++; else break;
                         }
-                        thead += '<th colspan="'+span+'" style="background:#d1d5db;color:#374151;text-align:center;">' + (p.customLabel||p.label||'Break') + '</th>';
-                        pIdx += span;
+                        var bn = p.customLabel||p.label||'Break';
+                        var btime = (p.startTime && p.endTime) ? (p.startTime + ' - ' + p.endTime) : (p.label || bn);
+                        var brbg = isSub ? '#94a3b8' : '#e2e8f0';
+                        var brfg = isSub ? '#ffffff' : '#b91c1c';
+                        tr += '<th colspan="'+span+'" style="background:'+brbg+';color:'+brfg+';text-align:center;white-space:nowrap;font-weight:bold;">' + btime + '</th>';
+                        pIdx += span; currentCols++;
                     } else {
-                        thead += '<th style="text-align:center;">' + (p.label||'') + '</th>';
-                        pIdx++;
+                        var slbl = (p.startTime && p.endTime) ? (p.startTime + ' - ' + p.endTime) : (p.label||'');
+                        tr += '<th style="'+style+'text-align:center;white-space:nowrap;font-weight:bold;">' + slbl + '</th>';
+                        pIdx++; currentCols++;
                     }
                 }
-                thead += '</tr></thead>';
+                while (currentCols < maxCols) {
+                    tr += '<th style="'+style+'"></th>';
+                    currentCols++;
+                }
+                tr += '</tr>';
+                return tr;
+            }
 
-                /* tbody */
-                var tbody = '<tbody>';
-                grp.days.forEach(function(day) {
+            var allTables = '<div style="overflow-x:auto;"><table class="aa-table" id="timetable-class-table">';
+            
+            groups.forEach(function(grp, gIdx) {
+                var ps = grp.periods;
+                if (gIdx === 0) {
+                    allTables += '<thead>' + buildTheadRow(ps, false) + '</thead><tbody>';
+                } else {
+                    allTables += buildTheadRow(ps, true);
+                }
+                
+                grp.days.forEach(function(day, dayIdxInGroup) {
                     var sch = (tt.schedule && tt.schedule[day]) || [];
-                    tbody += '<tr><td style="font-weight:bold;white-space:nowrap;">'+day+'</td>';
-                    var pi = 0;
+                    allTables += '<tr><td style="font-weight:bold;white-space:nowrap;vertical-align:middle;">'+day+'</td>';
+                    var pi = 0, currentCols = 0;
                     while (pi < ps.length) {
                         var cp = ps[pi]; var cpt = cp.type||(cp.isBreak?'Break':'Subject');
                         if (cpt==='Break'||cpt==='Event') {
@@ -1397,22 +1435,33 @@ function loadTimetableData() {
                                 var np=ps[pi+sp]; var npt=np.type||(np.isBreak?'Break':'Subject');
                                 if (npt==='Break'||npt==='Event') sp++; else break;
                             }
-                            var bn = cp.customLabel || 'Break';
-                            tbody += '<td colspan="'+sp+'" style="background:#e2e8f0;text-align:center;font-weight:bold;color:#475569;">'+bn+'</td>';
-                            pi += sp;
+                            if (dayIdxInGroup === 0) {
+                                var bn = cp.customLabel || 'Break';
+                                var verticalStyle = 'writing-mode: vertical-rl; transform: rotate(180deg); margin: 0 auto; letter-spacing: 2px;';
+                                allTables += '<td rowspan="'+grp.days.length+'" colspan="'+sp+'" style="background:#e2e8f0;text-align:center;font-weight:bold;color:#b91c1c;vertical-align:middle;padding:10px 0;"><div style="'+verticalStyle+'">'+bn.toUpperCase()+'</div></td>';
+                            }
+                            pi += sp; currentCols++;
                         } else {
                             var en = sch[pi]||null;
                             var ct = (en && en.type==='Subject') ? en.subjectName : '-';
-                            tbody += '<td style="text-align:center;">'+ct+'</td>';
-                            pi++;
+                            
+                            // Smart font sizing for HTML table
+                            var fontSizeStyle = '';
+                            if (ct.length > 15) fontSizeStyle = 'font-size:0.85em;letter-spacing:-0.2px;';
+                            if (ct.length > 20) fontSizeStyle = 'font-size:0.75em;letter-spacing:-0.4px;';
+                            
+                            allTables += '<td style="text-align:center;vertical-align:middle;'+fontSizeStyle+'">'+ct+'</td>';
+                            pi++; currentCols++;
                         }
                     }
-                    tbody += '</tr>';
+                    while (currentCols < maxCols) {
+                        allTables += '<td style="border:none;"></td>';
+                        currentCols++;
+                    }
+                    allTables += '</tr>';
                 });
-                tbody += '</tbody>';
-
-                allTables += '<div style="overflow-x:auto;'+marginTop+'"><table class="aa-table" id="timetable-class-table-'+gIdx+'">'+thead+tbody+'</table></div>';
             });
+            allTables += '</tbody></table></div>';
 
             area.innerHTML = btnHtml + allTables;
         });
@@ -1430,94 +1479,189 @@ function downloadTimetablePDF(className) {
     if (!tt) return showToast('Timetable not found.', 'error');
 
     var jsPDF = window.jspdf.jsPDF;
-    var doc   = new jsPDF('landscape');
+    var doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     var pw    = doc.internal.pageSize.getWidth();
+
     var schoolName = (document.getElementById('sb-school-name')||{}).innerText || 'School';
     var termSel    = document.getElementById('timetable-term-select');
     var term       = termSel ? termSel.options[termSel.selectedIndex].text : '';
     var session    = (document.getElementById('timetable-session-select')||{}).value || '';
 
-    doc.setFontSize(16); doc.text(schoolName, pw/2, 18, {align:'center'});
-    doc.setFontSize(12); doc.text('Class Timetable: '+cn+' ('+term+', '+session+')', pw/2, 27, {align:'center'});
+    doc.setFontSize(16); doc.setFont(undefined, 'bold');
+    doc.text(schoolName, pw/2, 14, {align:'center'});
+    doc.setFontSize(11); doc.setFont(undefined, 'normal');
+    doc.text('Class Timetable: '+cn+' ('+term+', '+session+')', pw/2, 21, {align:'center'});
 
-    /* Build head + body manually so PDF doesn't depend on DOM table */
     function getDayPeriods(day) {
         return (config.scheduleTemplate && config.scheduleTemplate[day]) || config.periods || [];
     }
-    function sig(day) {
-        return getDayPeriods(day).map(function(p){ return p.label+'|'+(p.type||'')+'|'+(p.customLabel||''); }).join('~');
-    }
-    var groups = [], sigIdx = {};
-    config.days.forEach(function(day){
-        var s = sig(day);
-        if (sigIdx[s]!==undefined) groups[sigIdx[s]].days.push(day);
-        else { sigIdx[s]=groups.length; groups.push({ days:[day], periods:getDayPeriods(day) }); }
-    });
 
-    var startY = 33;
-    groups.forEach(function(grp, gIdx) {
-        var ps = grp.periods;
-        var headRow = ['Day'];
-        var breakColIdx = {};   // col index -> breakName for styling
-        var pIdx = 0, colIdx = 1;
-        while (pIdx < ps.length) {
-            var p = ps[pIdx]; var pt = p.type||(p.isBreak?'Break':'Subject');
-            if (pt==='Break'||pt==='Event') {
-                var sp=1;
-                while (pIdx+sp<ps.length){var np=ps[pIdx+sp];var nt=np.type||(np.isBreak?'Break':'Subject');if(nt==='Break'||nt==='Event')sp++;else break;}
-                var bn = p.customLabel||'Break';
-                for (var si=0;si<sp;si++) { headRow.push(si===0?bn:''); breakColIdx[colIdx+si]=true; }
-                pIdx+=sp; colIdx+=sp;
+    function buildEffectiveCols(periods) {
+        var cols = [];
+        var pi = 0;
+        while (pi < periods.length) {
+            var p  = periods[pi];
+            var pt = p.type || (p.isBreak ? 'Break' : 'Subject');
+            if (pt === 'Break' || pt === 'Event') {
+                var bn    = p.customLabel || p.label || 'Break';
+                var btime = (p.startTime && p.endTime) ? (p.startTime + ' - ' + p.endTime) : (p.label || bn);
+                var idxs  = [pi]; pi++;
+                while (pi < periods.length) {
+                    var np  = periods[pi];
+                    var npt = np.type || (np.isBreak ? 'Break' : 'Subject');
+                    if (npt === 'Break' || npt === 'Event') { idxs.push(pi); pi++; } else break;
+                }
+                cols.push({ type: 'break', label: bn, timeLabel: btime, origIdxs: idxs });
             } else {
-                headRow.push(p.label||('P'+(pIdx+1)));
-                pIdx++; colIdx++;
+                var slotLabel = (p.startTime && p.endTime) ? (p.startTime + ' - ' + p.endTime) : (p.label || ('P' + (pi + 1)));
+                cols.push({ type: 'subject', label: slotLabel, origIdx: pi });
+                pi++;
             }
         }
+        return cols;
+    }
 
-        var bodyRows = [];
-        grp.days.forEach(function(day){
-            var sch = (tt.schedule&&tt.schedule[day])||[];
-            var row = [day]; var pi=0;
-            while (pi < ps.length) {
-                var cp=ps[pi]; var cpt=cp.type||(cp.isBreak?'Break':'Subject');
-                if (cpt==='Break'||cpt==='Event'){
-                    var sp2=1;
-                    while(pi+sp2<ps.length){var np2=ps[pi+sp2];var nt2=np2.type||(np2.isBreak?'Break':'Subject');if(nt2==='Break'||nt2==='Event')sp2++;else break;}
-                    for(var si2=0;si2<sp2;si2++) row.push('');
-                    pi+=sp2;
-                } else {
-                    var en=sch[pi]||null;
-                    row.push((en&&en.type==='Subject')?en.subjectName:'-');
-                    pi++;
-                }
+    function dayKey(day) {
+        return JSON.stringify(getDayPeriods(day).map(function(p){ return p.startTime + p.endTime + p.type; }));
+    }
+    
+    if (config.days.length === 0) return showToast('No days configured.', 'error');
+
+    var maxCols = 0;
+    config.days.forEach(function(d) {
+        var len = buildEffectiveCols(getDayPeriods(d)).length;
+        if (len > maxCols) maxCols = len;
+    });
+    
+    var firstDayKey = dayKey(config.days[0]);
+    var masterCols  = buildEffectiveCols(getDayPeriods(config.days[0]));
+
+    var DK = [30, 58, 95];
+    var GR = [226, 232, 240];
+
+    function buildHeadRow(eCols) {
+        var row = [
+            { content: 'DAY', styles: { fillColor: DK, textColor: [255,255,255], fontStyle: 'bold', halign: 'center' } }
+        ];
+        eCols.forEach(function(col) {
+            if (col.type === 'break') {
+                row.push({ content: col.timeLabel,
+                           styles: { fillColor: GR, textColor: [200,0,0], fontStyle: 'bold', halign: 'center', valign: 'middle' } });
+            } else {
+                row.push({ content: col.label,
+                           styles: { fillColor: DK, textColor: [255,255,255], halign: 'center' } });
             }
-            bodyRows.push(row);
         });
+        while (row.length < maxCols + 1) {
+            row.push({ content: '', styles: { fillColor: DK } });
+        }
+        return row;
+    }
 
-        var breakColsMeta = {};
+    var body = [];
+    var rowBreakMeta = [];
+
+    config.days.forEach(function(day, dayIdx) {
+        var dKey       = dayKey(day);
+        var isDifferent = (dKey !== firstDayKey);
+        var eCols       = isDifferent ? buildEffectiveCols(getDayPeriods(day)) : masterCols;
+
+        if (isDifferent) {
+            var subHead = buildHeadRow(eCols);
+            subHead.forEach(function(cell) {
+                if (cell.styles && cell.styles.fillColor === DK) {
+                    cell.styles.fillColor = [100, 116, 139]; // Subheader color
+                }
+            });
+            body.push(subHead);
+            rowBreakMeta.push({ isSubHeader: true, breakCols: {}, day: day });
+        }
+
+        var sch = (tt.schedule && tt.schedule[day]) || [];
+        var row = [];
+
+        // Horizontal Day Name
+        row.push({ content: day, styles: { fontStyle: 'bold', halign: 'left', fillColor: [248,250,252] } });
+
+        var breakCols = {};
+        eCols.forEach(function(col, i) {
+            if (col.type === 'break') {
+                breakCols[1 + i] = col.label;
+                row.push({ content: ' ', styles: { fillColor: GR, halign: 'center', valign: 'middle' } });
+            } else {
+                var entry = (sch[col.origIdx] || null);
+                var text  = (entry && entry.type === 'Subject') ? entry.subjectName : '-';
+                row.push({ content: text, styles: { halign: 'center' } });
+            }
+        });
+        while (row.length < maxCols + 1) {
+            row.push({ content: '', styles: { fillColor: [248,250,252] } });
+        }
+
+        body.push(row);
+        rowBreakMeta.push({ isSubHeader: false, breakCols: breakCols, day: day });
+    });
+
+    var breakColsMeta = {};
     var tableStartY = 9999;
     var tableEndY = 0;
 
     doc.autoTable({
-            head: [headRow],
-            body: bodyRows,
-            startY: startY,
-            theme: 'grid',
-            headStyles: { fillColor:[30,58,95], halign:'center', fontSize:9, fontStyle:'bold' },
-            styles: { fontSize:9, cellPadding:3, halign:'center', valign:'middle' },
-            columnStyles: { 0: { fontStyle:'bold', halign:'left', cellWidth:22 } },
-            didParseCell: function(data) {
-                if (breakColIdx[data.column.index]) {
-                    data.cell.styles.fillColor = [226,232,240];
-                    data.cell.styles.textColor = [71,85,105];
+        head: [buildHeadRow(masterCols)],
+        body: body,
+        startY: 26,
+        theme: 'grid',
+        headStyles: { fontSize: 8, fontStyle: 'bold', halign: 'center', valign: 'middle' },
+        styles:     { fontSize: 8, cellPadding: 2, valign: 'middle', overflow: 'linebreak' },
+        columnStyles: {
+            0: { cellWidth: 25, halign: 'left' }
+        },
+        didDrawCell: function(data) {
+            if (data.row.section !== 'body') return;
+            var meta = rowBreakMeta[data.row.index];
+            if (!meta || meta.isSubHeader) return;
+
+            tableStartY = Math.min(tableStartY, data.cell.y);
+            tableEndY = Math.max(tableEndY, data.cell.y + data.cell.height);
+            
+            var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
+            if (breakLabel) {
+                breakColsMeta[data.column.index] = { x: data.cell.x, w: data.cell.width, label: breakLabel };
+            }
+
+            // Smart Font Sizing for subjects in cell
+            if (meta.breakCols && !meta.breakCols[data.column.index] && data.column.index > 0) {
+                var text = data.cell.raw.content || data.cell.raw;
+                if (text && text.length > 15) {
+                    doc.saveGraphicsState();
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(data.cell.styles.textColor);
+                    doc.restoreGraphicsState();
                 }
             }
-        });
-        startY = doc.lastAutoTable.finalY + 10;
-        if (gIdx < groups.length-1 && startY > 170) { doc.addPage(); startY = 15; }
+        },
+        didDrawPage: function(data) {
+            if (tableStartY < tableEndY) {
+                var cy = (tableStartY + tableEndY) / 2;
+                for (var colIdx in breakColsMeta) {
+                    var b = breakColsMeta[colIdx];
+                    var cx = b.x + b.w / 2;
+                    doc.saveGraphicsState();
+                    doc.setFontSize(8);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(200, 0, 0);
+                    var brkStr = b.label.toUpperCase();
+                    var tw = doc.getStringUnitWidth(brkStr) * 8 / doc.internal.scaleFactor;
+                    var fontHeight = 8 / doc.internal.scaleFactor;
+                    var adjustedCx = cx + fontHeight / 3;
+                    doc.text(brkStr, adjustedCx, cy + tw / 2, { angle: 90 });
+                    doc.restoreGraphicsState();
+                }
+            }
+        }
     });
 
-    doc.save('Timetable_'+cn+'.pdf');
+    doc.save('Class_Timetable_' + cn + '.pdf');
 }
 
 function downloadMasterTimetablePDF(section) {
@@ -1582,6 +1726,15 @@ function downloadMasterTimetablePDF(section) {
     function dayKey(day) {
         return JSON.stringify(getDayPeriods(day).map(function(p){ return p.startTime + p.endTime + p.type; }));
     }
+
+    if (config.days.length === 0) return showToast('No days configured.', 'error');
+    
+    var maxCols = 0;
+    config.days.forEach(function(d) {
+        var len = buildEffectiveCols(getDayPeriods(d)).length;
+        if (len > maxCols) maxCols = len;
+    });
+
     var firstDayKey = dayKey(config.days[0]);
     var masterCols  = buildEffectiveCols(getDayPeriods(config.days[0]));
     var nClasses    = filteredList.length;
@@ -1603,6 +1756,9 @@ function downloadMasterTimetablePDF(section) {
                            styles: { fillColor: DK, textColor: [255,255,255], halign: 'center' } });
             }
         });
+        while (row.length < maxCols + 2) {
+            row.push({ content: '', styles: { fillColor: DK } });
+        }
         return row;
     }
 
@@ -1616,7 +1772,7 @@ function downloadMasterTimetablePDF(section) {
 
     var masterBreakAbsCols = getBreakAbsCols(masterCols);
 
-    var body        = [];
+    var body = [];
     var rowBreakMeta = [];
 
     config.days.forEach(function(day, dayIdx) {
@@ -1646,25 +1802,24 @@ function downloadMasterTimetablePDF(section) {
             var row = [];
 
             if (clsIdx === 0) {
-                /* Use a space to ensure the cell renders and triggers didDrawCell */
                 row.push({ content: ' ', rowSpan: nClasses,
                            styles: { fillColor: DK, halign: 'center', valign: 'middle' } });
             }
 
             row.push({ content: tt.className, styles: { fontStyle: 'bold', halign: 'left' } });
 
-            eCols.forEach(function(col) {
+            eCols.forEach(function(col, i) {
                 if (col.type === 'break') {
-                    if (clsIdx === 0) {
-                        row.push({ content: ' ', rowSpan: nClasses,
-                                   styles: { fillColor: GR, halign: 'center', valign: 'middle' } });
-                    }
+                    row.push({ content: ' ', styles: { fillColor: GR, halign: 'center', valign: 'middle' } });
                 } else {
                     var entry = (sch[col.origIdx] || null);
                     var text  = (entry && entry.type === 'Subject') ? entry.subjectName : '-';
                     row.push({ content: text, styles: { halign: 'center' } });
                 }
             });
+            while (row.length < maxCols + 2) {
+                row.push({ content: '', styles: { fillColor: [255,255,255] } });
+            }
 
             body.push(row);
             rowBreakMeta.push({ isSubHeader: false, breakCols: breakAbsCols, day: day, clsIdx: clsIdx });
@@ -1680,76 +1835,68 @@ function downloadMasterTimetablePDF(section) {
         body: body,
         startY: 26,
         theme: 'grid',
-        headStyles: { fontSize: 7, fontStyle: 'bold', halign: 'center', valign: 'middle', minCellHeight: 10 },
-        styles:     { fontSize: 6.5, cellPadding: 1.5, valign: 'middle', overflow: 'linebreak' },
+        headStyles: { fontSize: 8.5, fontStyle: 'bold', halign: 'center', valign: 'middle' },
+        styles:     { fontSize: 8.5, cellPadding: 2, valign: 'middle', overflow: 'linebreak' },
         columnStyles: {
             0: { cellWidth: 10, halign: 'center' },
-            1: { cellWidth: 22, halign: 'left'   }
+            1: { cellWidth: 35, halign: 'left' }
         },
-                didDrawCell: function(data) {
+        didParseCell: function(data) {
+            if (data.row.section === 'body') {
+                var meta = rowBreakMeta[data.row.index];
+                if (meta && !meta.isSubHeader && data.column.index === 0) {
+                    if (meta.clsIdx === 0) {
+                        data.cell.styles.fillColor = [240, 244, 248];
+                        data.cell.styles.textColor = [30, 58, 95];
+                        data.cell.text = meta.day;
+                    } else {
+                        data.cell.text = '';
+                    }
+                }
+            }
+        },
+        didDrawCell: function(data) {
             if (data.row.section !== 'body') return;
             var meta = rowBreakMeta[data.row.index];
             if (!meta || meta.isSubHeader) return;
 
-            /* Track table bounds and break columns for didDrawPage */
             tableStartY = Math.min(tableStartY, data.cell.y);
             tableEndY = Math.max(tableEndY, data.cell.y + data.cell.height);
-            
+
             var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
             if (breakLabel) {
                 breakColsMeta[data.column.index] = { x: data.cell.x, w: data.cell.width, label: breakLabel };
             }
 
-            /* Draw vertical day name in Day column (col 0) — only for the first row of each day */
-            if (data.column.index === 0 && meta.clsIdx === 0) {
-                var trueHeight = data.row.height * nClasses;
-                var trueCy = data.cell.y + (trueHeight / 2);
-                var cx = data.cell.x + data.cell.width / 2;
-
-                doc.saveGraphicsState();
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(255, 255, 255);
-                var dayStr = (meta.day || '').toUpperCase();
-                
-                var fontSize = 7;
-                doc.setFontSize(fontSize);
-                var tw = doc.getStringUnitWidth(dayStr) * fontSize / doc.internal.scaleFactor;
-                
-                /* Auto-resize font to fit smartly in the cell */
-                if (tw > trueHeight - 2) {
-                    fontSize = fontSize * ((trueHeight - 2) / tw);
-                    doc.setFontSize(fontSize);
-                    tw = doc.getStringUnitWidth(dayStr) * fontSize / doc.internal.scaleFactor;
+            if (meta.breakCols && !meta.breakCols[data.column.index] && data.column.index > 1) {
+                var text = data.cell.raw.content || data.cell.raw;
+                if (text && text.length > 15) {
+                    doc.saveGraphicsState();
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(data.cell.styles.textColor);
+                    doc.restoreGraphicsState();
                 }
-
-                var fontHeight = fontSize / doc.internal.scaleFactor; 
-                var adjustedCx = cx + fontHeight / 3;
-                
-                doc.text(dayStr, adjustedCx, trueCy + tw / 2, { angle: 90 });
-                doc.restoreGraphicsState();
             }
         },
         didDrawPage: function(data) {
-            /* Draw merged break labels perfectly centered across the entire table */
             if (tableStartY < tableEndY) {
                 var cy = (tableStartY + tableEndY) / 2;
                 for (var colIdx in breakColsMeta) {
                     var b = breakColsMeta[colIdx];
                     var cx = b.x + b.w / 2;
                     doc.saveGraphicsState();
-                    doc.setFontSize(7);
+                    doc.setFontSize(10);
                     doc.setFont(undefined, 'bold');
                     doc.setTextColor(200, 0, 0);
                     var brkStr = b.label.toUpperCase();
-                    var tw = doc.getStringUnitWidth(brkStr) * 7 / doc.internal.scaleFactor;
-                    var fontHeight = 7 / doc.internal.scaleFactor;
+                    var tw = doc.getStringUnitWidth(brkStr) * 10 / doc.internal.scaleFactor;
+                    var fontHeight = 10 / doc.internal.scaleFactor;
                     var adjustedCx = cx + fontHeight / 3;
                     doc.text(brkStr, adjustedCx, cy + tw / 2, { angle: 90 });
                     doc.restoreGraphicsState();
                 }
             }
         }
-
     });
 
     doc.save('Master_Timetable_' + section + '.pdf');
