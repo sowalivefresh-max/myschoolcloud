@@ -1685,13 +1685,13 @@ function downloadMasterTimetablePDF(section) {
                 doc.setFontSize(8);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(255, 255, 255);
-                doc.text(dayName, cx, cy, { angle: 90, align: 'center', baseline: 'middle' });
+                doc.text((meta.day || '').toUpperCase(), cx, cy, { angle: 90, align: 'center', baseline: 'middle' });
                 doc.restoreGraphicsState();
             }
 
             /* Draw vertical text in break columns */
-            if (data.row.section === 'body' && breakAbsCols[data.column.index] && data.cell.height > 5) {
-                var breakLabel = breakAbsCols[data.column.index];
+            var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
+            if (breakLabel && data.cell.height > 5) {
                 var cx2 = data.cell.x + data.cell.width  / 2;
                 var cy2 = data.cell.y + data.cell.height / 2;
                 doc.saveGraphicsState();
