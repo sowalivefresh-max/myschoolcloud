@@ -1638,8 +1638,8 @@ function downloadMasterTimetablePDF(section) {
             var row = [];
 
             if (clsIdx === 0) {
-                /* Use empty content — day name drawn via didDrawCell rotated white text */
-                row.push({ content: '', rowSpan: nClasses,
+                /* Use a space to ensure the cell renders and triggers didDrawCell */
+                row.push({ content: ' ', rowSpan: nClasses,
                            styles: { fillColor: DK, halign: 'center', valign: 'middle' } });
             }
 
@@ -1682,29 +1682,35 @@ function downloadMasterTimetablePDF(section) {
             var meta = rowBreakMeta[data.row.index];
             if (!meta || meta.isSubHeader) return;
 
+            /* Calculate true center of the spanned area (since data.cell.height is only 1 row) */
+            var trueHeight = data.row.height * nClasses;
+            var trueCy = data.cell.y + (trueHeight / 2);
+            var cx = data.cell.x + data.cell.width / 2;
+
             /* Draw vertical day name in Day column (col 0) — only for the first row of each day */
-            if (data.column.index === 0 && data.cell.height > 5 && meta.clsIdx === 0) {
-                var cx = data.cell.x + data.cell.width  / 2;
-                var cy = data.cell.y + data.cell.height / 2;
+            if (data.column.index === 0 && meta.clsIdx === 0) {
                 doc.saveGraphicsState();
                 doc.setFontSize(7);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(255, 255, 255);
-                doc.text((meta.day || '').toUpperCase(), cx, cy, { angle: 90, align: 'center', baseline: 'middle' });
+                var dayStr = (meta.day || '').toUpperCase();
+                var tw = doc.getStringUnitWidth(dayStr) * 7 / doc.internal.scaleFactor;
+                // angle 90 in this version goes top-to-bottom, so offset up by tw/2
+                doc.text(dayStr, cx, trueCy - tw / 2, { angle: 90 });
                 doc.restoreGraphicsState();
             }
 
             /* Draw vertical break label — only ONCE per break column across the whole table */
             var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
-            if (breakLabel && data.cell.height > 5 && !drawnBreaks[data.column.index]) {
+            if (breakLabel && !drawnBreaks[data.column.index]) {
                 drawnBreaks[data.column.index] = true;
-                var cx2 = data.cell.x + data.cell.width  / 2;
-                var cy2 = data.cell.y + data.cell.height / 2;
                 doc.saveGraphicsState();
                 doc.setFontSize(7);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(200, 0, 0);
-                doc.text(breakLabel.toUpperCase(), cx2, cy2, { angle: 90, align: 'center', baseline: 'middle' });
+                var brkStr = breakLabel.toUpperCase();
+                var tw2 = doc.getStringUnitWidth(brkStr) * 7 / doc.internal.scaleFactor;
+                doc.text(brkStr, cx, trueCy - tw2 / 2, { angle: 90 });
                 doc.restoreGraphicsState();
             }
         }
