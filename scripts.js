@@ -1663,9 +1663,6 @@ function downloadMasterTimetablePDF(section) {
         });
     });
 
-    /* Track which break columns have already had their vertical label drawn */
-    var drawnBreaks = {};
-
     doc.autoTable({
         head: [buildHeadRow(masterCols)],
         body: body,
@@ -1677,7 +1674,7 @@ function downloadMasterTimetablePDF(section) {
             0: { cellWidth: 10, halign: 'center' },
             1: { cellWidth: 22, halign: 'left'   }
         },
-        didDrawCell: function(data) {
+                didDrawCell: function(data) {
             if (data.row.section !== 'body') return;
             var meta = rowBreakMeta[data.row.index];
             if (!meta || meta.isSubHeader) return;
@@ -1686,6 +1683,10 @@ function downloadMasterTimetablePDF(section) {
             var trueHeight = data.row.height * nClasses;
             var trueCy = data.cell.y + (trueHeight / 2);
             var cx = data.cell.x + data.cell.width / 2;
+            
+            // Adjust X to perfectly center the text horizontally (baseline bottom rotated 90deg CCW shifts text left)
+            var fontHeight = 7 / doc.internal.scaleFactor; 
+            var adjustedCx = cx + fontHeight / 3;
 
             /* Draw vertical day name in Day column (col 0) — only for the first row of each day */
             if (data.column.index === 0 && meta.clsIdx === 0) {
@@ -1695,10 +1696,26 @@ function downloadMasterTimetablePDF(section) {
                 doc.setTextColor(255, 255, 255);
                 var dayStr = (meta.day || '').toUpperCase();
                 var tw = doc.getStringUnitWidth(dayStr) * 7 / doc.internal.scaleFactor;
-                // angle 90 in this version goes top-to-bottom, so offset up by tw/2
-                doc.text(dayStr, cx, trueCy - tw / 2, { angle: 90 });
+                // angle 90 is counter-clockwise (Bottom-to-Top), so text goes UP.
+                // To center vertically, start BELOW the center by tw/2.
+                doc.text(dayStr, adjustedCx, trueCy + tw / 2, { angle: 90 });
                 doc.restoreGraphicsState();
             }
+
+            /* Draw vertical break label — only in the middle of the table (middle day group) */
+            var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
+            var isMiddleDay = (meta.dayIdx === Math.floor(config.days.length / 2));
+            if (breakLabel && isMiddleDay && meta.clsIdx === 0) {
+                doc.saveGraphicsState();
+                doc.setFontSize(7);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(200, 0, 0);
+                var brkStr = breakLabel.toUpperCase();
+                var tw2 = doc.getStringUnitWidth(brkStr) * 7 / doc.internal.scaleFactor;
+                doc.text(brkStr, adjustedCx, trueCy + tw2 / 2, { angle: 90 });
+                doc.restoreGraphicsState();
+            }
+        }
 
             /* Draw vertical break label — only ONCE per break column across the whole table */
             var breakLabel = meta.breakCols && meta.breakCols[data.column.index];
